@@ -120,6 +120,7 @@ static FCompatOption Options[] =
 	{ "linkfrozenprops",		BCOMPATF_LINKFROZENPROPS, SLOT_BCOMPAT },
 	{ "floatbob",				BCOMPATF_FLOATBOB, SLOT_BCOMPAT },
 	{ "noslopeid",				BCOMPATF_NOSLOPEID, SLOT_BCOMPAT },
+	{ "clipmidtex",				BCOMPATF_CLIPMIDTEX, SLOT_BCOMPAT },
 
 	// list copied from g_mapinfo.cpp
 	{ "shorttex",				COMPATF_SHORTTEX, SLOT_COMPAT },
@@ -158,7 +159,6 @@ static FCompatOption Options[] =
 	{ "multiexit",				COMPATF2_MULTIEXIT, SLOT_COMPAT2 },
 	{ "teleport",				COMPATF2_TELEPORT, SLOT_COMPAT2 },
 	{ "disablepushwindowcheck",	COMPATF2_PUSHWINDOW, SLOT_COMPAT2 },
-	{ "clipmidtex",				COMPATF2_CLIPMIDTEX, SLOT_COMPAT2 },
 	{ NULL, 0, 0 }
 };
 

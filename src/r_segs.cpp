@@ -405,7 +405,8 @@ void R_RenderMaskedSegRange (drawseg_t *ds, int x1, int x2)
 		  // or above the ceiling, so the appropriate end won't be clipped automatically when adding
 		  // this drawseg.
 			if ((curline->linedef->flags & ML_CLIP_MIDTEX) ||
-				(curline->sidedef->Flags & WALLF_CLIP_MIDTEX))
+				(curline->sidedef->Flags & WALLF_CLIP_MIDTEX) ||
+					(ib_compatflags & BCOMPATF_CLIPMIDTEX))
 			{
 				ClipMidtex(x1, x2);
 			}
@@ -1395,7 +1396,8 @@ void R_NewWall (bool needlights)
 				|| (backsector->e && backsector->e->XFloor.lightlist.Size())
 
 				|| (sidedef->GetTexture(side_t::mid).isValid() &&
-					((linedef->flags & (ML_CLIP_MIDTEX|ML_WRAP_MIDTEX)) ||
+					 ((ib_compatflags & BCOMPATF_CLIPMIDTEX) ||
+					 (linedef->flags & (ML_CLIP_MIDTEX|ML_WRAP_MIDTEX)) ||
 					 (sidedef->Flags & (WALLF_CLIP_MIDTEX|WALLF_WRAP_MIDTEX))))
 				;
 
