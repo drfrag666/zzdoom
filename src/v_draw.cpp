@@ -89,7 +89,7 @@ CVAR (Bool, hud_scale, true, CVAR_ARCHIVE);
 // For routines that take RGB colors, cache the previous lookup in case there
 // are several repetitions with the same color.
 static int LastPal = -1;
-static uint32 LastRGB;
+static uint32_t LastRGB;
 
 DEFINE_ACTION_FUNCTION(_Screen, GetWidth)
 {
@@ -112,7 +112,7 @@ DEFINE_ACTION_FUNCTION(_Screen, PaletteColor)
 	ACTION_RETURN_INT(index);
 }
 
-static int PalFromRGB(uint32 rgb)
+static int PalFromRGB(uint32_t rgb)
 {
 	if (LastPal >= 0 && LastRGB == rgb)
 	{
@@ -1133,7 +1133,7 @@ void DCanvas::PUTTRANSDOT (int xx, int yy, int basecolor, int level)
 	*spot = RGB32k.All[bg&(bg>>15)];
 }
 
-void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 realcolor)
+void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32_t realcolor)
 //void DrawTransWuLine (int x0, int y0, int x1, int y1, BYTE palColor)
 {
 	const int WeightingScale = 0;
@@ -1293,7 +1293,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 real
 	Unlock();
 }
 
-void DCanvas::DrawPixel(int x, int y, int palColor, uint32 realcolor)
+void DCanvas::DrawPixel(int x, int y, int palColor, uint32_t realcolor)
 {
 	if (palColor < 0)
 	{
@@ -1311,7 +1311,7 @@ void DCanvas::DrawPixel(int x, int y, int palColor, uint32 realcolor)
 //
 //==========================================================================
 
-void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32 color)
+void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32_t color)
 {
 	int x, y;
 	BYTE *dest;

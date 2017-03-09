@@ -782,7 +782,7 @@ void DDrawFB::RebuildColorTable ()
 		}
 		for (i = 0; i < 256; i++)
 		{
-			GPfxPal.Pal8[i] = (BYTE)BestColor ((uint32 *)syspal, PalEntries[i].peRed,
+			GPfxPal.Pal8[i] = (BYTE)BestColor ((uint32_t *)syspal, PalEntries[i].peRed,
 				PalEntries[i].peGreen, PalEntries[i].peBlue);
 		}
 	}
