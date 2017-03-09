@@ -29,9 +29,9 @@ public:
 struct FAnimDef
 {
 	FTextureID 	BasePic;
-	WORD	NumFrames;
-	WORD	CurFrame;
-	BYTE	AnimType;
+	uint16_t	NumFrames;
+	uint16_t	CurFrame;
+	uint8_t	AnimType;
 	bool	bDiscrete;			// taken out of AnimType to have better control
 	DWORD	SwitchTime;			// Time to advance to next frame
 	struct FAnimFrame
@@ -56,13 +56,13 @@ struct FSwitchDef
 {
 	FTextureID PreTexture;		// texture to switch from
 	FSwitchDef *PairDef;		// switch def to use to return to PreTexture
-	WORD NumFrames;		// # of animation frames
+	uint16_t NumFrames;		// # of animation frames
 	bool QuestPanel;	// Special texture for Strife mission
 	int Sound;			// sound to play at start of animation. Changed to int to avoiud having to include s_sound here.
 	struct frame		// Array of times followed by array of textures
 	{					//   actual length of each array is <NumFrames>
-		WORD TimeMin;
-		WORD TimeRnd;
+		uint16_t TimeMin;
+		uint16_t TimeRnd;
 		FTextureID Texture;
 	} frames[1];
 };
@@ -118,7 +118,7 @@ public:
 
 	int16_t LeftOffset, TopOffset;
 
-	BYTE WidthBits, HeightBits;
+	uint8_t WidthBits, HeightBits;
 
 	DVector2 Scale;
 
@@ -126,22 +126,22 @@ public:
 	FTextureID id;
 
 	FString Name;
-	BYTE UseType;	// This texture's primary purpose
+	uint8_t UseType;	// This texture's primary purpose
 
-	BYTE bNoDecals:1;		// Decals should not stick to texture
-	BYTE bNoRemap0:1;		// Do not remap color 0 (used by front layer of parallax skies)
-	BYTE bWorldPanning:1;	// Texture is panned in world units rather than texels
-	BYTE bMasked:1;			// Texture (might) have holes
-	BYTE bAlphaTexture:1;	// Texture is an alpha channel without color information
-	BYTE bHasCanvas:1;		// Texture is based off FCanvasTexture
-	BYTE bWarped:2;			// This is a warped texture. Used to avoid multiple warps on one texture
-	BYTE bComplex:1;		// Will be used to mark extended MultipatchTextures that have to be
+	uint8_t bNoDecals:1;		// Decals should not stick to texture
+	uint8_t bNoRemap0:1;		// Do not remap color 0 (used by front layer of parallax skies)
+	uint8_t bWorldPanning:1;	// Texture is panned in world units rather than texels
+	uint8_t bMasked:1;			// Texture (might) have holes
+	uint8_t bAlphaTexture:1;	// Texture is an alpha channel without color information
+	uint8_t bHasCanvas:1;		// Texture is based off FCanvasTexture
+	uint8_t bWarped:2;			// This is a warped texture. Used to avoid multiple warps on one texture
+	uint8_t bComplex:1;		// Will be used to mark extended MultipatchTextures that have to be
 							// fully composited before subjected to any kind of postprocessing instead of
 							// doing it per patch.
-	BYTE bMultiPatch:1;		// This is a multipatch texture (we really could use real type info for textures...)
-	BYTE bKeepAround:1;		// This texture was used as part of a multi-patch texture. Do not free it.
+	uint8_t bMultiPatch:1;		// This is a multipatch texture (we really could use real type info for textures...)
+	uint8_t bKeepAround:1;		// This texture was used as part of a multi-patch texture. Do not free it.
 
-	WORD Rotations;
+	uint16_t Rotations;
 	int16_t SkyOffset;
 
 	enum // UseTypes
@@ -165,15 +165,15 @@ public:
 
 	struct Span
 	{
-		WORD TopOffset;
-		WORD Length;	// A length of 0 terminates this column
+		uint16_t TopOffset;
+		uint16_t Length;	// A length of 0 terminates this column
 	};
 
 	// Returns a single column of the texture
-	virtual const BYTE *GetColumn (unsigned int column, const Span **spans_out) = 0;
+	virtual const uint8_t *GetColumn (unsigned int column, const Span **spans_out) = 0;
 
 	// Returns the whole texture, stored in column-major order
-	virtual const BYTE *GetPixels () = 0;
+	virtual const uint8_t *GetPixels () = 0;
 	
 	virtual int CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate=0, FCopyInfo *inf = NULL);
 	int CopyTrueColorTranslated(FBitmap *bmp, int x, int y, int rotate, FRemapTable *remap, FCopyInfo *inf = NULL);
@@ -194,7 +194,7 @@ public:
 	void KillNative();
 
 	// Fill the native texture buffer with pixel data for this image
-	virtual void FillBuffer(BYTE *buff, int pitch, int height, FTextureFormat fmt);
+	virtual void FillBuffer(uint8_t *buff, int pitch, int height, FTextureFormat fmt);
 
 	int GetWidth () { return Width; }
 	int GetHeight () { return Height; }
@@ -213,12 +213,12 @@ public:
 
 	virtual void SetFrontSkyLayer();
 
-	void CopyToBlock (BYTE *dest, int dwidth, int dheight, int x, int y, const BYTE *translation=NULL)
+	void CopyToBlock (uint8_t *dest, int dwidth, int dheight, int x, int y, const uint8_t *translation=NULL)
 	{
 		CopyToBlock(dest, dwidth, dheight, x, y, 0, translation);
 	}
 
-	void CopyToBlock (BYTE *dest, int dwidth, int dheight, int x, int y, int rotate, const BYTE *translation=NULL);
+	void CopyToBlock (uint8_t *dest, int dwidth, int dheight, int x, int y, int rotate, const uint8_t *translation=NULL);
 
 	// Returns true if the next call to GetPixels() will return an image different from the
 	// last call to GetPixels(). This should be considered valid only if a call to CheckModified()
@@ -245,13 +245,13 @@ public:
 	virtual void HackHack (int newheight);	// called by FMultipatchTexture to discover corrupt patches.
 
 protected:
-	WORD Width, Height, WidthMask;
-	static BYTE GrayMap[256];
+	uint16_t Width, Height, WidthMask;
+	static uint8_t GrayMap[256];
 	FNativeTexture *Native;
 
 	FTexture (const char *name = NULL, int lumpnum = -1);
 
-	Span **CreateSpans (const BYTE *pixels) const;
+	Span **CreateSpans (const uint8_t *pixels) const;
 	void FreeSpans (Span **spans) const;
 	void CalcBitSize ();
 	void CopyInfo(FTexture *other)
@@ -267,10 +267,10 @@ private:
 	PalEntry CeilingSkyColor;
 
 public:
-	static void FlipSquareBlock (BYTE *block, int x, int y);
-	static void FlipSquareBlockRemap (BYTE *block, int x, int y, const BYTE *remap);
-	static void FlipNonSquareBlock (BYTE *blockto, const BYTE *blockfrom, int x, int y, int srcpitch);
-	static void FlipNonSquareBlockRemap (BYTE *blockto, const BYTE *blockfrom, int x, int y, int srcpitch, const BYTE *remap);
+	static void FlipSquareBlock (uint8_t *block, int x, int y);
+	static void FlipSquareBlockRemap (uint8_t *block, int x, int y, const uint8_t *remap);
+	static void FlipNonSquareBlock (uint8_t *blockto, const uint8_t *blockfrom, int x, int y, int srcpitch);
+	static void FlipNonSquareBlockRemap (uint8_t *blockto, const uint8_t *blockfrom, int x, int y, int srcpitch, const uint8_t *remap);
 
 	friend class D3DTex;
 };
@@ -446,7 +446,7 @@ private:
 	TArray<FAnimDef *> mAnimations;
 	TArray<FSwitchDef *> mSwitchDefs;
 	TArray<FDoorAnimation> mAnimatedDoors;
-	TArray<BYTE *> BuildTileFiles;
+	TArray<uint8_t *> BuildTileFiles;
 public:
 	short sintable[2048];	// for texture warping
 	enum
@@ -460,8 +460,8 @@ class FDummyTexture : public FTexture
 {
 public:
 	FDummyTexture ();
-	const BYTE *GetColumn (unsigned int column, const Span **spans_out);
-	const BYTE *GetPixels ();
+	const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
+	const uint8_t *GetPixels ();
 	void Unload ();
 	void SetSize (int width, int height);
 };
@@ -474,8 +474,8 @@ public:
 	~FWarpTexture ();
 
 	virtual int CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate=0, FCopyInfo *inf = NULL);
-	const BYTE *GetColumn (unsigned int column, const Span **spans_out);
-	const BYTE *GetPixels ();
+	const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
+	const uint8_t *GetPixels ();
 	void Unload ();
 	bool CheckModified ();
 
@@ -489,7 +489,7 @@ public:
 	int WidthOffsetMultiplier, HeightOffsetMultiplier;  // [mxd]
 protected:
 	FTexture *SourcePic;
-	BYTE *Pixels;
+	uint8_t *Pixels;
 	Span **Spans;
 
 	virtual void MakeTexture (DWORD time);
@@ -507,8 +507,8 @@ public:
 	FCanvasTexture (const char *name, int width, int height);
 	~FCanvasTexture ();
 
-	const BYTE *GetColumn (unsigned int column, const Span **spans_out);
-	const BYTE *GetPixels ();
+	const uint8_t *GetColumn (unsigned int column, const Span **spans_out);
+	const uint8_t *GetPixels ();
 	void Unload ();
 	bool CheckModified ();
 	void NeedUpdate() { bNeedsUpdate=true; }
@@ -519,7 +519,7 @@ public:
 protected:
 
 	DSimpleCanvas *Canvas;
-	BYTE *Pixels;
+	uint8_t *Pixels;
 	Span DummySpans[2];
 	bool bNeedsUpdate;
 	bool bDidUpdate;

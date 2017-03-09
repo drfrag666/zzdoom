@@ -119,14 +119,14 @@ class FPaletteTester : public FTexture
 public:
 	FPaletteTester ();
 
-	const BYTE *GetColumn(unsigned int column, const Span **spans_out);
-	const BYTE *GetPixels();
+	const uint8_t *GetColumn(unsigned int column, const Span **spans_out);
+	const uint8_t *GetPixels();
 	void Unload();
 	bool CheckModified();
 	void SetTranslation(int num);
 
 protected:
-	BYTE Pixels[16*16];
+	uint8_t Pixels[16*16];
 	int CurTranslation;
 	int WantTranslation;
 	static const Span DummySpan[2];
@@ -329,7 +329,7 @@ void DCanvas::Dim (PalEntry color)
 	{
 		float dim[4] = { color.r/255.f, color.g/255.f, color.b/255.f, color.a/255.f };
 		V_AddBlend (dimmer.r/255.f, dimmer.g/255.f, dimmer.b/255.f, amount, dim);
-		dimmer = PalEntry (BYTE(dim[0]*255), BYTE(dim[1]*255), BYTE(dim[2]*255));
+		dimmer = PalEntry (uint8_t(dim[0]*255), uint8_t(dim[1]*255), uint8_t(dim[2]*255));
 		amount = dim[3];
 	}
 	Dim (dimmer, amount, 0, 0, Width, Height);
@@ -351,7 +351,7 @@ void DCanvas::Dim (PalEntry color, float damount, int x1, int y1, int w, int h)
 	DWORD *bg2rgb;
 	DWORD fg;
 	int gap;
-	BYTE *spot;
+	uint8_t *spot;
 	int x, y;
 
 	if (x1 >= Width || y1 >= Height)
@@ -422,7 +422,7 @@ DEFINE_ACTION_FUNCTION(_Screen, Dim)
 //
 //==========================================================================
 
-void DCanvas::GetScreenshotBuffer(const BYTE *&buffer, int &pitch, ESSType &color_type)
+void DCanvas::GetScreenshotBuffer(const uint8_t *&buffer, int &pitch, ESSType &color_type)
 {
 	Lock(true);
 	buffer = GetBuffer();
@@ -730,7 +730,7 @@ static void BuildTransTable (const PalEntry *palette)
 //
 //==========================================================================
 
-void DCanvas::CalcGamma (float gamma, BYTE gammalookup[256])
+void DCanvas::CalcGamma (float gamma, uint8_t gammalookup[256])
 {
 	// I found this formula on the web at
 	// <http://panda.mostang.com/sane/sane-gamma.html>,
@@ -741,7 +741,7 @@ void DCanvas::CalcGamma (float gamma, BYTE gammalookup[256])
 
 	for (i = 0; i < 256; i++)
 	{
-		gammalookup[i] = (BYTE)(255.0 * pow (i / 255.0, invgamma));
+		gammalookup[i] = (uint8_t)(255.0 * pow (i / 255.0, invgamma));
 	}
 }
 
@@ -806,7 +806,7 @@ void DSimpleCanvas::Resize(int width, int height)
 			Pitch = width + MAX(0, CPU.DataL1LineSize - 8);
 		}
 	}
-	MemBuffer = new BYTE[Pitch * height];
+	MemBuffer = new uint8_t[Pitch * height];
 	memset(MemBuffer, 0, Pitch * height);
 }
 
@@ -937,7 +937,7 @@ void DFrameBuffer::DrawRateStuff ()
 	{
 		int i = I_GetTime(false);
 		int tics = i - LastTic;
-		BYTE *buffer = GetBuffer();
+		uint8_t *buffer = GetBuffer();
 
 		LastTic = i;
 		if (tics > 20) tics = 20;
@@ -1037,7 +1037,7 @@ void FPaletteTester::Unload()
 //
 //==========================================================================
 
-const BYTE *FPaletteTester::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FPaletteTester::GetColumn (unsigned int column, const Span **spans_out)
 {
 	if (CurTranslation != WantTranslation)
 	{
@@ -1057,7 +1057,7 @@ const BYTE *FPaletteTester::GetColumn (unsigned int column, const Span **spans_o
 //
 //==========================================================================
 
-const BYTE *FPaletteTester::GetPixels ()
+const uint8_t *FPaletteTester::GetPixels ()
 {
 	if (CurTranslation != WantTranslation)
 	{
@@ -1075,7 +1075,7 @@ const BYTE *FPaletteTester::GetPixels ()
 void FPaletteTester::MakeTexture()
 {
 	int i, j, k, t;
-	BYTE *p;
+	uint8_t *p;
 
 	t = WantTranslation;
 	p = Pixels;
@@ -1101,7 +1101,7 @@ void FPaletteTester::MakeTexture()
 //
 //==========================================================================
 
-void DFrameBuffer::CopyFromBuff (BYTE *src, int srcPitch, int width, int height, BYTE *dest)
+void DFrameBuffer::CopyFromBuff (uint8_t *src, int srcPitch, int width, int height, uint8_t *dest)
 {
 	if (Pitch == width && Pitch == Width && srcPitch == width)
 	{

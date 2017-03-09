@@ -193,7 +193,7 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 	using namespace drawerargs;
 
 	static short bottomclipper[MAXWIDTH], topclipper[MAXWIDTH];
-	const BYTE *translation = NULL;
+	const uint8_t *translation = NULL;
 
 	if (APART(parms.colorOverlay) != 0)
 	{
@@ -232,7 +232,7 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 	fixedcolormap = dc_colormap;
 	ESPSResult mode = R_SetPatchStyle (parms.style, parms.Alpha, 0, parms.fillcolor);
 
-	BYTE *destorgsave = dc_destorg;
+	uint8_t *destorgsave = dc_destorg;
 	dc_destorg = screen->GetBuffer();
 	if (dc_destorg == NULL)
 	{
@@ -1124,7 +1124,7 @@ void DCanvas::PUTTRANSDOT (int xx, int yy, int basecolor, int level)
 		oldyyshifted = yy * GetPitch();
 	}
 
-	BYTE *spot = GetBuffer() + oldyyshifted + xx;
+	uint8_t *spot = GetBuffer() + oldyyshifted + xx;
 	DWORD *bg2rgb = Col2RGB8[1+level];
 	DWORD *fg2rgb = Col2RGB8[63-level];
 	DWORD fg = fg2rgb[basecolor];
@@ -1134,7 +1134,7 @@ void DCanvas::PUTTRANSDOT (int xx, int yy, int basecolor, int level)
 }
 
 void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32_t realcolor)
-//void DrawTransWuLine (int x0, int y0, int x1, int y1, BYTE palColor)
+//void DrawTransWuLine (int x0, int y0, int x1, int y1, uint8_t palColor)
 {
 	const int WeightingScale = 0;
 	const int WEIGHTBITS = 6;
@@ -1178,7 +1178,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32_t re
 	}
 	else if (deltaX == 0)
 	{ // vertical line
-		BYTE *spot = GetBuffer() + y0*GetPitch() + x0;
+		uint8_t *spot = GetBuffer() + y0*GetPitch() + x0;
 		int pitch = GetPitch ();
 		do
 		{
@@ -1188,7 +1188,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32_t re
 	}
 	else if (deltaX == deltaY)
 	{ // diagonal line.
-		BYTE *spot = GetBuffer() + y0*GetPitch() + x0;
+		uint8_t *spot = GetBuffer() + y0*GetPitch() + x0;
 		int advance = GetPitch() + xDir;
 		do
 		{
@@ -1300,7 +1300,7 @@ void DCanvas::DrawPixel(int x, int y, int palColor, uint32_t realcolor)
 		palColor = PalFromRGB(realcolor);
 	}
 
-	Buffer[Pitch * y + x] = (BYTE)palColor;
+	Buffer[Pitch * y + x] = (uint8_t)palColor;
 }
 
 //==========================================================================
@@ -1314,7 +1314,7 @@ void DCanvas::DrawPixel(int x, int y, int palColor, uint32_t realcolor)
 void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32_t color)
 {
 	int x, y;
-	BYTE *dest;
+	uint8_t *dest;
 
 	if (left == right || top == bottom)
 	{
@@ -1439,7 +1439,7 @@ void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 		return;
 	}
 
-	BYTE *destorgsave = dc_destorg;
+	uint8_t *destorgsave = dc_destorg;
 	dc_destorg = screen->GetBuffer();
 	if (dc_destorg == NULL)
 	{
@@ -1580,11 +1580,11 @@ void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 // V_DrawBlock
 // Draw a linear block of pixels into the view buffer.
 //
-void DCanvas::DrawBlock (int x, int y, int _width, int _height, const BYTE *src) const
+void DCanvas::DrawBlock (int x, int y, int _width, int _height, const uint8_t *src) const
 {
 	int srcpitch = _width;
 	int destpitch;
-	BYTE *dest;
+	uint8_t *dest;
 
 	if (ClipBox (x, y, _width, _height, src, srcpitch))
 	{
@@ -1606,9 +1606,9 @@ void DCanvas::DrawBlock (int x, int y, int _width, int _height, const BYTE *src)
 // V_GetBlock
 // Gets a linear block of pixels from the view buffer.
 //
-void DCanvas::GetBlock (int x, int y, int _width, int _height, BYTE *dest) const
+void DCanvas::GetBlock (int x, int y, int _width, int _height, uint8_t *dest) const
 {
-	const BYTE *src;
+	const uint8_t *src;
 
 #ifdef RANGECHECK 
 	if (x<0
@@ -1631,7 +1631,7 @@ void DCanvas::GetBlock (int x, int y, int _width, int _height, BYTE *dest) const
 }
 
 // Returns true if the box was completely clipped. False otherwise.
-bool DCanvas::ClipBox (int &x, int &y, int &w, int &h, const BYTE *&src, const int srcpitch) const
+bool DCanvas::ClipBox (int &x, int &y, int &w, int &h, const uint8_t *&src, const int srcpitch) const
 {
 	if (x >= Width || y >= Height || x+w <= 0 || y+h <= 0)
 	{ // Completely clipped off screen

@@ -66,7 +66,7 @@ FCanvasTexture::~FCanvasTexture ()
 	Unload ();
 }
 
-const BYTE *FCanvasTexture::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FCanvasTexture::GetColumn (unsigned int column, const Span **spans_out)
 {
 	bNeedsUpdate = true;
 	if (Canvas == NULL)
@@ -91,7 +91,7 @@ const BYTE *FCanvasTexture::GetColumn (unsigned int column, const Span **spans_o
 	return Pixels + column*Height;
 }
 
-const BYTE *FCanvasTexture::GetPixels ()
+const uint8_t *FCanvasTexture::GetPixels ()
 {
 	bNeedsUpdate = true;
 	if (Canvas == NULL)
@@ -108,7 +108,7 @@ void FCanvasTexture::MakeTexture ()
 	GC::AddSoftRoot(Canvas);
 	if (Width != Height || Width != Canvas->GetPitch())
 	{
-		Pixels = new BYTE[Width*Height];
+		Pixels = new uint8_t[Width*Height];
 		bPixelsAllocated = true;
 	}
 	else

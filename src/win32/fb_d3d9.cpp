@@ -1328,8 +1328,8 @@ void D3DFB::Draw3DPart(bool copy3d)
 			}
 			else
 			{
-				BYTE *dest = (BYTE *)lockrect.pBits;
-				BYTE *src = MemBuffer;
+				uint8_t *dest = (uint8_t *)lockrect.pBits;
+				uint8_t *src = MemBuffer;
 				for (int y = 0; y < Height; y++)
 				{
 					memcpy (dest, src, Width);
@@ -1472,10 +1472,10 @@ void D3DFB::UpdateGammaTexture(float igamma)
 
 	if (GammaTexture != NULL && SUCCEEDED(GammaTexture->LockRect(0, &lockrect, NULL, 0)))
 	{
-		BYTE *pix = (BYTE *)lockrect.pBits;
+		uint8_t *pix = (uint8_t *)lockrect.pBits;
 		for (int i = 0; i <= 128; ++i)
 		{
-			pix[i*4+2] = pix[i*4+1] = pix[i*4] = BYTE(255.f * powf(i / 128.f, igamma));
+			pix[i*4+2] = pix[i*4+1] = pix[i*4] = uint8_t(255.f * powf(i / 128.f, igamma));
 			pix[i*4+3] = 255;
 		}
 		GammaTexture->UnlockRect(0);
@@ -1519,7 +1519,7 @@ void D3DFB::DoOffByOneCheck ()
 	// Create an easily recognizable R3G3B2 palette.
 	if (SUCCEEDED(PaletteTexture->LockRect(0, &lockrect, NULL, 0)))
 	{
-		BYTE *pal = (BYTE *)(lockrect.pBits);
+		uint8_t *pal = (uint8_t *)(lockrect.pBits);
 		for (i = 0; i < 256; ++i)
 		{
 			pal[i*4+0] = (i & 0x03) << 6;		// blue
@@ -1538,7 +1538,7 @@ void D3DFB::DoOffByOneCheck ()
 	{
 		for (i = 0; i < 256; ++i)
 		{
-			((BYTE *)lockrect.pBits)[i] = i;
+			((uint8_t *)lockrect.pBits)[i] = i;
 		}
 		FBTexture->UnlockRect(0);
 	}
@@ -1581,7 +1581,7 @@ void D3DFB::DoOffByOneCheck ()
 	if (SUCCEEDED(D3DDevice->GetRenderTargetData(testsurf, readsurf)) &&
 		SUCCEEDED(readsurf->LockRect(&lockrect, &testrect, D3DLOCK_READONLY)))
 	{
-		const BYTE *pix = (const BYTE *)lockrect.pBits;
+		const uint8_t *pix = (const uint8_t *)lockrect.pBits;
 		for (i = 0; i < 256; ++i, pix += 4)
 		{
 			c = (pix[0] >> 6) |					// blue
@@ -1616,7 +1616,7 @@ void D3DFB::UploadPalette ()
 	}
 	if (SUCCEEDED(PaletteTexture->LockRect(0, &lockrect, NULL, 0)))
 	{
-		BYTE *pix = (BYTE *)lockrect.pBits;
+		uint8_t *pix = (uint8_t *)lockrect.pBits;
 		int i;
 
 		for (i = 0; i < SkipAt; ++i, pix += 4)
@@ -1723,7 +1723,7 @@ void D3DFB::SetBlendingRect(int x1, int y1, int x2, int y2)
 //
 //==========================================================================
 
-void D3DFB::GetScreenshotBuffer(const BYTE *&buffer, int &pitch, ESSType &color_type)
+void D3DFB::GetScreenshotBuffer(const uint8_t *&buffer, int &pitch, ESSType &color_type)
 {
 	D3DLOCKED_RECT lrect;
 
@@ -1749,7 +1749,7 @@ void D3DFB::GetScreenshotBuffer(const BYTE *&buffer, int &pitch, ESSType &color_
 		}
 		else
 		{
-			buffer = (const BYTE *)lrect.pBits;
+			buffer = (const uint8_t *)lrect.pBits;
 			pitch = lrect.Pitch;
 			color_type = SS_BGRA;
 		}
@@ -2284,7 +2284,7 @@ bool D3DTex::Update()
 	D3DSURFACE_DESC desc;
 	D3DLOCKED_RECT lrect;
 	RECT rect;
-	BYTE *dest;
+	uint8_t *dest;
 
 	assert(Box != NULL);
 	assert(Box->Owner != NULL);
@@ -2300,7 +2300,7 @@ bool D3DTex::Update()
 	{
 		return false;
 	}
-	dest = (BYTE *)lrect.pBits;
+	dest = (uint8_t *)lrect.pBits;
 	if (Box->Padded)
 	{
 		dest += lrect.Pitch + (desc.Format == D3DFMT_L8 ? 1 : 4);
@@ -2309,7 +2309,7 @@ bool D3DTex::Update()
 	if (Box->Padded)
 	{
 		// Clear top padding row.
-		dest = (BYTE *)lrect.pBits;
+		dest = (uint8_t *)lrect.pBits;
 		int numbytes = GameTex->GetWidth() + 2;
 		if (desc.Format != D3DFMT_L8)
 		{
