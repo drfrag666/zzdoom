@@ -42,7 +42,6 @@
 #include <ddraw.h>
 #include <stdio.h>
 
-#define USE_WINDOWS_DWORD
 #include "doomtype.h"
 
 #include "c_dispatch.h"
