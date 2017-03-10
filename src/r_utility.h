@@ -12,6 +12,7 @@ class FSerializer;
 // There a 0-31, i.e. 32 LUT in the COLORMAP lump.
 #define NUMCOLORMAPS			32
 
+class	DCanvas;
 extern DCanvas			*RenderTarget;
 
 extern DVector3			ViewPos;
@@ -103,6 +104,7 @@ void R_SetWindow (int windowSize, int fullWidth, int fullHeight, int stHeight, b
 extern void R_FreePastViewers ();
 extern void R_ClearPastViewer (AActor *actor);
 
+class FCanvasTexture;
 // This list keeps track of the cameras that draw into canvas textures.
 struct FCanvasTextureInfo
 {

@@ -2,6 +2,9 @@
 #pragma once
 
 #include "r_defs.h"
+#include "c_cvars.h"
+#include "textures.h"
+#include "r_data/renderstyle.h"
 
 EXTERN_CVAR(Bool, r_multithreaded);
 EXTERN_CVAR(Int, r_drawfuzz);
