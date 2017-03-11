@@ -2259,6 +2259,11 @@ void R_DrawSprite (vissprite_t *spr)
 				neardepth = ds->sz2, fardepth = ds->sz1;
 			}
 		}
+		else
+		{
+			// GCC complained about this case, is there something missing here?
+			fardepth = neardepth = 0;
+		}
 		// Check if sprite is in front of draw seg:
 		if ((!spr->bWallSprite && neardepth > spr->depth) || ((spr->bWallSprite || fardepth > spr->depth) &&
 			(spr->gpos.Y - ds->curline->v1->fY()) * (ds->curline->v2->fX() - ds->curline->v1->fX()) -

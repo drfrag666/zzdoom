@@ -2214,6 +2214,10 @@ static void R_RenderDecal (side_t *wall, DBaseDecal *decal, drawseg_t *clipper, 
 	// Get the top and bottom clipping arrays
 	switch (decal->RenderFlags & RF_CLIPMASK)
 	{
+	default:
+		// keep GCC quiet.
+		return;
+
 	case RF_CLIPFULL:
 		if (curline->backsector == NULL)
 		{
