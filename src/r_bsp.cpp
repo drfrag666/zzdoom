@@ -546,7 +546,7 @@ void R_AddLine (seg_t *line)
 	curline = line;
 
 	// [RH] Color if not texturing line
-	dc_color = (((int)(line - segs) * 8) + 4) & 255;
+	dc_color = (((int)(line->Index()) * 8) + 4) & 255;
 
 	pt1 = line->v1->fPos() - ViewPos;
 	pt2 = line->v2->fPos() - ViewPos;
