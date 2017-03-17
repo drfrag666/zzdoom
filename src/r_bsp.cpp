@@ -1372,7 +1372,7 @@ void R_Subsector (subsector_t *sub)
 
 void R_RenderBSPNode (void *node)
 {
-	if (numnodes == 0)
+	if (level.nodes.Size() == 0)
 	{
 		R_Subsector (&level.subsectors[0]);
 		return;

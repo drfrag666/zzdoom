@@ -1230,7 +1230,7 @@ void R_DrawPortals ()
 		visplaneStack.Push (pl);
 
 		InSubsector = NULL;
-		R_RenderBSPNode (nodes + numnodes - 1);
+		R_RenderBSPNode (level.HeadNode());
 		R_3D_ResetClip(); // reset clips (floor/ceiling)
 		R_DrawPlanes ();
 

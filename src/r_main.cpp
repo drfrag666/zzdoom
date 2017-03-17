@@ -59,6 +59,7 @@
 #include "r_data/colormaps.h"
 #include "p_maputl.h"
 #include "r_thread.h"
+#include "g_levellocals.h"
 #include "events.h"
 
 CVAR (String, r_viewsize, "", CVAR_NOSET)
@@ -748,7 +749,7 @@ void R_EnterPortal (PortalDrawseg* pds, int depth)
 	memcpy (floorclip + pds->x1, &pds->floorclip[0], pds->len*sizeof(*floorclip));
 
 	InSubsector = NULL;
-	R_RenderBSPNode (nodes + numnodes - 1);
+	R_RenderBSPNode (level.HeadNode());
 	R_3D_ResetClip(); // reset clips (floor/ceiling)
 	if (!savedvisibility && camera) camera->renderflags &= ~RF_INVISIBLE;
 
@@ -891,7 +892,7 @@ void R_RenderActorView (AActor *actor, bool dontmaplines)
 	// Link the polyobjects right before drawing the scene to reduce the amounts of calls to this function
 	PO_LinkToSubsectors();
 	InSubsector = NULL;
-	R_RenderBSPNode (nodes + numnodes - 1);	// The head node is the last node output.
+	R_RenderBSPNode (level.HeadNode());	// The head node is the last node output.
 	R_3D_ResetClip(); // reset clips (floor/ceiling)
 	camera->renderflags = savedflags;
 	WallCycles.Unclock();
