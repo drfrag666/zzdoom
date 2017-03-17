@@ -650,6 +650,12 @@ static void SetTexture (side_t *side, int position, uint32_t *blend, const char 
 	side->SetTexture(position, texture);
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
+
 static void SetTextureNoErr (side_t *side, int position, uint32_t *color, const char *name, bool *validcolor, bool isFog)
 {
 	FTextureID texture;
@@ -1042,6 +1048,11 @@ void LoadZNodes(FileReaderBase &data, int glnodes)
 	}
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_LoadZNodes (FileReader &dalump, uint32_t id)
 {
@@ -1780,6 +1791,11 @@ void P_LoadThings2 (MapData * map)
 	delete[] mtp;
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_SpawnThings (int position)
 {
@@ -1845,11 +1861,16 @@ void P_AdjustLine (line_t *ld)
 	}
 }
 
+//===========================================================================
+//
+// [RH] Set line id (as appropriate) here
+// for Doom format maps this must be done in P_TranslateLineDef because
+// the tag doesn't always go into the first arg.
+//
+//===========================================================================
+
 void P_SetLineID (int i, line_t *ld)
 {
-	// [RH] Set line id (as appropriate) here
-	// for Doom format maps this must be done in P_TranslateLineDef because
-	// the tag doesn't always go into the first arg.
 	if (level.maptype == MAPTYPE_HEXEN)	
 	{
 		int setid = -1;
@@ -1905,6 +1926,12 @@ void P_SetLineID (int i, line_t *ld)
 	}
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
+
 void P_SaveLineSpecial (line_t *ld)
 {
 	if (ld->sidedef[0] == NULL)
@@ -1923,6 +1950,12 @@ void P_SaveLineSpecial (line_t *ld)
 		sidetemp[sidenum].a.special = 0;
 	}
 }
+
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_FinishLoadingLineDef(line_t *ld, int alpha)
 {
@@ -1996,7 +2029,13 @@ void P_FinishLoadingLineDef(line_t *ld, int alpha)
 		break;
 	}
 }
+
+//===========================================================================
+//
 // killough 4/4/98: delay using sidedefs until they are loaded
+//
+//===========================================================================
+
 void P_FinishLoadingLineDefs ()
 {
 	for (auto &line : level.lines)
@@ -2004,6 +2043,12 @@ void P_FinishLoadingLineDefs ()
 		P_FinishLoadingLineDef(&line, sidetemp[line.sidedef[0]->Index()].a.alpha);
 	}
 }
+
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 static void P_SetSideNum (side_t **sidenum_p, uint16_t sidenum)
 {
@@ -2021,6 +2066,12 @@ static void P_SetSideNum (side_t **sidenum_p, uint16_t sidenum)
 		I_Error ("%d sidedefs is not enough\n", sidecount);
 	}
 }
+
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_LoadLineDefs (MapData * map)
 {
@@ -2119,7 +2170,12 @@ void P_LoadLineDefs (MapData * map)
 	delete[] mldf;
 }
 
+//===========================================================================
+//
 // [RH] Same as P_LoadLineDefs() except it uses Hexen-style LineDefs.
+//
+//===========================================================================
+
 void P_LoadLineDefs2 (MapData * map)
 {
 	int i, skipped;
@@ -2217,9 +2273,11 @@ void P_LoadLineDefs2 (MapData * map)
 }
 
 
+//===========================================================================
 //
-// P_LoadSideDefs
 //
+//
+//===========================================================================
 
 static void P_AllocateSideDefs (MapData *map, int count)
 {
@@ -2244,9 +2302,12 @@ static void P_AllocateSideDefs (MapData *map, int count)
 	sidecount = 0;
 }
 
-
+//===========================================================================
+//
 // [RH] Group sidedefs into loops so that we can easily determine
 // what walls any particular wall neighbors.
+//
+//===========================================================================
 
 static void P_LoopSidedefs (bool firstloop)
 {
@@ -2381,6 +2442,12 @@ static void P_LoopSidedefs (bool firstloop)
 	// so don't delete just yet.
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
+
 int P_DetermineTranslucency (int lumpnum)
 {
 	FWadLump tranmap = Wads.OpenLumpNum (lumpnum);
@@ -2420,6 +2487,12 @@ int P_DetermineTranslucency (int lumpnum)
 	}
 	return newcolor.r;
 }
+
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_ProcessSideTextures(bool checktranmap, side_t *sd, sector_t *sec, intmapsidedef_t *msd, int special, int tag, short *alpha, FMissingTextureTracker &missingtex)
 {
@@ -2524,9 +2597,13 @@ void P_ProcessSideTextures(bool checktranmap, side_t *sd, sector_t *sec, intmaps
 	}
 }
 
+//===========================================================================
+//
 // killough 4/4/98: delay using texture names until
 // after linedefs are loaded, to allow overloading.
 // killough 5/3/98: reformatted, cleaned up
+//
+//===========================================================================
 
 void P_LoadSideDefs2 (MapData *map, FMissingTextureTracker &missingtex)
 {
@@ -2581,6 +2658,7 @@ void P_LoadSideDefs2 (MapData *map, FMissingTextureTracker &missingtex)
 }
 
 
+//===========================================================================
 //
 // [RH] My own blockmap builder, not Killough's or TeamTNT's.
 //
@@ -2594,6 +2672,7 @@ void P_LoadSideDefs2 (MapData *map, FMissingTextureTracker &missingtex)
 // seems like overkill, but I wanted to change the code as little
 // as possible from its ZDBSP incarnation.
 //
+//===========================================================================
 
 static unsigned int BlockHash (TArray<int> *block)
 {
@@ -2858,11 +2937,14 @@ static void P_CreateBlockMap ()
 
 
 
+//===========================================================================
 //
 // P_VerifyBlockMap
 //
 // haleyjd 03/04/10: do verification on validity of blockmap.
 //
+//===========================================================================
+
 bool FBlockmap::VerifyBlockMap(int count)
 {
 	int x, y;
@@ -2938,6 +3020,7 @@ bool FBlockmap::VerifyBlockMap(int count)
 	return true;
 }
 
+//===========================================================================
 //
 // P_LoadBlockMap
 //
@@ -2946,6 +3029,7 @@ bool FBlockmap::VerifyBlockMap(int count)
 //
 // killough 3/30/98: Rewritten to remove blockmap limit
 //
+//===========================================================================
 
 void P_LoadBlockMap (MapData * map)
 {
@@ -3006,11 +3090,13 @@ void P_LoadBlockMap (MapData * map)
 	level.blockmap.blockmap = level.blockmap.blockmaplump+4;
 }
 
+//===========================================================================
 //
 // P_GroupLines
 // Builds sector line lists and subsector sector numbers.
 // Finds block bounding boxes for sectors.
 //
+//===========================================================================
 
 static void P_GroupLines (bool buildmap)
 {
@@ -3169,9 +3255,12 @@ static void P_GroupLines (bool buildmap)
 	}
 }
 
+//===========================================================================
 //
-// P_LoadReject
 //
+//
+//===========================================================================
+
 void P_LoadReject (MapData * map, bool junk)
 {
 	const int neededsize = (level.sectors.Size() * level.sectors.Size() + 7) >> 3;
@@ -3231,9 +3320,12 @@ void P_LoadReject (MapData * map, bool junk)
 	}
 }
 
+//===========================================================================
 //
-// [RH] P_LoadBehavior
 //
+//
+//===========================================================================
+
 void P_LoadBehavior(MapData * map)
 {
 	if (map->Size(ML_BEHAVIOR) > 0)
@@ -3247,6 +3339,12 @@ void P_LoadBehavior(MapData * map)
 		FBehavior::StaticUnloadModules();
 	}
 }
+
+//===========================================================================
+//
+//
+//
+//===========================================================================
 
 void P_GetPolySpots (MapData * map, TArray<FNodeBuilder::FPolyStart> &spots, TArray<FNodeBuilder::FPolyStart> &anchors)
 {
@@ -3363,6 +3461,12 @@ static void P_PrecacheLevel()
 
 extern polyblock_t **PolyBlockMap;
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
+
 void P_FreeLevelData ()
 {
 	// [ZZ] delete per-map event handlers
@@ -3446,6 +3550,12 @@ void P_FreeLevelData ()
 	P_ClearUDMFKeys();
 }
 
+//===========================================================================
+//
+//
+//
+//===========================================================================
+
 extern FMemArena secnodearena;
 extern msecnode_t *headsecnode;
 
@@ -3469,11 +3579,14 @@ void P_FreeExtraLevelData()
 }
 
 
+//===========================================================================
 //
 // P_SetupLevel
 //
-
 // [RH] position indicates the start spot to spawn at
+//
+//===========================================================================
+
 void P_SetupLevel (const char *lumpname, int position)
 {
 	cycle_t times[20];
