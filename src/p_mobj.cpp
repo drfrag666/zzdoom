@@ -5587,7 +5587,7 @@ APlayerPawn *P_SpawnPlayer (FPlayerStart *mthing, int playernum, int flags)
 
 	if (StatusBar != NULL && (playernum == consoleplayer || StatusBar->GetPlayer() == playernum))
 	{
-		StatusBar->AttachToPlayer (p);
+		StatusBar->CallAttachToPlayer (p);
 	}
 
 	if (multiplayer)
@@ -7743,7 +7743,7 @@ const char *AActor::GetTag(const char *def) const
 DEFINE_ACTION_FUNCTION(AActor, GetTag)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_STRING(def);
+	PARAM_STRING_DEF(def);
 	ACTION_RETURN_STRING(self->GetTag(def.Len() == 0? nullptr : def.GetChars()));
 }
 

@@ -68,7 +68,7 @@ CUSTOM_CVAR(Int, uiscale, 2, CVAR_ARCHIVE | CVAR_NOINITCALL)
 {
 	if (StatusBar != NULL)
 	{
-		StatusBar->ScreenSizeChanged();
+		StatusBar->CallScreenSizeChanged();
 	}
 }
 
@@ -1770,13 +1770,6 @@ int BorderNeedRefresh;
 
 static void V_DrawViewBorder (void)
 {
-	// [RH] Redraw the status bar if SCREENWIDTH > status bar width.
-	// Will draw borders around itself, too.
-	if (SCREENWIDTH > 320)
-	{
-		ST_SetNeedRefresh();
-	}
-
 	if (viewwidth == SCREENWIDTH)
 	{
 		return;

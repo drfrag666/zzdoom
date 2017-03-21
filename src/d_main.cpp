@@ -469,7 +469,7 @@ CUSTOM_CVAR (Int, dmflags2, 0, CVAR_SERVERINFO)
 				p->camera = p->mo;
 
 				S_UpdateSounds (p->camera);
-				StatusBar->AttachToPlayer (p);
+				StatusBar->CallAttachToPlayer (p);
 
 				if (demoplayback || multiplayer)
 					StatusBar->ShowPlayerName ();
@@ -682,7 +682,7 @@ void D_Display ()
 			// Let the status bar know the screen size changed
 			if (StatusBar != NULL)
 			{
-				StatusBar->ScreenSizeChanged ();
+				StatusBar->CallScreenSizeChanged ();
 			}
 			// Refresh the console.
 			C_NewModeAdjust ();
@@ -705,7 +705,6 @@ void D_Display ()
 
 	if (screen->Lock (false))
 	{
-		ST_SetNeedRefresh();
 		V_SetBorderNeedRefresh();
 	}
 
@@ -783,7 +782,6 @@ void D_Display ()
 			if ((hw2d = screen->Begin2D(viewactive)))
 			{
 				// Redraw everything every frame when using 2D accel
-				ST_SetNeedRefresh();
 				V_SetBorderNeedRefresh();
 			}
 			Renderer->DrawRemainingPlayerSprites();
@@ -811,7 +809,7 @@ void D_Display ()
 				{
 					StatusBar->DrawCrosshair();
 				}
-				StatusBar->Draw (HUD_AltHud);
+				StatusBar->CallDraw (HUD_AltHud);
 				StatusBar->DrawTopStuff (HUD_AltHud);
 			}
 			else 
@@ -819,13 +817,13 @@ void D_Display ()
 			{
 				EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
 				StatusBar->DrawBottomStuff (state);
-				StatusBar->Draw (state);
+				StatusBar->CallDraw (state);
 				StatusBar->DrawTopStuff (state);
 			}
 			else
 			{
 				StatusBar->DrawBottomStuff (HUD_StatusBar);
-				StatusBar->Draw (HUD_StatusBar);
+				StatusBar->CallDraw (HUD_StatusBar);
 				StatusBar->DrawTopStuff (HUD_StatusBar);
 			}
 			CT_Drawer ();
