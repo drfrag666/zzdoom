@@ -195,8 +195,6 @@ bool	setmodeneeded = false;
 int		NewWidth, NewHeight, NewBits;
 
 
-DCanvas *DCanvas::CanvasChain = NULL;
-
 //==========================================================================
 //
 // DCanvas Constructor
@@ -210,10 +208,6 @@ DCanvas::DCanvas (int _width, int _height)
 	LockCount = 0;
 	Width = _width;
 	Height = _height;
-
-	// Add to list of active canvases
-	Next = CanvasChain;
-	CanvasChain = this;
 }
 
 //==========================================================================
@@ -224,22 +218,6 @@ DCanvas::DCanvas (int _width, int _height)
 
 DCanvas::~DCanvas ()
 {
-	// Remove from list of active canvases
-	DCanvas *probe = CanvasChain, **prev;
-
-	prev = &CanvasChain;
-	probe = CanvasChain;
-
-	while (probe != NULL)
-	{
-		if (probe == this)
-		{
-			*prev = probe->Next;
-			break;
-		}
-		prev = &probe->Next;
-		probe = probe->Next;
-	}
 }
 
 //==========================================================================
@@ -325,85 +303,6 @@ void DCanvas::Dim (PalEntry color)
 	}
 	Dim (dimmer, amount, 0, 0, Width, Height);
 }
-
-//==========================================================================
-//
-// DCanvas :: Dim
-//
-// Applies a colored overlay to an area of the screen.
-//
-//==========================================================================
-
-void DCanvas::Dim (PalEntry color, float damount, int x1, int y1, int w, int h)
-{
-	if (damount == 0.f)
-		return;
-
-	uint32_t *bg2rgb;
-	uint32_t fg;
-	int gap;
-	uint8_t *spot;
-	int x, y;
-
-	if (x1 >= Width || y1 >= Height)
-	{
-		return;
-	}
-	if (x1 + w > Width)
-	{
-		w = Width - x1;
-	}
-	if (y1 + h > Height)
-	{
-		h = Height - y1;
-	}
-	if (w <= 0 || h <= 0)
-	{
-		return;
-	}
-
-	{
-		int amount;
-
-		amount = (int)(damount * 64);
-		bg2rgb = Col2RGB8[64-amount];
-
-		fg = (((color.r * amount) >> 4) << 20) |
-			  ((color.g * amount) >> 4) |
-			 (((color.b * amount) >> 4) << 10);
-	}
-
-	spot = Buffer + x1 + y1*Pitch;
-	gap = Pitch - w;
-	for (y = h; y != 0; y--)
-	{
-		for (x = w; x != 0; x--)
-		{
-			uint32_t bg;
-
-			bg = bg2rgb[(*spot)&0xff];
-			bg = (fg+bg) | 0x1f07c1f;
-			*spot = RGB32k.All[bg&(bg>>15)];
-			spot++;
-		}
-		spot += gap;
-	}
-}
-
-DEFINE_ACTION_FUNCTION(_Screen, Dim)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(color);
-	PARAM_FLOAT(amount);
-	PARAM_INT(x1);
-	PARAM_INT(y1);
-	PARAM_INT(w);
-	PARAM_INT(h);
-	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	screen->Dim(color, float(amount), x1, y1, w, h);
-	return 0;
-}
-
 
 //==========================================================================
 //
@@ -1155,6 +1054,7 @@ void DFrameBuffer::SetBlendingRect (int x1, int y1, int x2, int y2)
 
 bool DFrameBuffer::Begin2D (bool copy3d)
 {
+	ClearClipRect();
 	return false;
 }
 

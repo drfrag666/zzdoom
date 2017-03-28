@@ -261,6 +261,10 @@ public:
 	// Text drawing functions -----------------------------------------------
 
 	// 2D Texture drawing
+	void ClearClipRect() { clipleft = cliptop = 0; clipwidth = clipheight = -1; }
+	void SetClipRect(int x, int y, int w, int h);
+	void GetClipRect(int *x, int *y, int *w, int *h);
+
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);
@@ -268,7 +272,6 @@ public:
 	void VirtualToRealCoords(double &x, double &y, double &w, double &h, double vwidth, double vheight, bool vbottom=false, bool handleaspect=true) const;
 
 	// Code that uses these (i.e. SBARINFO) should probably be evaluated for using doubles all around instead.
-	void VirtualToRealCoordsFixed(fixed_t &x, fixed_t &y, fixed_t &w, fixed_t &h, int vwidth, int vheight, bool vbottom=false, bool handleaspect=true) const;
 	void VirtualToRealCoordsInt(int &x, int &y, int &w, int &h, int vwidth, int vheight, bool vbottom=false, bool handleaspect=true) const;
 
 #ifdef DrawText
@@ -286,6 +289,7 @@ protected:
 	int Height;
 	int Pitch;
 	int LockCount;
+	int clipleft = 0, cliptop = 0, clipwidth = -1, clipheight = -1;
 
 	void DrawTextCommon(FFont *font, int normalcolor, double x, double y, const char *string, DrawParms &parms);
 

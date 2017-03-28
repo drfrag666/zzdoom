@@ -391,6 +391,22 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 #endif
 }
 
+void DCanvas::SetClipRect(int x, int y, int w, int h)
+{
+	clipleft = clamp(x, 0, GetWidth());
+	clipwidth = clamp(w, 0, GetWidth() - x);
+	cliptop = clamp(y, 0, GetHeight());
+	clipwidth = clamp(w, 0, GetHeight() - y);
+}
+
+void DCanvas::GetClipRect(int *x, int *y, int *w, int *h)
+{
+	if (x) *x = clipleft;
+	if (y) *y = cliptop;
+	if (w) *w = clipwidth;
+	if (h) *h = clipheight;
+}
+
 bool DCanvas::SetTextureParms(DrawParms *parms, FTexture *img, double xx, double yy) const
 {
 	if (img != NULL)
@@ -933,6 +949,15 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 		parms->remap = nullptr;
 	}
 
+	// intersect with the canvas's clipping rectangle.
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		if (parms->lclip < clipleft) parms->lclip = clipleft;
+		if (parms->rclip > clipleft + clipwidth) parms->rclip = clipleft + clipwidth;
+		if (parms->uclip < cliptop) parms->uclip = cliptop;
+		if (parms->dclip < cliptop + clipheight) parms->uclip = cliptop + clipheight;
+	}
+
 	if (parms->uclip >= parms->dclip || parms->lclip >= parms->rclip)
 	{
 		return false;
@@ -1039,22 +1064,6 @@ DEFINE_ACTION_FUNCTION(_Screen, VirtualToRealCoords)
 	if (numret >= 1) ret[0].SetVector2(DVector2(x, y));
 	if (numret >= 2) ret[1].SetVector2(DVector2(w, h));
 	return MIN(numret, 2);
-}
-
-void DCanvas::VirtualToRealCoordsFixed(fixed_t &x, fixed_t &y, fixed_t &w, fixed_t &h,
-	int vwidth, int vheight, bool vbottom, bool handleaspect) const
-{
-	double dx, dy, dw, dh;
-
-	dx = FIXED2DBL(x);
-	dy = FIXED2DBL(y);
-	dw = FIXED2DBL(w);
-	dh = FIXED2DBL(h);
-	VirtualToRealCoords(dx, dy, dw, dh, vwidth, vheight, vbottom, handleaspect);
-	x = FLOAT2FIXED(dx);
-	y = FLOAT2FIXED(dy);
-	w = FLOAT2FIXED(dw);
-	h = FLOAT2FIXED(dh);
 }
 
 void DCanvas::VirtualToRealCoordsInt(int &x, int &y, int &w, int &h,
@@ -1350,6 +1359,29 @@ void DCanvas::DrawPixel(int x, int y, int palColor, uint32_t realcolor)
 
 void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32_t color)
 {
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		int w = right - left;
+		int h = bottom - top;
+		if (left < clipleft)
+		{
+			w -= (clipleft - left);
+			left = clipleft;
+		}
+		if (w > clipwidth) w = clipwidth;
+		if (w <= 0) return;
+
+		if (top < cliptop)
+		{
+			h -= (cliptop - top);
+			top = cliptop;
+		}
+		if (h > clipheight) w = clipheight;
+		if (h <= 0) return;
+		right = left + w;
+		bottom = top + h;
+	}
+
 	int x, y;
 	uint8_t *dest;
 
@@ -1401,6 +1433,102 @@ DEFINE_ACTION_FUNCTION(_Screen, Clear)
 	PARAM_INT_DEF(palcol);
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->Clear(x1, y1, x2, y2, palcol, color);
+	return 0;
+}
+
+//==========================================================================
+//
+// DCanvas :: Dim
+//
+// Applies a colored overlay to an area of the screen.
+//
+//==========================================================================
+
+void DCanvas::Dim (PalEntry color, float damount, int x1, int y1, int w, int h)
+{
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		if (x1 < clipleft)
+		{
+			w -= (clipleft - x1);
+			x1 = clipleft;
+		}
+		if (w > clipwidth) w = clipwidth;
+		if (w <= 0) return;
+
+		if (y1 < cliptop)
+		{
+			h -= (cliptop - y1);
+			y1 = cliptop;
+		}
+		if (h > clipheight) w = clipheight;
+		if (h <= 0) return;
+	}
+
+	if (damount == 0.f)
+		return;
+
+	uint32_t *bg2rgb;
+	uint32_t fg;
+	int gap;
+	uint8_t *spot;
+	int x, y;
+
+	if (x1 >= Width || y1 >= Height)
+	{
+		return;
+	}
+	if (x1 + w > Width)
+	{
+		w = Width - x1;
+	}
+	if (y1 + h > Height)
+	{
+		h = Height - y1;
+	}
+	if (w <= 0 || h <= 0)
+	{
+		return;
+	}
+
+	{
+		int amount;
+
+		amount = (int)(damount * 64);
+		bg2rgb = Col2RGB8[64-amount];
+
+		fg = (((color.r * amount) >> 4) << 20) |
+			  ((color.g * amount) >> 4) |
+			 (((color.b * amount) >> 4) << 10);
+	}
+
+	spot = Buffer + x1 + y1*Pitch;
+	gap = Pitch - w;
+	for (y = h; y != 0; y--)
+	{
+		for (x = w; x != 0; x--)
+		{
+			uint32_t bg;
+
+			bg = bg2rgb[(*spot)&0xff];
+			bg = (fg+bg) | 0x1f07c1f;
+			*spot = RGB32k.All[bg&(bg>>15)];
+			spot++;
+		}
+		spot += gap;
+	}
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, Dim)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(color);
+	PARAM_FLOAT(amount);
+	PARAM_INT(x1);
+	PARAM_INT(y1);
+	PARAM_INT(w);
+	PARAM_INT(h);
+	screen->Dim(color, float(amount), x1, y1, w, h);
 	return 0;
 }
 

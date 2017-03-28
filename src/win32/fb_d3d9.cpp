@@ -2522,6 +2522,7 @@ bool D3DPal::Update()
 
 bool D3DFB::Begin2D(bool copy3d)
 {
+	ClearClipRect();
 	if (!Accel2D)
 	{
 		return false;
