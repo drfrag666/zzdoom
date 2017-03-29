@@ -124,6 +124,9 @@ enum
 	DTA_TextLen,		// stop after this many characters, even if \0 not hit
 	DTA_CellX,			// horizontal size of character cell
 	DTA_CellY,			// vertical size of character cell
+
+	// New additions. 
+	DTA_Color,
 };
 
 enum
@@ -160,6 +163,7 @@ struct DrawParms
 	uint32_t fillcolor;
 	FRemapTable *remap;
 	uint32_t colorOverlay;
+	PalEntry color;
 	INTBOOL alphaChannel;
 	INTBOOL flipX;
 	//float shadowAlpha;
