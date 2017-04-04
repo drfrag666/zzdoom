@@ -2487,6 +2487,9 @@ void D_DoomMain (void)
 		if (!batchrun) Printf ("DecalLibrary: Load decals.\n");
 		DecalLibrary.ReadAllDecals ();
 
+		// Load embedded Dehacked patches
+		D_LoadDehLumps(FromIWAD);
+
 		// [RH] Add any .deh and .bex files on the command line.
 		// If there are none, try adding any in the config file.
 		// Note that the command line overrides defaults from the config.
@@ -2508,7 +2511,7 @@ void D_DoomMain (void)
 		}
 
 		// Load embedded Dehacked patches
-		D_LoadDehLumps();
+		D_LoadDehLumps(FromPWADs);
 
 		// Create replacements for dehacked pickups
 		FinishDehPatch();
