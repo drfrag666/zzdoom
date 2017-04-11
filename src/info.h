@@ -293,10 +293,6 @@ public:
 	FString SourceLumpName;
 	FIntCVar *distancecheck;
 
-	// These are only valid for inventory items.
-	TArray<PClassActor *> RestrictedToPlayerClass;
-	TArray<PClassActor *> ForbiddenToPlayerClass;
-
 	// This is from PClassPlayerPawn
 	FString DisplayName;
 
