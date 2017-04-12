@@ -9779,8 +9779,7 @@ scriptwait:
 			}
 			else
 			{
-				AInventory *item = activator->FindInventory (dyn_cast<PClassActor>(
-					PClass::FindClass (FBehavior::StaticLookupString (STACK(1)))));
+				AInventory *item = activator->FindInventory (PClass::FindActor (FBehavior::StaticLookupString (STACK(1))));
 
 				if (item == NULL || !item->IsKindOf(NAME_Weapon))
 				{

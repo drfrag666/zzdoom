@@ -357,11 +357,6 @@ public:
 	static TArray<PClassActor *> AllActorClasses;
 };
 
-inline PClassActor *PClass::FindActor(FName name)
-{
-	 return dyn_cast<PClassActor>(FindClass(name));
-}
-
 struct FDoomEdEntry
 {
 	PClassActor *Type;
