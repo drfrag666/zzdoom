@@ -62,7 +62,6 @@ void I_ShutdownGraphics ()
 	{
 		DFrameBuffer *s = screen;
 		screen = NULL;
-		s->ObjectFlags |= OF_YesReallyDelete;
 		delete s;
 	}
 	if (Video)

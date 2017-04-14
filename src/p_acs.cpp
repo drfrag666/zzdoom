@@ -11024,11 +11024,6 @@ CCMD(acsprofile)
 	ShowProfileData(FuncProfiles, limit, sorter, true);
 }
 
-void MarkACSThinker()
-{
-	GC::Mark(DACSThinker::ActiveThinker);
-}
-
 ADD_STAT(ACS)
 {
 	return FStringf("ACS time: %f ms", ACSTime.TimeMS());
