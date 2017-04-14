@@ -1347,6 +1347,13 @@ int R_FindCustomTranslation(FName name)
 	return (t != nullptr)? *t : -1;
 }
 
+DEFINE_ACTION_FUNCTION(_Translation, GetID)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(t);
+	ACTION_RETURN_INT(R_FindCustomTranslation(t));
+}
+
 //----------------------------------------------------------------------------
 //
 //
