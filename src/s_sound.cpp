@@ -76,14 +76,6 @@
 
 // TYPES -------------------------------------------------------------------
 
-struct MusPlayingInfo
-{
-	FString name;
-	MusInfo *handle;
-	int   baseorder;
-	bool  loop;
-};
-
 enum
 {
 	SOURCE_None,		// Sound is always on top of the listener.
@@ -118,7 +110,7 @@ static void S_SetListener(SoundListener &listener, AActor *listenactor);
 
 static bool		SoundPaused;		// whether sound is paused
 static bool		MusicPaused;		// whether music is paused
-static MusPlayingInfo mus_playing;	// music currently being played
+MusPlayingInfo mus_playing;	// music currently being played
 static FString	 LastSong;			// last music that was played
 static FPlayList *PlayList;
 static int		RestartEvictionsAt;	// do not restart evicted channels before this level.time
