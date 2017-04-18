@@ -1310,7 +1310,7 @@ static void InitMusicMenus()
 			{
 				if (fluidmenu != nullptr)
 				{
-					auto it = CreateOptionMenuItemCommand(key, FStringf("fluid_patchset %s", NicePath(value)), true);
+					auto it = CreateOptionMenuItemCommand(key, FStringf("fluid_patchset %s", NicePath(value).GetChars()), true);
 					static_cast<DOptionMenuDescriptor*>(*fluidmenu)->mItems.Push(it);
 				}
 			}
@@ -1331,12 +1331,12 @@ static void InitMusicMenus()
 			{
 				if (gusmenu != nullptr)
 				{
-					auto it = CreateOptionMenuItemCommand(key, FStringf("midi_config %s", NicePath(value)), true);
+					auto it = CreateOptionMenuItemCommand(key, FStringf("midi_config %s", NicePath(value).GetChars()), true);
 					static_cast<DOptionMenuDescriptor*>(*gusmenu)->mItems.Push(it);
 				}
 				if (wildmidimenu != nullptr)
 				{
-					auto it = CreateOptionMenuItemCommand(key, FStringf("wildmidi_config %s", NicePath(value)), true);
+					auto it = CreateOptionMenuItemCommand(key, FStringf("wildmidi_config %s", NicePath(value).GetChars()), true);
 					static_cast<DOptionMenuDescriptor*>(*wildmidimenu)->mItems.Push(it);
 				}
 			}
@@ -1360,7 +1360,7 @@ static void InitMusicMenus()
 			{
 				if (timiditymenu != nullptr)
 				{
-					auto it = CreateOptionMenuItemCommand(key, FStringf("timidity_exe %s", NicePath(value)), true);
+					auto it = CreateOptionMenuItemCommand(key, FStringf("timidity_exe %s", NicePath(value).GetChars()), true);
 					static_cast<DOptionMenuDescriptor*>(*timiditymenu)->mItems.Push(it);
 				}
 			}
