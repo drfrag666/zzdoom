@@ -132,6 +132,7 @@ void FCanvasTexture::Unload ()
 	if (Canvas != NULL)
 	{
 		delete Canvas;
+		Canvas = nullptr;
 	}
 }
 
