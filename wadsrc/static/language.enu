@@ -2143,6 +2143,7 @@ FMODMNU_BUFFERCOUNT		= "Buffer count";
 OPENALMNU_TITLE				= "OPENAL OPTIONS";
 OPENALMNU_PLAYBACKDEVICE	= "Playback device";
 OPENALMNU_ENABLEEFX			= "Enable EFX";
+OPENALMNU_RESAMPLER			= "Resampler";
 OPENALMNU_HRTF				= "HRTF";
 
 // Advanced Sound Options
