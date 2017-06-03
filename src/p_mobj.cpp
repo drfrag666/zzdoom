@@ -247,6 +247,7 @@ DEFINE_FIELD(AActor, Floorclip)
 DEFINE_FIELD(AActor, DamageType)
 DEFINE_FIELD(AActor, DamageTypeReceived)
 DEFINE_FIELD(AActor, FloatBobPhase)
+DEFINE_FIELD(AActor, FloatBobStrength)
 DEFINE_FIELD(AActor, RipperLevel)
 DEFINE_FIELD(AActor, RipLevelMin)
 DEFINE_FIELD(AActor, RipLevelMax)
@@ -408,6 +409,7 @@ void AActor::Serialize(FSerializer &arc)
 		("inventory", Inventory)
 		A("inventoryid", InventoryID)
 		A("floatbobphase", FloatBobPhase)
+		A("floatbobstrength", FloatBobStrength)
 		A("translation", Translation)
 		A("bloodcolor", BloodColor)
 		A("bloodtranslation", BloodTranslation)
@@ -7956,7 +7958,7 @@ double AActor::GetBobOffset(double ticfrac) const
 	{
 		return 0;
 	}
-	return BobSin(FloatBobPhase + level.maptime + ticfrac);
+	return BobSin(FloatBobPhase + level.maptime + ticfrac) * FloatBobStrength;
 }
 
 DEFINE_ACTION_FUNCTION(AActor, GetBobOffset)
