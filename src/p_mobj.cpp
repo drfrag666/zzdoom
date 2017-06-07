@@ -6685,6 +6685,8 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 			th->tics = 1;
 	}
 
+	DVector3 newpos = th->Pos();
+
 	if (maxdist > 0)
 	{
 		// move a little forward so an angle can be computed if it immediately explodes
@@ -6698,7 +6700,7 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 			advance *= 0.5f;
 		}
 		while (advance.XY().LengthSquared() >= maxsquared);
-		th->SetXYZ(th->Pos() + advance);
+		newpos += advance;
 	}
 
 	FCheckPosition tm(!!(th->flags2 & MF2_RIP));
@@ -6722,7 +6724,9 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 	bool MBFGrenade = (!(th->flags & MF_MISSILE) || (th->BounceFlags & BOUNCE_MBF));
 
 	// killough 3/15/98: no dropoff (really = don't care for missiles)
-	if (!(P_TryMove (th, th->Pos(), false, NULL, tm, true)))
+	auto oldf2 = th->flags2;
+	th->flags2 &= ~MF2_MCROSS;	// The following check is not supposed to activate missile triggers.
+	if (!(P_TryMove (th, newpos, false, NULL, tm, true)))
 	{
 		// [RH] Don't explode ripping missiles that spawn inside something
 		if (th->BlockingMobj == NULL || !(th->flags2 & MF2_RIP) || (th->BlockingMobj->flags5 & MF5_DONTRIP))
@@ -6745,6 +6749,7 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 			return false;
 		}
 	}
+	th->flags2 = oldf2;
 	th->ClearInterpolation();
 	return true;
 }
