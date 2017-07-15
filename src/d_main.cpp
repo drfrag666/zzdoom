@@ -2040,6 +2040,7 @@ static void D_DoomInit()
 		rngseed = I_MakeRNGSeed();
 		use_staticrng = false;
 	}
+	srand(rngseed);
 		
 	FRandom::StaticClearRandom ();
 
