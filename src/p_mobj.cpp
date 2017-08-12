@@ -4040,10 +4040,6 @@ void AActor::Tick ()
 		return;
 	}
 
-	// This is necessary to properly interpolate movement outside this function
-	// like from an ActorMover
-	ClearInterpolation();
-
 	if (flags5 & MF5_NOINTERACTION)
 	{
 		// only do the minimally necessary things here to save time:
