@@ -2068,7 +2068,10 @@ PDynArray *NewDynArray(PType *type)
 			break;
 
 		case REGT_POINTER:
-			backingname = "DynArray_Ptr";
+			if (type->isObjectPointer())
+				backingname = "DynArray_Obj";
+			else
+				backingname = "DynArray_Ptr";
 			break;
 
 		default:
