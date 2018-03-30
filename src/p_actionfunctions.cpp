@@ -6770,7 +6770,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CheckTerrain)
 DEFINE_ACTION_FUNCTION(AActor, A_SetSize)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_FLOAT(newradius);
+	PARAM_FLOAT_DEF(newradius);
 	PARAM_FLOAT_DEF(newheight);
 	PARAM_BOOL_DEF(testpos);
 
