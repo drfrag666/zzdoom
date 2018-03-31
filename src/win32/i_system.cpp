@@ -999,7 +999,7 @@ static HCURSOR CreateCompatibleCursor(FTexture *cursorpic)
 	DeleteDC(xor_mask_dc);
 
 	// Create the cursor from the bitmaps.
-	return CreateBitmapCursor(cursorpic->LeftOffset, cursorpic->TopOffset, and_mask, xor_mask);
+	return CreateBitmapCursor(cursorpic->GetLeftOffset(0), cursorpic->GetTopOffset(0), and_mask, xor_mask);
 }
 
 //==========================================================================
@@ -1083,7 +1083,7 @@ static HCURSOR CreateAlphaCursor(FTexture *cursorpic)
 		}
 	}
 
-	return CreateBitmapCursor(cursorpic->LeftOffset * scale, cursorpic->TopOffset * scale, mono, color);
+	return CreateBitmapCursor(cursorpic->GetLeftOffset(0) * scale, cursorpic->GetTopOffset(0) * scale, mono, color);
 }
 
 //==========================================================================
