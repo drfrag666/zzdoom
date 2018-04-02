@@ -2321,6 +2321,11 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 					// structs and classes only get passed by pointer.
 					type = NewPointer(type);
 				}
+				else if (type->isDynArray())
+				{
+					Error(f, "The return type of a function cannot be a dynamic array");
+					break;
+				}
 				// TBD: disallow certain types? For now, let everything pass that isn't an array.
 				rets.Push(type);
 				t = static_cast<decltype(t)>(t->SiblingNext);
