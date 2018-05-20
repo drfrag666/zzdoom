@@ -120,7 +120,7 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       blockhitscan = <bool>;      // Line blocks hitscan attacks
       locknumber = <int>;         // Line special is locked
       arg0str = <string>;         // Alternate string-based version of arg0
-	  moreids = <string>;         // Additional line IDs, specified as a space separated list of numbers (e.g. "2 666 1003 4505")
+      moreids = <string>;         // Additional line IDs, specified as a space separated list of numbers (e.g. "2 666 1003 4505")
 
       transparent   = <bool>; // true = line is a Strife transparent line (alpha 0.25)
 
@@ -171,14 +171,14 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       yscaleceiling = <float>;        // Y texture scale of ceiling texture, Default = 1.0.
       rotationfloor = <float>;        // Rotation of floor texture in degrees, Default = 0.0.
       rotationceiling = <float>;      // Rotation of ceiling texture in degrees, Default = 0.0.
-	  ceilingplane_a = <float>;       // Define the plane equation for the sector's ceiling. Default is a horizontal plane at 'heightceiling'.
-	  ceilingplane_b = <float>;       // 'heightceiling' will still be used to calculate texture alignment.
-	  ceilingplane_c = <float>;       // The plane equation will only be used if all 4 values are given.
-	  ceilingplane_d = <float>;
-	  floorplane_a = <float>;         // Define the plane equation for the sector's floor. Default is a horizontal plane at 'heightfloor'.
-	  floorplane_b = <float>;         // 'heightfloor' will still be used to calculate texture alignment.
-	  floorplane_c = <float>;         // The plane equation will only be used if all 4 values are given.
-	  floorplane_d = <float>;
+      ceilingplane_a = <float>;       // Define the plane equation for the sector's ceiling. Default is a horizontal plane at 'heightceiling'.
+      ceilingplane_b = <float>;       // 'heightceiling' will still be used to calculate texture alignment.
+      ceilingplane_c = <float>;       // The plane equation will only be used if all 4 values are given.
+      ceilingplane_d = <float>;
+      floorplane_a = <float>;         // Define the plane equation for the sector's floor. Default is a horizontal plane at 'heightfloor'.
+      floorplane_b = <float>;         // 'heightfloor' will still be used to calculate texture alignment.
+      floorplane_c = <float>;         // The plane equation will only be used if all 4 values are given.
+      floorplane_d = <float>;
       lightfloor = <integer>;         // The floor's light level. Default is 0.
       lightceiling = <integer>;       // The ceiling's light level. Default is 0.
       lightfloorabsolute = <bool>;    // true = 'lightfloor' is an absolute value. Default is 
@@ -196,8 +196,8 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       fadecolor = <integer>;          // Sector's fog color as RRGGBB value, default = 0x000000.
       desaturation = <float>;         // Color desaturation factor. 0 = none, 1 = full, default = 0.
       silent = <bool>;                // Actors in this sector make no sound,
-      nofallingdamage = <bool>;		  // Falling damage is disabled in this sector
-	  noattack = <bool>;              // Blocks monster attacks in this sector.
+      nofallingdamage = <bool>;       // Falling damage is disabled in this sector
+      noattack = <bool>;              // Blocks monster attacks in this sector.
       dropactors = <bool>;            // Actors drop with instantly moving floors (*)
       norespawn = <bool>;             // Players can not respawn in this sector
       soundsequence = <string>;       // The sound sequence to play when this sector moves. Placing a
@@ -216,6 +216,7 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       floorterrain = <string>;        // Sets the terrain for the sector's floor. Default = 'use the flat texture's terrain definition.'
       ceilingterrain = <string>;      // Sets the terrain for the sector's ceiling. Default = 'use the flat texture's terrain definition.'
 
+
       portal_ceil_blocksound = <bool> // ceiling portal blocks sound.
       portal_ceil_disabled = <bool>   // ceiling portal disabled.
       portal_ceil_nopass = <bool>     // ceiling portal blocks movement if true.
@@ -226,8 +227,8 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       portal_floor_nopass = <bool>     // ceiling portal blocks movement if true.
       portal_floor_norender = <bool>   // ceiling portal not rendered.
       portal_floor_overlaytype = <string> // defines translucency style, can either be "translucent" or "additive". Default is "translucent".
-	  
-      
+
+
       * Note about dropactors
 
       The spec requires this to be false by default. Currently, however, ZDoom assumes this to be true
@@ -238,31 +239,31 @@ Note: All <bool> fields default to false unless mentioned otherwise.
 
    thing
    {
-      skill# = <bool>			// Unlike the base spec, # can range from 1-16.
-      class# = <bool>			// Unlike the base spec, # can range from 1-16.
-      conversation = <int>		// Assigns a conversation dialogue to this thing.
+      skill# = <bool>           // Unlike the base spec, # can range from 1-16.
+      class# = <bool>           // Unlike the base spec, # can range from 1-16.
+      conversation = <int>      // Assigns a conversation dialogue to this thing.
                                 // Parameter is the conversation ID, 0 meaning none.
       countsecret = <bool>;     // Picking up this actor counts as a secret.
       arg0str = <string>;       // Alternate string-based version of arg0
-	  gravity = <float>;		// Set per-actor gravity. Positive values are multiplied with the class's property, 
-	                            // negative values are used as their absolute. Default = 1.0.
-								
-	  health = <float>;			// Set per-actor health. Positive values are multiplied with the class's property,
-								// negative values are used as their absolute. Default = 1.
-								
-	  renderstyle = <string>;	// Set per-actor render style, overriding the class default. Possible values can be "normal",
-								// "none", "add" or "additive", "subtract" or "subtractive", "stencil", "translucentstencil", 
-								// "addstencil", "shaded", "addshaded", "translucent", "fuzzy", "optfuzzy", "soultrans" and "shadow". 
-								// Default is an empty string for no change.
-	  fillcolor = <integer>;    // Fill color used by the "stencil", "addstencil" and "translucentstencil" rendestyles, as RRGGBB value, default = 0x000000.
-	  alpha = <float>;          // Translucency of this actor (if applicable to renderstyle), default is 1.0.
-	  score = <int>;			// Score value of this actor, overriding the class default if not null. Default = 0.
-      pitch = <integer>; 		// Pitch of thing in degrees. Default = 0 (horizontal).
-      roll = <integer>; 		// Pitch of thing in degrees. Default = 0 (horizontal).
-	  scalex = <float>;         // Vertical scaling on thing. Default = 0 (ignored).
-	  scaley = <float>;         // Horizontal scaling on thing. Default = 0 (ignored).
-	  scale = <float>;        	// Vertical and horizontal scaling on thing. Default = 0 (ignored).
-	  floatbobphase = <int>;	// Sets the thing's floatbobphase. Valid phase values are 0-63. Default = -1 (use actor class default).
+      gravity = <float>;        // Set per-actor gravity. Positive values are multiplied with the class's property, 
+                                // negative values are used as their absolute. Default = 1.0.
+
+      health = <float>;         // Set per-actor health. Positive values are multiplied with the class's property,
+                                // negative values are used as their absolute. Default = 1.
+
+      renderstyle = <string>;   // Set per-actor render style, overriding the class default. Possible values can be "normal",
+                                // "none", "add" or "additive", "subtract" or "subtractive", "stencil", "translucentstencil", 
+                                // "addstencil", "shaded", "addshaded", "translucent", "fuzzy", "optfuzzy", "soultrans" and "shadow". 
+                                // Default is an empty string for no change.
+      fillcolor = <integer>;    // Fill color used by the "stencil", "addstencil" and "translucentstencil" rendestyles, as RRGGBB value, default = 0x000000.
+      alpha = <float>;          // Translucency of this actor (if applicable to renderstyle), default is 1.0.
+      score = <int>;            // Score value of this actor, overriding the class default if not null. Default = 0.
+      pitch = <integer>;        // Pitch of thing in degrees. Default = 0 (horizontal).
+      roll = <integer>;         // Pitch of thing in degrees. Default = 0 (horizontal).
+      scalex = <float>;         // Vertical scaling on thing. Default = 0 (ignored).
+      scaley = <float>;         // Horizontal scaling on thing. Default = 0 (ignored).
+      scale = <float>;          // Vertical and horizontal scaling on thing. Default = 0 (ignored).
+      floatbobphase = <int>;    // Sets the thing's floatbobphase. Valid phase values are 0-63. Default = -1 (use actor class default).
 
       * Note about arg0str
 
@@ -403,6 +404,9 @@ Added 'moreids' for linedefs and sectors.
 1.26 05.01.2016
 added clarification about character encoding
 added sector damage properties.
+
+1.30 20.05.2018
+Replaced tabs with spaces.
 
 1.32 28.06.2021
 Blocklandmonsters MBF21 flag
