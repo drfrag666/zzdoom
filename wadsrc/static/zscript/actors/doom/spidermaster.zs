@@ -28,6 +28,7 @@ class SpiderMastermind : Actor
 		DeathSound "spider/death";
 		ActiveSound "spider/active";
 		Obituary "$OB_SPIDER";
+		Tag "$FN_SPIDER";
 	}
 	States
 	{

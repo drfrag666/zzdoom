@@ -29,6 +29,7 @@ class Cyberdemon : Actor
 		DeathSound "cyber/death";
 		ActiveSound "cyber/active";
 		Obituary "$OB_CYBORG";
+		Tag "$FN_CYBER";
 	}
 	States
 	{

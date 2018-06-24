@@ -23,6 +23,7 @@ class BaronOfHell : Actor
 		ActiveSound "baron/active";
 		Obituary "$OB_BARON";
 		HitObituary "$OB_BARONHIT";
+		Tag "$FN_BARON";
 	}
 	States
 	{
@@ -73,6 +74,7 @@ class HellKnight : BaronOfHell
 		DeathSound "knight/death";
 		HitObituary "$OB_KNIGHTHIT";
 		Obituary "$OB_KNIGHT";
+		Tag "$FN_HELL";
 	}
 	States
 	{

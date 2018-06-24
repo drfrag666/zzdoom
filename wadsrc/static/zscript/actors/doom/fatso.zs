@@ -22,6 +22,7 @@ class Fatso : Actor
 		DeathSound "fatso/death";
 		ActiveSound "fatso/active";
 		Obituary "$OB_FATSO";
+		Tag "$FN_MANCU";
 	}
 	States
 	{
