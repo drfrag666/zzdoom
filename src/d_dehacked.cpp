@@ -797,26 +797,26 @@ static int GetLine (void)
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
 static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Mushroom
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// spawntype
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// numspawns
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);		// spawntype
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);		// numspawns
 	buildit.Emit(OP_PARAMI, 1);					// flag
 	// vrange
 	if (value1 == 0)
 	{
-		buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);
+		buildit.Emit(OP_PARAM, REGT_NIL, 0);
 	}
 	else
 	{
-		buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value1)));
+		buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value1)));
 	}
 	// hrange
 	if (value2 == 0)
 	{
-		buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);
+		buildit.Emit(OP_PARAM, REGT_NIL, 0);
 	}
 	else
 	{
-		buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value2)));
+		buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value2)));
 	}
 	return 5;
 }
@@ -833,9 +833,9 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, M
 	int typereg = buildit.GetConstantAddress(p);
 	int heightreg = buildit.GetConstantFloat(value2);
 
-	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, typereg);	// itemtype
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);							// distance
-	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, heightreg);	// height
+	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);	// itemtype
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);							// distance
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, heightreg);	// height
 	// The rest of the parameters to A_SpawnItem can just keep their defaults
 	return 3;
 }
@@ -843,14 +843,14 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, M
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
 static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Turn
-	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
 // misc1 = angle (in degrees) (arg +0)
 static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_FaceTarget
-	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
@@ -874,9 +874,9 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 
 	buildit.EmitParamInt(DehFindSound(value1 - 1, true));			// soundid
 	buildit.Emit(OP_PARAMI, CHAN_BODY);								// channel
-	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, float1);		// volume
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);		// volume
 	buildit.Emit(OP_PARAMI, false);									// looping
-	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, attenreg);	// attenuation
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, attenreg);	// attenuation
 	return 5;
 }
 
@@ -886,7 +886,7 @@ static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int valu
 	int statereg = buildit.GetConstantAddress(FindState(value1, true));
 
 	buildit.EmitParamInt(value2);									// maxchance
-	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, statereg);	// jumpto
+	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);	// jumpto
 	return 2;
 }
 
@@ -903,26 +903,19 @@ static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int valu
 	return 2;
 }
 
-static int CreateSpawnObjectFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
-{
-	state->ValidateArgCount(8, "A_SpawnObject");
-	int typereg = buildit.GetConstantAddress(state->GetTypeArg(0));
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(2));
-	int float3 = buildit.GetConstantFloat(state->GetFloatArg(3));
-	int float4 = buildit.GetConstantFloat(state->GetFloatArg(4));
-	int float5 = buildit.GetConstantFloat(state->GetFloatArg(5));
-	int float6 = buildit.GetConstantFloat(state->GetFloatArg(6));
-	int float7 = buildit.GetConstantFloat(state->GetFloatArg(7));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float3);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float4);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float5);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float6);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float7);
-	return 8;
+// No misc, but it's basically A_Explode with an added effect
+static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2)
+{ // A_Explode
+	// This one does not actually have MBF-style parameters. But since
+	// we're aliasing it to an extension of A_Explode...
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// damage
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// distance
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// flags
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// alert
+	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// fulldamagedistance
+	buildit.Emit(OP_PARAMI, 30);					// nails
+	buildit.Emit(OP_PARAMI, 10);					// naildamage
+	return 7;
 }
 
 static int CreateMonsterProjectileFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
@@ -1177,7 +1170,7 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 		// Emit code to pass the standard action function parameters.
 		for (int i = 0; i < numargs; i++)
 		{
-			buildit.Emit(OP_PARAM, 0, REGT_POINTER, i);
+			buildit.Emit(OP_PARAM, REGT_POINTER, i);
 		}
 		// Emit code for action parameters.
 		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2, pstate);
