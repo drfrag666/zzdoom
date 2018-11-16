@@ -254,6 +254,33 @@ public:
 		::new((void*)&Array[Count]) T(item);
 		return Count++;
 	}
+
+	unsigned Append(const TArray<T> &item)
+	{
+		unsigned start = Count;
+
+		Grow(item.Size());
+
+		for (unsigned i = 0; i < item.Size(); i++)
+		{
+			new(&Array[start + i]) T(item[i]);
+		}
+		return start;
+	}
+
+	unsigned Append(TArray<T> &&item)
+	{
+		unsigned start = Count;
+
+		Grow(item.Size());
+
+		for (unsigned i = 0; i < item.Size(); i++)
+		{
+			new(&Array[start + i]) T(std::move(item[i]));
+		}
+		return start;
+	}
+
 	bool Pop ()
 	{
 		if (Count > 0)
