@@ -76,6 +76,7 @@
 #include "backend/vmbuilder.h"
 #include "types.h"
 #include "m_argv.h"
+#include "actorptrselect.h"
 #include "g_levellocals.h"
 
 extern TArray<PalEntry> TranslationColors;
@@ -794,6 +795,7 @@ static int GetLine (void)
 	}
 }
 
+
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
 static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Mushroom
@@ -832,13 +834,16 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, M
 	}
 	int typereg = buildit.GetConstantAddress(p);
 	int heightreg = buildit.GetConstantFloat(value2);
+	int distreg = buildit.GetConstantFloat(0);
 
 	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);	// itemtype
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);							// distance
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, distreg);	// distance
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, heightreg);	// height
-	// The rest of the parameters to A_SpawnItem can just keep their defaults
-	return 3;
+	buildit.Emit(OP_PARAMI, 0);									// useammo
+	buildit.Emit(OP_PARAMI, 0);									// transfer_translation
+	return 5;
 }
+
 
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
 static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
@@ -851,19 +856,20 @@ static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, MB
 static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_FaceTarget
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
-	return 1;
+	buildit.Emit(OP_PARAMI, 0);																// flags
+	buildit.Emit(OP_PARAMI, AAPTR_DEFAULT);													// ptr
+	return 3;
 }
 
 // misc1 = damage, misc 2 = sound
 static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_CustomMeleeAttack
-	buildit.EmitParamInt(value1);								// damage
-	if (value2)
-	{
-		buildit.EmitParamInt(DehFindSound(value2 - 1, true));	// hit sound
-		return 2;
-	}
-	return 1;
+	buildit.EmitParamInt(value1);							// damage
+	buildit.EmitParamInt(value2? SoundMap[value2 - 1] : 0);	// hit sound
+	buildit.Emit(OP_PARAMI, 0);								// miss sound
+	buildit.Emit(OP_PARAMI, NAME_None);						// damage type
+	buildit.Emit(OP_PARAMI, true);							// bleed
+	return 5;
 }
 
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
@@ -877,7 +883,8 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);		// volume
 	buildit.Emit(OP_PARAMI, false);									// looping
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, attenreg);	// attenuation
-	return 5;
+	buildit.Emit(OP_PARAMI, false);									// local
+	return 6;
 }
 
 // misc1 = state, misc2 = probability
@@ -908,6 +915,7 @@ static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2
 { // A_Explode
 	// This one does not actually have MBF-style parameters. But since
 	// we're aliasing it to an extension of A_Explode...
+	int typereg = buildit.GetConstantAddress(PClass::FindClass(NAME_BulletPuff));
 	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// damage
 	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// distance
 	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// flags
@@ -915,7 +923,10 @@ static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2
 	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// fulldamagedistance
 	buildit.Emit(OP_PARAMI, 30);					// nails
 	buildit.Emit(OP_PARAMI, 10);					// naildamage
-	return 7;
+	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);	// itemtype
+	buildit.Emit(OP_PARAMI, NAME_None);						// damage type
+
+	return 9;
 }
 
 static int CreateMonsterProjectileFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
