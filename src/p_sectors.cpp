@@ -1302,7 +1302,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextHighestCeilingAt)
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(bottomz);
 	PARAM_FLOAT(topz);
-	PARAM_INT_DEF(flags);
+	PARAM_INT(flags);
 	sector_t *resultsec;
 	F3DFloor *resultff;
 	double resultheight = self->NextHighestCeilingAt(x, y, bottomz, topz, flags, &resultsec, &resultff);
@@ -1379,8 +1379,8 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	PARAM_INT_DEF(flags);
-	PARAM_FLOAT_DEF(steph);
+	PARAM_INT(flags);
+	PARAM_FLOAT(steph);
 	sector_t *resultsec;
 	F3DFloor *resultff;
 	double resultheight = self->NextLowestFloorAt(x, y, z, flags, steph, &resultsec, &resultff);
@@ -1599,7 +1599,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
-	 PARAM_BOOL_DEF(addbase);
+	 PARAM_BOOL(addbase);
 	 ACTION_RETURN_FLOAT(self->GetYOffset(pos, addbase));
  }
 
@@ -1649,7 +1649,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
-	 PARAM_BOOL_DEF(addbase);
+	 PARAM_BOOL(addbase);
 	 ACTION_RETURN_FLOAT(self->GetAngle(pos, addbase).Degrees);
  }
 
@@ -1724,7 +1724,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
 	 PARAM_INT(o);
-	 PARAM_BOOL_DEF(adj);
+	 PARAM_BOOL(adj);
 	 self->SetTexture(pos, FSetTextureID(o), adj);
 	 return 0;
  }
@@ -1741,7 +1741,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
 	 PARAM_FLOAT(o);
-	 PARAM_BOOL_DEF(dirty);
+	 PARAM_BOOL(dirty);
 	 self->SetPlaneTexZ(pos, o);
 	 return 0;
  }

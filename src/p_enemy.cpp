@@ -269,8 +269,8 @@ DEFINE_ACTION_FUNCTION(AActor, SoundAlert)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(target, AActor);
-	PARAM_BOOL_DEF(splash);
-	PARAM_FLOAT_DEF(maxdist);
+	PARAM_BOOL(splash);
+	PARAM_FLOAT(maxdist);
 	// Note that the emitter is self, not the target of the alert! Target can be NULL.
 	P_NoiseAlert(target, self, splash, maxdist);
 	return 0;
@@ -1456,7 +1456,7 @@ DEFINE_ACTION_FUNCTION(AActor, IsVisible)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(other, AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_IsVisible(self, other, allaround, params));
 }
 
@@ -1695,7 +1695,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForTID)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForTID(self, allaround, params));
 }
 
@@ -1842,7 +1842,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForEnemies)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForEnemies(self, allaround, params));
 }
 
@@ -2034,7 +2034,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForPlayers)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForPlayers(self, allaround, params));
 }
 
@@ -2170,12 +2170,12 @@ DEFINE_ACTION_FUNCTION(AActor, A_Look)
 DEFINE_ACTION_FUNCTION(AActor, A_LookEx)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF	(flags)			
-	PARAM_FLOAT_DEF	(minseedist)	
-	PARAM_FLOAT_DEF	(maxseedist)	
-	PARAM_FLOAT_DEF (maxheardist)	
-	PARAM_ANGLE_DEF (fov)			
-	PARAM_STATE_DEF	(seestate)		
+	PARAM_INT	(flags)			
+	PARAM_FLOAT	(minseedist)	
+	PARAM_FLOAT	(maxseedist)	
+	PARAM_FLOAT (maxheardist)	
+	PARAM_ANGLE (fov)			
+	PARAM_STATE	(seestate)		
 
 	AActor *targ = NULL; // Shuts up gcc
 	double dist;
@@ -2387,7 +2387,7 @@ enum ChaseFlags
 DEFINE_ACTION_FUNCTION(AActor, A_Wander)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF(flags);
+	PARAM_INT(flags);
 	A_Wander(self, flags);
 	return 0;
 }
@@ -3023,9 +3023,9 @@ bool P_CheckForResurrection(AActor* self, bool usevilestates, FState* state = nu
 DEFINE_ACTION_FUNCTION(AActor, A_Chase)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_STATE_DEF	(melee)		
-	PARAM_STATE_DEF	(missile)	
-	PARAM_INT_DEF	(flags)		
+	PARAM_STATE	(melee)		
+	PARAM_STATE	(missile)	
+	PARAM_INT	(flags)		
 
 	if (numparam > 1)
 	{
@@ -3064,8 +3064,8 @@ DEFINE_ACTION_FUNCTION(AActor, A_ExtChase)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL		(domelee);
 	PARAM_BOOL		(domissile);
-	PARAM_BOOL_DEF	(playactive);
-	PARAM_BOOL_DEF	(nightmarefast);
+	PARAM_BOOL	(playactive);
+	PARAM_BOOL	(nightmarefast);
 
 	// Now that A_Chase can handle state label parameters, this function has become rather useless...
 	A_DoChase(self, false,
@@ -3211,12 +3211,12 @@ DEFINE_ACTION_FUNCTION(AActor, A_Face)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(faceto, AActor)
-	PARAM_ANGLE_DEF(max_turn)		
-	PARAM_ANGLE_DEF(max_pitch)		
-	PARAM_ANGLE_DEF(ang_offset)		
-	PARAM_ANGLE_DEF(pitch_offset)	
-	PARAM_INT_DEF(flags)			
-	PARAM_FLOAT_DEF(z_add)			
+	PARAM_ANGLE(max_turn)		
+	PARAM_ANGLE(max_pitch)		
+	PARAM_ANGLE(ang_offset)		
+	PARAM_ANGLE(pitch_offset)	
+	PARAM_INT(flags)			
+	PARAM_FLOAT(z_add)			
 
 	A_Face(self, faceto, max_turn, max_pitch, ang_offset, pitch_offset, flags, z_add);
 	return 0;

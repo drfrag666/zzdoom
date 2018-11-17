@@ -1186,8 +1186,8 @@ DEFINE_ACTION_FUNCTION(_Screen, VirtualToRealCoords)
 	PARAM_FLOAT(h);
 	PARAM_FLOAT(vw);
 	PARAM_FLOAT(vh);
-	PARAM_BOOL_DEF(vbottom);
-	PARAM_BOOL_DEF(handleaspect);
+	PARAM_BOOL(vbottom);
+	PARAM_BOOL(handleaspect);
 	screen->VirtualToRealCoords(x, y, w, h, vw, vh, vbottom, handleaspect);
 	if (numret >= 1) ret[0].SetVector2(DVector2(x, y));
 	if (numret >= 2) ret[1].SetVector2(DVector2(w, h));
@@ -1552,7 +1552,7 @@ DEFINE_ACTION_FUNCTION(_Screen, Clear)
 	PARAM_INT(x2);
 	PARAM_INT(y2);
 	PARAM_INT(color);
-	PARAM_INT_DEF(palcol);
+	PARAM_INT(palcol);
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->Clear(x1, y1, x2, y2, palcol, color);
 	return 0;

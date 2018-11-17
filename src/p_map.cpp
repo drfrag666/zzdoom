@@ -390,7 +390,7 @@ void P_FindFloorCeiling(AActor *actor, int flags)
 DEFINE_ACTION_FUNCTION(AActor, FindFloorCeiling)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF(flags); 
+	PARAM_INT(flags); 
 	P_FindFloorCeiling(self, flags);
 	return 0;
 }
@@ -556,7 +556,7 @@ DEFINE_ACTION_FUNCTION(AActor, TeleportMove)
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
 	PARAM_BOOL(telefrag);
-	PARAM_BOOL_DEF(modify);
+	PARAM_BOOL(modify);
 	ACTION_RETURN_BOOL(P_TeleportMove(self, DVector3(x, y, z), telefrag, modify));
 }
 	
@@ -1950,8 +1950,8 @@ DEFINE_ACTION_FUNCTION(AActor, CheckPosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_BOOL_DEF(actorsonly);
-	PARAM_POINTER_DEF(tm, FCheckPosition);
+	PARAM_BOOL(actorsonly);
+	PARAM_POINTER(tm, FCheckPosition);
 	if (tm)
 	{
 		ACTION_RETURN_BOOL(P_CheckPosition(self, DVector2(x, y), *tm, actorsonly));
@@ -2108,7 +2108,7 @@ bool P_TestMobjZ(AActor *actor, bool quick, AActor **pOnmobj)
 DEFINE_ACTION_FUNCTION(AActor, TestMobjZ)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_BOOL_DEF(quick);
+	PARAM_BOOL(quick);
 	
 	AActor *on = nullptr;;
 	bool retv = P_TestMobjZ(self, quick, &on);
@@ -2765,8 +2765,8 @@ DEFINE_ACTION_FUNCTION(AActor, TryMove)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_INT(dropoff);
-	PARAM_BOOL_DEF(missilecheck);
-	PARAM_POINTER_DEF(tm, FCheckPosition);
+	PARAM_BOOL(missilecheck);
+	PARAM_POINTER(tm, FCheckPosition);
 	if (tm == nullptr)
 	{
 		ACTION_RETURN_BOOL(P_TryMove(self, DVector2(x, y), dropoff, nullptr, missilecheck));
@@ -4436,11 +4436,11 @@ DEFINE_ACTION_FUNCTION(AActor, AimLineAttack)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_ANGLE(angle);
 	PARAM_FLOAT(distance);
-	PARAM_POINTER_DEF(pLineTarget, FTranslatedLineTarget);
-	PARAM_ANGLE_DEF(vrange);
-	PARAM_INT_DEF(flags);
-	PARAM_OBJECT_DEF(target, AActor);
-	PARAM_OBJECT_DEF(friender, AActor);
+	PARAM_POINTER(pLineTarget, FTranslatedLineTarget);
+	PARAM_ANGLE(vrange);
+	PARAM_INT(flags);
+	PARAM_OBJECT(target, AActor);
+	PARAM_OBJECT(friender, AActor);
 	ACTION_RETURN_FLOAT(P_AimLineAttack(self, angle, distance, pLineTarget, vrange, flags, target, friender).Degrees);
 }
 
@@ -4826,9 +4826,9 @@ DEFINE_ACTION_FUNCTION(AActor, LineAttack)
 	PARAM_INT(damage);
 	PARAM_NAME(damageType);
 	PARAM_CLASS(puffType, AActor);
-	PARAM_INT_DEF(flags);
-	PARAM_POINTER_DEF(victim, FTranslatedLineTarget);
-	PARAM_FLOAT_DEF(offsetz);
+	PARAM_INT(flags);
+	PARAM_POINTER(victim, FTranslatedLineTarget);
+	PARAM_FLOAT(offsetz);
 
 	int acdmg;
 	if (puffType == nullptr) puffType = PClass::FindActor("BulletPuff");	// P_LineAttack does not work without a puff to take info from.

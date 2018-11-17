@@ -895,7 +895,7 @@ DEFINE_ACTION_FUNCTION(AActor, StartSoundSequenceID)
 	PARAM_INT(seq);
 	PARAM_INT(type);
 	PARAM_INT(modenum);
-	PARAM_BOOL_DEF(nostop);
+	PARAM_BOOL(nostop);
 	ACTION_RETURN_POINTER(SN_StartSequence(self, seq, seqtype_t(type), modenum, nostop));
 }
 
@@ -919,7 +919,7 @@ DEFINE_ACTION_FUNCTION(_Sector, StartSoundSequenceID)
 	PARAM_INT(seq);
 	PARAM_INT(type);
 	PARAM_INT(modenum);
-	PARAM_BOOL_DEF(nostop);
+	PARAM_BOOL(nostop);
 	ACTION_RETURN_POINTER(SN_StartSequence(self, chan, seq, seqtype_t(type), modenum, nostop));
 }
 

@@ -507,8 +507,8 @@ DEFINE_ACTION_FUNCTION(_Wads, CheckNumForName)
 	PARAM_PROLOGUE;
 	PARAM_STRING(name);
 	PARAM_INT(ns);
-	PARAM_INT_DEF(wadnum);
-	PARAM_BOOL_DEF(exact);
+	PARAM_INT(wadnum);
+	PARAM_BOOL(exact);
 	ACTION_RETURN_INT(Wads.CheckNumForName(name, ns, wadnum, exact));
 }
 //==========================================================================

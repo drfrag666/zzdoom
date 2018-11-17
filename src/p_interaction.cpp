@@ -728,7 +728,7 @@ DEFINE_ACTION_FUNCTION(AActor, Die)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(source, AActor);
 	PARAM_OBJECT(inflictor, AActor);
-	PARAM_INT_DEF(dmgflags);
+	PARAM_INT(dmgflags);
 	self->Die(source, inflictor, dmgflags);
 	return 0;
 }
@@ -1624,8 +1624,8 @@ DEFINE_ACTION_FUNCTION(AActor, DamageMobj)
 	PARAM_OBJECT(source, AActor);
 	PARAM_INT(damage);
 	PARAM_NAME(mod);
-	PARAM_INT_DEF(flags);
-	PARAM_FLOAT_DEF(angle);
+	PARAM_INT(flags);
+	PARAM_FLOAT(angle);
 
 	// [ZZ] event handlers need the result.
 	int realdamage = DamageMobj(self, inflictor, source, damage, mod, flags, angle);

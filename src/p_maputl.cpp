@@ -316,7 +316,7 @@ void AActor::UnlinkFromWorld (FLinkContext *ctx)
 DEFINE_ACTION_FUNCTION(AActor, UnlinkFromWorld)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_POINTER_DEF(ctx, FLinkContext);
+	PARAM_POINTER(ctx, FLinkContext);
 	self->UnlinkFromWorld(ctx); // fixme
 	return 0;
 }
@@ -537,7 +537,7 @@ void AActor::LinkToWorld(FLinkContext *ctx, bool spawningmapthing, sector_t *sec
 DEFINE_ACTION_FUNCTION(AActor, LinkToWorld)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_POINTER_DEF(ctx, FLinkContext);
+	PARAM_POINTER(ctx, FLinkContext);
 	self->LinkToWorld(ctx);
 	return 0;
 }
@@ -941,7 +941,7 @@ DEFINE_ACTION_FUNCTION(DBlockLinesIterator, Create)
 {
 	PARAM_PROLOGUE;
 	PARAM_OBJECT_NOT_NULL(origin, AActor);
-	PARAM_FLOAT_DEF(radius);
+	PARAM_FLOAT(radius);
 	ACTION_RETURN_OBJECT(Create<DBlockLinesIterator>(origin, radius));
 }
 
@@ -953,7 +953,7 @@ DEFINE_ACTION_FUNCTION(DBlockLinesIterator, CreateFromPos)
 	PARAM_FLOAT(z);
 	PARAM_FLOAT(h);
 	PARAM_FLOAT(radius);
-	PARAM_POINTER_DEF(sec, sector_t);
+	PARAM_POINTER(sec, sector_t);
 	ACTION_RETURN_OBJECT(Create<DBlockLinesIterator>(x, y, z, h, radius, sec));
 }
 
@@ -1281,8 +1281,8 @@ DEFINE_ACTION_FUNCTION(DBlockThingsIterator, Create)
 {
 	PARAM_PROLOGUE;
 	PARAM_OBJECT_NOT_NULL(origin, AActor);
-	PARAM_FLOAT_DEF(radius);
-	PARAM_BOOL_DEF(ignore);
+	PARAM_FLOAT(radius);
+	PARAM_BOOL(ignore);
 	ACTION_RETURN_OBJECT(Create<DBlockThingsIterator>(origin, radius, ignore));
 }
 
@@ -2014,8 +2014,8 @@ DEFINE_ACTION_FUNCTION(AActor, RoughMonsterSearch)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(distance);
-	PARAM_BOOL_DEF(onlyseekable);
-	PARAM_BOOL_DEF(frontonly);
+	PARAM_BOOL(onlyseekable);
+	PARAM_BOOL(frontonly);
 	PARAM_FLOAT(fov);
 	ACTION_RETURN_OBJECT(P_RoughMonsterSearch(self, distance, onlyseekable, frontonly, fov));
 }

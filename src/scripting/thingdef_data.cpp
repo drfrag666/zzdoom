@@ -1014,7 +1014,7 @@ DEFINE_ACTION_FUNCTION(FStringTable, Localize)
 {
 	PARAM_PROLOGUE;
 	PARAM_STRING(label);
-	PARAM_BOOL_DEF(prefixed);
+	PARAM_BOOL(prefixed);
 	if (!prefixed) ACTION_RETURN_STRING(GStrings(label));
 	if (label[0] != '$') ACTION_RETURN_STRING(label);
 	ACTION_RETURN_STRING(GStrings(&label[1]));
@@ -1190,7 +1190,7 @@ FString FStringFormat(VM_ARGS)
 DEFINE_ACTION_FUNCTION(FStringStruct, Format)
 {
 	PARAM_PROLOGUE;
-	FString s = FStringFormat(param, defaultparam, numparam, ret, numret);
+	FString s = FStringFormat(param, numparam, ret, numret);
 	ACTION_RETURN_STRING(s);
 }
 
@@ -1198,7 +1198,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, AppendFormat)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	// first parameter is the self pointer
-	FString s = FStringFormat(param+1, defaultparam, numparam-1, ret, numret);
+	FString s = FStringFormat(param+1, numparam-1, ret, numret);
 	(*self) += s;
 	return 0;
 }
