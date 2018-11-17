@@ -1766,6 +1766,7 @@ class FxVMFunctionCall : public FxExpression
 	PFunction *CallingFunction;
 
 	bool CheckAccessibility(const VersionInfo &ver);
+	bool UnravelVarArgAJump(FCompileContext&);
 
 public:
 	FxVMFunctionCall(FxExpression *self, PFunction *func, FArgumentList &args, const FScriptPosition &pos, bool novirtual);
