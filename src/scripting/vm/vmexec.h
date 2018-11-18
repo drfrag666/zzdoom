@@ -708,58 +708,6 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 			pc += C;			// Skip RESULTs
 		}
 		NEXTOP;
-	OP(TAIL_K):
-		ASSERTKA(a);
-		ptr = konsta[a].o;
-		goto Do_TAILCALL;
-	OP(TAIL):
-		ASSERTA(a);
-		ptr = reg.a[a];
-	Do_TAILCALL:
-		// Whereas the CALL instruction uses its third operand to specify how many return values
-		// it expects, TAIL ignores its third operand and uses whatever was passed to this Exec call.
-		assert(B <= f->NumParam);
-		assert(C <= MAX_RETURNS);
-		{
-			VMFunction *call = (VMFunction *)ptr;
-
-			if (call->VarFlags & VARF_Native)
-			{
-				try
-				{
-					VMCycles[0].Unclock();
-					auto r = static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - B, B, ret, numret);
-					VMCycles[0].Clock();
-					return r;
-				}
-				catch (CVMAbortException &err)
-				{
-					err.MaybePrintMessage();
-					err.stacktrace.AppendFormat("Called from %s\n", call->PrintableName.GetChars());
-					// PrintParameters(reg.param + f->NumParam - B, B);
-					throw;
-				}
-			}
-			else
-			{ // FIXME: Not a true tail call
-				VMCalls[0]++;
-				VMScriptFunction *script = static_cast<VMScriptFunction *>(call);
-				VMFrame *newf = stack->AllocFrame(script);
-				VMFillParams(reg.param + f->NumParam - B, newf, B);
-				try
-				{
-					numret = Exec(stack, script->Code, ret, numret);
-				}
-				catch(...)
-				{
-					stack->PopFrame();
-					throw;
-				}
-				stack->PopFrame();
-				return numret;
-			}
-		}
-		NEXTOP;
 	OP(RET):
 		if (B == REGT_NIL)
 		{ // No return values
