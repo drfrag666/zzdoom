@@ -225,6 +225,13 @@ public:
 		return Array[Count-1];
 	}
 
+	// returns address of first element
+	T *Data(size_t index = 0) const
+	{
+		assert(index <= Count);
+		return &Array[index];
+	}
+
     unsigned int Find(const T& item) const
     {
         unsigned int i;
@@ -260,6 +267,7 @@ public:
 		unsigned start = Count;
 
 		Grow(item.Size());
+		Count += item.Size();
 
 		for (unsigned i = 0; i < item.Size(); i++)
 		{
@@ -273,6 +281,7 @@ public:
 		unsigned start = Count;
 
 		Grow(item.Size());
+		Count += item.Size();
 
 		for (unsigned i = 0; i < item.Size(); i++)
 		{
@@ -404,6 +413,18 @@ public:
 			DoDelete (amount, Count - 1);
 		}
 		Count = amount;
+	}
+	// Ensures that the array has at most amount entries.
+	// Useful in cases where the initial allocation may be larger than the final result.
+	// Resize would create a lot of unneeded code in those cases.
+	void Clamp(unsigned int amount)
+	{
+		if (Count > amount)
+		{
+			// Deleting old entries
+			DoDelete(amount, Count - 1);
+			Count = amount;
+		}
 	}
 	void Alloc(unsigned int amount)
 	{
