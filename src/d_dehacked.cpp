@@ -797,7 +797,7 @@ static int GetLine (void)
 
 
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
-static void CreateMushroomFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateMushroomFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_Mushroom
 	emitters.AddParameterPointerConst(PClass::FindClass("FatShot"));	// itemtype
 	emitters.AddParameterIntConst(0);									// numspawns
@@ -807,7 +807,7 @@ static void CreateMushroomFunc(EmitterArray &emitters, int value1, int value2, M
 }
 
 // misc1 = type (arg +0), misc2 = Z-pos (arg +2)
-static void CreateSpawnFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateSpawnFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_SpawnItem
 	auto p = FindInfoName(value1 - 1, true);
 	if (p == nullptr)
@@ -823,13 +823,13 @@ static void CreateSpawnFunc(EmitterArray &emitters, int value1, int value2, MBFP
 
 
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
-static void CreateTurnFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateTurnFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_Turn
 	emitters.AddParameterFloatConst(value1);				// angle
 }
 
 // misc1 = angle (in degrees) (arg +0)
-static void CreateFaceFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateFaceFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_FaceTarget
 	emitters.AddParameterFloatConst(value1);				// angle
 	emitters.AddParameterIntConst(0);						// flags
@@ -837,7 +837,7 @@ static void CreateFaceFunc(EmitterArray &emitters, int value1, int value2, MBFPa
 }
 
 // misc1 = damage, misc 2 = sound
-static void CreateScratchFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateScratchFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_CustomMeleeAttack
 	emitters.AddParameterIntConst(value1);								// damage
 	emitters.AddParameterIntConst(value2 ? (int)SoundMap[value2 - 1] : 0);	// hit sound
@@ -847,7 +847,7 @@ static void CreateScratchFunc(EmitterArray &emitters, int value1, int value2, MB
 }
 
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
-static void CreatePlaySoundFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreatePlaySoundFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_PlaySound
 	emitters.AddParameterIntConst(value1 ? (int)SoundMap[value1 - 1] : 0);	// soundid
 	emitters.AddParameterIntConst(CHAN_BODY);							// channel
@@ -858,14 +858,14 @@ static void CreatePlaySoundFunc(EmitterArray &emitters, int value1, int value2, 
 }
 
 // misc1 = state, misc2 = probability
-static void CreateRandomJumpFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateRandomJumpFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_Jump
 	emitters.AddParameterIntConst(value2);					// maxchance
 	emitters.AddParameterPointerConst(FindState(value1));	// jumpto
 }
 
 // misc1 = Boom linedef type, misc2 = sector tag
-static void CreateLineEffectFunc(EmitterArray &emitters, int value1, int value2, MBFParamState* state)
+static void CreateLineEffectFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_LineEffect
 	// This is the second MBF codepointer that couldn't be translated easily.
 	// Calling P_TranslateLineDef() here was a simple matter, as was adding an
@@ -877,7 +877,7 @@ static void CreateLineEffectFunc(EmitterArray &emitters, int value1, int value2,
 }
 
 // No misc, but it's basically A_Explode with an added effect
-static void CreateNailBombFunc(EmitterArray &emitters, int value1, int value2)
+static void CreateNailBombFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_Explode
 	// This one does not actually have MBF-style parameters. But since
 	// we're aliasing it to an extension of A_Explode...
@@ -1072,7 +1072,7 @@ static int CreateConsumeAmmoFunc(VMFunctionBuilder &buildit, int value1, int val
 }
 
 // This array must be in sync with the Aliases array in DEHSUPP.
-static void (*MBFCodePointerFactories[])(EmitterArray&, int, int, MBFParamState*) =
+static void (*MBFCodePointerFactories[])(FunctionCallEmitter&, int, int, MBFParamState*) =
 {
 	// Die and Detonate are not in this list because these codepointers have
 	// no dehacked arguments and therefore do not need special handling.
@@ -1142,7 +1142,7 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 		// self, stateowner, state (all are pointers)
 		buildit.Registers[REGT_POINTER].Get(numargs);
 		// Emit code to pass the standard action function parameters.
-		EmitterArray emitters;
+		FunctionCallEmitter emitters;
 		for (int i = 0; i < numargs; i++)
 		{
 			emitters.AddParameterPointer(i, false);

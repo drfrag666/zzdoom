@@ -5526,7 +5526,7 @@ ExpEmit FxRandom::Emit(VMFunctionBuilder *build)
 	assert(min && max);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, min);
@@ -5633,7 +5633,7 @@ ExpEmit FxRandomPick::Emit(VMFunctionBuilder *build)
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameterIntConst(0);
 	emitters.AddParameterIntConst(choices.Size() - 1);
@@ -5754,7 +5754,7 @@ ExpEmit FxFRandom::Emit(VMFunctionBuilder *build)
 	assert(min && max);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, min);
 	emitters.AddParameter(build, max);
@@ -5832,7 +5832,7 @@ ExpEmit FxRandom2::Emit(VMFunctionBuilder *build)
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, mask);
@@ -5904,7 +5904,7 @@ ExpEmit FxRandomSeed::Emit(VMFunctionBuilder *build)
 	assert(((PSymbolVMFunction *)sym)->Function != nullptr);
 	callfunc = ((PSymbolVMFunction *)sym)->Function;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 
 	emitters.AddParameterPointerConst(rng);
 	emitters.AddParameter(build, seed);
@@ -8561,7 +8561,7 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 {
 	unsigned i = 0;
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 
 	emitters.AddParameterIntConst(abs(Special));			// pass special number
 	emitters.AddParameter(build, Self);
@@ -9008,7 +9008,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 	bool staticcall = ((vmfunc->VarFlags & VARF_Final) || vmfunc->VirtualIndex == ~0u || NoVirtual);
 
 	count = 0;
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 	// Emit code to pass implied parameters
 	ExpEmit selfemit;
 	if (Function->Variants[0].Flags & VARF_Method)
@@ -9079,63 +9079,18 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 			break;
 		}
 	}
-	count = emitters.EmitParameters(build);
-
 	ArgList.DeleteAndClear();
 	ArgList.ShrinkToFit();
 
-	// Get a constant register for this function
-	if (staticcall)
-	{
-		int funcaddr = build->GetConstantAddress(vmfunc);
-		// Emit the call
-		if (vmfunc->Proto->ReturnTypes.Size() > 0)
-		{ // Call, expecting one result
-			build->Emit(OP_CALL_K, funcaddr, count, MAX(1, AssignCount));
-			goto handlereturns;
-		}
-		else
-		{ // Call, expecting no results
-			build->Emit(OP_CALL_K, funcaddr, count, 0);
-			return ExpEmit();
-		}
-	}
-	else
-	{
-		ExpEmit funcreg(build, REGT_POINTER);
+	emitters.AddTarget(vmfunc, staticcall? -1 : selfemit.RegNum);
+	int resultcount = vmfunc->Proto->ReturnTypes.Size() == 0 ? 0 : MAX(AssignCount, 1);
 
-		build->Emit(OP_VTBL, funcreg.RegNum, selfemit.RegNum, vmfunc->VirtualIndex);
-		if (vmfunc->Proto->ReturnTypes.Size() > 0)
-		{ // Call, expecting one result
-			build->Emit(OP_CALL, funcreg.RegNum, count, MAX(1, AssignCount));
-			goto handlereturns;
-		}
-		else
-		{ // Call, expecting no results
-			build->Emit(OP_CALL, funcreg.RegNum, count, 0);
-			return ExpEmit();
-		}
-	}
-handlereturns:
-	if (AssignCount == 0)
+	assert((unsigned)resultcount <= vmfunc->Proto->ReturnTypes.Size());
+	for (int i = 0; i < resultcount; i++)
 	{
-		// Regular call, will not write to ReturnRegs
-		ExpEmit reg(build, vmfunc->Proto->ReturnTypes[0]->GetRegType(), vmfunc->Proto->ReturnTypes[0]->GetRegCount());
-		build->Emit(OP_RESULT, 0, EncodeRegType(reg), reg.RegNum);
-		return reg;
+		emitters.AddReturn(vmfunc->Proto->ReturnTypes[i]->GetRegType(), vmfunc->Proto->ReturnTypes[i]->GetRegCount());
 	}
-	else
-	{
-		// Multi-Assignment call, this must fill in the ReturnRegs array so that the multi-assignment operator can dispatch the return values.
-		assert((unsigned)AssignCount <= vmfunc->Proto->ReturnTypes.Size());
-		for (int i = 0; i < AssignCount; i++)
-		{
-			ExpEmit reg(build, vmfunc->Proto->ReturnTypes[i]->GetRegType(), vmfunc->Proto->ReturnTypes[i]->GetRegCount());
-			build->Emit(OP_RESULT, 0, EncodeRegType(reg), reg.RegNum);
-			ReturnRegs.Push(reg);
-		}
-	}
-	return ExpEmit();
+	return emitters.EmitCall(build, resultcount > 1? &ReturnRegs : nullptr);
 }
 
 //==========================================================================
@@ -10633,7 +10588,7 @@ ExpEmit FxReturnStatement::Emit(VMFunctionBuilder *build)
 		assert(pstr->mDestructor != nullptr);
 		ExpEmit reg(build, REGT_POINTER);
 		build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(build->ConstructedStructs[i]->StackOffset));
-		EmitterArray emitters;
+		FunctionCallEmitter emitters;
 		emitters.AddParameter(reg, false);
 		emitters.AddTarget(pstr->mDestructor);
 		emitters.EmitCall(build);
@@ -10828,7 +10783,7 @@ ExpEmit FxClassTypeCast::Emit(VMFunctionBuilder *build)
 	{
 		return ExpEmit(build->GetConstantAddress(nullptr), REGT_POINTER, true);
 	}
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 	emitters.AddParameter(build, basex);
 	emitters.AddParameterPointerConst(const_cast<PClass *>(desttype));
 
@@ -10937,7 +10892,7 @@ ExpEmit FxClassPtrCast::Emit(VMFunctionBuilder *build)
 {
 	ExpEmit clsname = basex->Emit(build);
 
-	EmitterArray emitters;
+	FunctionCallEmitter emitters;
 
 	emitters.AddParameter(clsname, false);
 	emitters.AddParameterPointerConst(desttype);
@@ -11336,7 +11291,7 @@ ExpEmit FxLocalVariableDeclaration::Emit(VMFunctionBuilder *build)
 			{
 				ExpEmit reg(build, REGT_POINTER);
 				build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(StackOffset));
-				EmitterArray emitters;
+				FunctionCallEmitter emitters;
 				emitters.AddParameter(reg, false);
 				emitters.AddTarget(pstr->mConstructor);
 				emitters.EmitCall(build);
@@ -11363,7 +11318,7 @@ void FxLocalVariableDeclaration::Release(VMFunctionBuilder *build)
 			{
 				ExpEmit reg(build, REGT_POINTER);
 				build->Emit(OP_ADDA_RK, reg.RegNum, build->FramePointer.RegNum, build->GetConstantInt(StackOffset));
-				EmitterArray emitters;
+				FunctionCallEmitter emitters;
 				emitters.AddParameter(reg, false);
 				emitters.AddTarget(pstr->mDestructor);
 				emitters.EmitCall(build);
