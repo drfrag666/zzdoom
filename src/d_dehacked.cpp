@@ -1115,6 +1115,7 @@ static void (*MBFCodePointerFactories[])(FunctionCallEmitter&, int, int, MBFPara
 
 void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 {
+	static uint8_t regts[] = { REGT_POINTER, REGT_POINTER, REGT_POINTER };
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
 	
@@ -1154,6 +1155,7 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 		buildit.Emit(OP_RET, RET_FINAL, REGT_NIL, 0);
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
+		sfunc->RegTypes = regts;	// These functions are built after running the script compiler so they don't get this info.
 		buildit.MakeFunction(sfunc);
 		sfunc->NumArgs = numargs;
 		sfunc->ImplicitArgs = numargs;

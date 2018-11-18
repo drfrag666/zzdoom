@@ -630,7 +630,7 @@ DEFINE_EMPTY_HANDLER(DStaticEventHandler, WorldThingDestroyed)
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, WorldLightning)
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, WorldTick)
 
-DEFINE_EMPTY_HANDLER(DStaticEventHandler, RenderFrame)
+//DEFINE_EMPTY_HANDLER(DStaticEventHandler, RenderFrame)
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, RenderOverlay)
 
 DEFINE_EMPTY_HANDLER(DStaticEventHandler, PlayerEntered)
@@ -826,6 +826,7 @@ static FRenderEvent E_SetupRenderEvent()
 
 void DStaticEventHandler::RenderFrame()
 {
+	/* This is intentionally and permanently disabled.
 	IFVIRTUAL(DStaticEventHandler, RenderFrame)
 	{
 		// don't create excessive DObjects if not going to be processed anyway
@@ -835,6 +836,7 @@ void DStaticEventHandler::RenderFrame()
 		VMValue params[2] = { (DStaticEventHandler*)this, &e };
 		VMCall(func, params, 2, nullptr, 0);
 	}
+	*/
 }
 
 void DStaticEventHandler::RenderOverlay(EHudState state)

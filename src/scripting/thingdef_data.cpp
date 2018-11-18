@@ -949,6 +949,8 @@ void InitThingdef()
 	auto fcp = NewStruct("FCheckPosition", nullptr);
 	fcp->mConstructor = *FindFunction(fcp, "_Constructor")->VMPointer;
 	fcp->mDestructor = *FindFunction(fcp, "_Destructor")->VMPointer;
+	static const uint8_t reguse[] = { REGT_POINTER };
+	fcp->mConstructor->RegTypes = fcp->mDestructor->RegTypes = reguse;
 	fcp->Size = sizeof(FCheckPosition);
 	fcp->Align = alignof(FCheckPosition);
 
@@ -996,11 +998,6 @@ void SynthesizeFlagFields()
 			}
 		}
 	}
-}
-DEFINE_ACTION_FUNCTION(DObject, GameType)
-{
-	PARAM_PROLOGUE;
-	ACTION_RETURN_INT(gameinfo.gametype);
 }
 
 DEFINE_ACTION_FUNCTION(DObject, BAM)

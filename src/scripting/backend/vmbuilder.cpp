@@ -922,6 +922,7 @@ void FFunctionBuildList::Build()
 		fprintf(dump, "\n*************************************************************************\n%i code bytes\n%i data bytes", codesize * 4, datasize);
 		fclose(dump);
 	}
+	VMFunction::CreateRegUseInfo();
 	FScriptPosition::StrictErrors = false;
 	mItems.Clear();
 	mItems.ShrinkToFit();
