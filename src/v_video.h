@@ -217,6 +217,7 @@ struct VMVa_List
 	VMValue *args;
 	int curindex;
 	int numargs;
+	const uint8_t *reginfo;
 };
 //
 // VIDEO

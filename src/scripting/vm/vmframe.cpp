@@ -470,7 +470,7 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 	{	
 		if (func->VarFlags & VARF_Native)
 		{
-			return static_cast<VMNativeFunction *>(func)->NativeCall(params, numparams, results, numresults);
+			return static_cast<VMNativeFunction *>(func)->NativeCall(VM_INVOKE(params, numparams, results, numresults, func->RegTypes));
 		}
 		else
 		{
@@ -620,7 +620,7 @@ void ThrowAbortException(EVMAbortException reason, const char *moreinfo, ...)
 DEFINE_ACTION_FUNCTION(DObject, ThrowAbortException)
 {
 	PARAM_PROLOGUE;
-	FString s = FStringFormat(param, numparam, ret, numret);
+	FString s = FStringFormat(VM_ARGS_NAMES);
 	ThrowAbortException(X_OTHER, s.GetChars());
 	return 0;
 }

@@ -675,7 +675,7 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 				try
 				{
 					VMCycles[0].Unclock();
-					numret = static_cast<VMNativeFunction *>(call)->NativeCall(reg.param + f->NumParam - b, b, returns, C);
+					numret = static_cast<VMNativeFunction *>(call)->NativeCall(VM_INVOKE(reg.param + f->NumParam - b, b, returns, C, call->RegTypes));
 					VMCycles[0].Clock();
 				}
 				catch (CVMAbortException &err)
