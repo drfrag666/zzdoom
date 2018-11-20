@@ -1115,7 +1115,7 @@ static void (*MBFCodePointerFactories[])(FunctionCallEmitter&, int, int, MBFPara
 
 void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 {
-	static uint8_t regts[] = { REGT_POINTER, REGT_POINTER, REGT_POINTER };
+	static const uint8_t regts[] = { REGT_POINTER, REGT_POINTER, REGT_POINTER };
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
 	
