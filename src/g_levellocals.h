@@ -38,8 +38,10 @@
 #include "doomdata.h"
 #include "g_level.h"
 #include "r_defs.h"
+#include "r_sky.h"
 #include "portal.h"
 #include "p_blockmap.h"
+#include "p_trace.h"
 
 struct FLevelLocals
 {
@@ -268,4 +270,11 @@ inline line_t *line_t::getPortalDestination() const
 inline int line_t::getPortalAlignment() const
 {
 	return portalindex >= linePortals.Size() ? 0 : linePortals[portalindex].mAlign;
+}
+
+inline bool line_t::hitSkyWall(AActor* mo) const
+{
+	return backsector &&
+		backsector->GetTexture(sector_t::ceiling) == skyflatnum &&
+		mo->Z() >= backsector->ceilingplane.ZatPoint(mo->PosRelative(this));
 }
