@@ -860,8 +860,11 @@ static void CreatePlaySoundFunc(FunctionCallEmitter &emitters, int value1, int v
 // misc1 = state, misc2 = probability
 static void CreateRandomJumpFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 { // A_Jump
+	auto symlabel = StateLabels.AddPointer(FindState(value1));
+
 	emitters.AddParameterIntConst(value2);					// maxchance
-	emitters.AddParameterPointerConst(FindState(value1));	// jumpto
+	emitters.AddParameterIntConst(symlabel);				// jumpto
+	emitters.AddReturn(REGT_POINTER);
 }
 
 // misc1 = Boom linedef type, misc2 = sector tag
@@ -1119,6 +1122,8 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
 	
+	bool returnsState = codepointer == 6;
+	
 	// Let's identify the codepointer we're dealing with.
 	PFunction *sym;
 	sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(FName(MBFCodePointers[codepointer].name), true));
@@ -1138,6 +1143,7 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 		pstate->argsused = args->argsused;
 
 		int numargs = sym->GetImplicitArgs();
+		auto funcsym = CreateAnonymousFunction(RUNTIME_CLASS(AActor)->VMType, returnsState? (PType*)TypeState : TypeVoid, numargs==3? SUF_ACTOR|SUF_WEAPON : SUF_ACTOR);
 		VMFunctionBuilder buildit(numargs);
 		// Allocate registers used to pass parameters in.
 		// self, stateowner, state (all are pointers)
@@ -1150,10 +1156,15 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 		}
 		// Emit code for action parameters.
 		MBFCodePointerFactories[codepointer](emitters, value1, value2, pstate);
-		emitters.EmitCall(&buildit);
-		buildit.Emit(OP_RET, RET_FINAL, REGT_NIL, 0);
+		auto where = emitters.EmitCall(&buildit);
+		if (!returnsState) buildit.Emit(OP_RET, RET_FINAL, REGT_NIL, 0);
+		else buildit.Emit(OP_RET, RET_FINAL, EncodeRegType(where), where.RegNum);
+		where.Free(&buildit);
+
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
+		funcsym->Variants[0].Implementation = sfunc;
+		sfunc->Proto = funcsym->Variants[0].Proto;
 		sfunc->RegTypes = regts;	// These functions are built after running the script compiler so they don't get this info.
 		buildit.MakeFunction(sfunc);
 		sfunc->NumArgs = numargs;
