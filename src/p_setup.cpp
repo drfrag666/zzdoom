@@ -92,6 +92,45 @@ extern unsigned int R_OldBlend;
 
 static void P_Shutdown ();
 
+static void AddToList(uint8_t *hitlist, FTextureID texid, int bitmask)
+{
+	if (hitlist[texid.GetIndex()] & bitmask) return;	// already done, no need to process everything again.
+	hitlist[texid.GetIndex()] |= (uint8_t)bitmask;
+
+	for (auto anim : TexMan.mAnimations)
+	{
+		if (texid == anim->BasePic || (!anim->bDiscrete && anim->BasePic < texid && texid < anim->BasePic + anim->NumFrames))
+		{
+			for (int i = anim->BasePic.GetIndex(); i < anim->BasePic.GetIndex() + anim->NumFrames; i++)
+			{
+				hitlist[i] |= (uint8_t)bitmask;
+			}
+		}
+	}
+
+	auto switchdef = TexMan.FindSwitch(texid);
+	if (switchdef)
+	{
+		for (int i = 0; i < switchdef->NumFrames; i++)
+		{
+			hitlist[switchdef->frames[i].Texture.GetIndex()] |= (uint8_t)bitmask;
+		}
+		for (int i = 0; i < switchdef->PairDef->NumFrames; i++)
+		{
+			hitlist[switchdef->frames[i].Texture.GetIndex()] |= (uint8_t)bitmask;
+		}
+	}
+
+	auto adoor = TexMan.FindAnimatedDoor(texid);
+	if (adoor)
+	{
+		for (int i = 0; i < adoor->NumTextureFrames; i++)
+		{
+			hitlist[adoor->TextureFrames[i].GetIndex()] |= (uint8_t)bitmask;
+		}
+	}
+}
+
 //===========================================================================
 //
 // P_PrecacheLevel
@@ -106,13 +145,11 @@ static void PrecacheLevel(FLevelLocals *Level)
 		return;
 
 	int i;
-	uint8_t *hitlist;
 	TMap<PClassActor *, bool> actorhitlist;
 	int cnt = TexMan.NumTextures();
+	TArray<uint8_t> hitlist(cnt, true);
 
-
-	hitlist = new uint8_t[cnt];
-	memset(hitlist, 0, cnt);
+	memset(hitlist.Data(), 0, cnt);
 
 	AActor *actor;
 	TThinkerIterator<AActor> iterator;
@@ -136,15 +173,15 @@ static void PrecacheLevel(FLevelLocals *Level)
 
 	for (i = Level->sectors.Size() - 1; i >= 0; i--)
 	{
-		hitlist[Level->sectors[i].GetTexture(sector_t::floor).GetIndex()] |= FTextureManager::HIT_Flat;
-		hitlist[Level->sectors[i].GetTexture(sector_t::ceiling).GetIndex()] |= FTextureManager::HIT_Flat;
+		AddToList(hitlist.Data(), Level->sectors[i].GetTexture(sector_t::floor), FTextureManager::HIT_Flat);
+		AddToList(hitlist.Data(), Level->sectors[i].GetTexture(sector_t::ceiling), FTextureManager::HIT_Flat);
 	}
 
 	for (i = Level->sides.Size() - 1; i >= 0; i--)
 	{
-		hitlist[Level->sides[i].GetTexture(side_t::top).GetIndex()] |= FTextureManager::HIT_Wall;
-		hitlist[Level->sides[i].GetTexture(side_t::mid).GetIndex()] |= FTextureManager::HIT_Wall;
-		hitlist[Level->sides[i].GetTexture(side_t::bottom).GetIndex()] |= FTextureManager::HIT_Wall;
+		AddToList(hitlist.Data(), Level->sides[i].GetTexture(side_t::top), FTextureManager::HIT_Wall);
+		AddToList(hitlist.Data(), Level->sides[i].GetTexture(side_t::mid), FTextureManager::HIT_Wall);
+		AddToList(hitlist.Data(), Level->sides[i].GetTexture(side_t::bottom), FTextureManager::HIT_Wall);
 	}
 
 	// Sky texture is always present.
@@ -156,27 +193,26 @@ static void PrecacheLevel(FLevelLocals *Level)
 
 	if (sky1texture.isValid())
 	{
-		hitlist[sky1texture.GetIndex()] |= FTextureManager::HIT_Sky;
+		AddToList(hitlist.Data(), sky1texture, FTextureManager::HIT_Sky);
 	}
 	if (sky2texture.isValid())
 	{
-		hitlist[sky2texture.GetIndex()] |= FTextureManager::HIT_Sky;
+		AddToList(hitlist.Data(), sky2texture, FTextureManager::HIT_Sky);
 	}
 
 	for (auto n : gameinfo.PrecachedTextures)
 	{
 		FTextureID tex = TexMan.CheckForTexture(n, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_TryAny | FTextureManager::TEXMAN_ReturnFirst);
-		if (tex.Exists()) hitlist[tex.GetIndex()] |= FTextureManager::HIT_Wall;
+		if (tex.Exists()) AddToList(hitlist.Data(), tex, FTextureManager::HIT_Wall);
 	}
 	for (unsigned i = 0; i < Level->info->PrecacheTextures.Size(); i++)
 	{
 		FTextureID tex = TexMan.CheckForTexture(Level->info->PrecacheTextures[i], ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_TryAny | FTextureManager::TEXMAN_ReturnFirst);
-		if (tex.Exists()) hitlist[tex.GetIndex()] |= FTextureManager::HIT_Wall;
+		if (tex.Exists()) AddToList(hitlist.Data(), tex, FTextureManager::HIT_Wall);
 	}
 
-	Renderer->Precache(hitlist, actorhitlist);
+	Renderer->Precache(hitlist.Data(), actorhitlist);
 
-	delete[] hitlist;
 }
 
 //==========================================================================
