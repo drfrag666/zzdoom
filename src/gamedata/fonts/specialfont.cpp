@@ -61,7 +61,7 @@ protected:
 FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **lumplist, const bool *notranslate, int lump, bool donttranslate) : FFont(lump)
 {
 	int i;
-	FTexture **charlumps;
+	TArray<FTexture *> charlumps(count, true);
 	int maxyoffs;
 	FTexture *pic;
 
@@ -69,9 +69,7 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 
 	noTranslate = donttranslate;
 	FontName = name;
-	Chars = new CharData[count];
-	charlumps = new FTexture*[count];
-	PatchRemap = new uint8_t[256];
+	Chars.Resize(count);
 	FirstChar = first;
 	LastChar = first + count - 1;
 	FontHeight = 0;
@@ -84,7 +82,7 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 	for (i = 0; i < count; i++)
 	{
 		pic = charlumps[i] = lumplist[i];
-		if (pic != NULL)
+		if (pic != nullptr)
 		{
 			int height = pic->GetScaledHeight();
 			int yoffs = pic->GetScaledTopOffset(0);
@@ -100,7 +98,7 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 			}
 		}
 
-		if (charlumps[i] != NULL)
+		if (charlumps[i] != nullptr)
 		{
 			if (!noTranslate) Chars[i].Pic = new FFontChar1 (charlumps[i]);
 			else Chars[i].Pic = charlumps[i];
@@ -133,8 +131,6 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 	{
 		LoadTranslations();
 	}
-
-	delete[] charlumps;
 }
 
 //==========================================================================
@@ -148,7 +144,7 @@ void FSpecialFont::LoadTranslations()
 	int count = LastChar - FirstChar + 1;
 	uint32_t usedcolors[256] = {};
 	uint8_t identity[256];
-	double *luminosity;
+	TArray<double> Luminosity;
 	int TotalColors;
 	int i, j;
 
@@ -167,7 +163,7 @@ void FSpecialFont::LoadTranslations()
 		if (notranslate[i])
 			usedcolors[i] = false;
 
-	TotalColors = ActiveColors = SimpleTranslation (usedcolors, PatchRemap, identity, &luminosity);
+	TotalColors = ActiveColors = SimpleTranslation (usedcolors, PatchRemap, identity, Luminosity);
 
 	// Map all untranslated colors into the table of used colors
 	for (i = 0; i < 256; i++) 
@@ -186,7 +182,7 @@ void FSpecialFont::LoadTranslations()
 			static_cast<FFontChar1 *>(Chars[i].Pic)->SetSourceRemap(PatchRemap);
 	}
 
-	BuildTranslations (luminosity, identity, &TranslationParms[0][0], TotalColors, NULL);
+	BuildTranslations (Luminosity.Data(), identity, &TranslationParms[0][0], TotalColors, NULL);
 
 	// add the untranslated colors to the Ranges tables
 	if (ActiveColors < TotalColors)
@@ -203,8 +199,6 @@ void FSpecialFont::LoadTranslations()
 		}
 	}
 	ActiveColors = TotalColors;
-
-	delete[] luminosity;
 }
 
 FFont *CreateSpecialFont (const char *name, int first, int count, FTexture **lumplist, const bool *notranslate, int lump, bool donttranslate) 

@@ -135,7 +135,7 @@ protected:
 	void FixXMoves();
 
 	static int SimpleTranslation (uint32_t *colorsused, uint8_t *translation,
-		uint8_t *identity, double **luminosity);
+		uint8_t *identity, TArray<double> &Luminosity);
 
 	EFontType Type = EFontType::Unknown;
 	int FirstChar, LastChar;
@@ -150,10 +150,11 @@ protected:
 	{
 		FTexture *Pic;
 		int XMove;
-	} *Chars;
+	};
+	TArray<CharData> Chars;
 	int ActiveColors;
 	TArray<FRemapTable> Ranges;
-	uint8_t *PatchRemap;
+	uint8_t PatchRemap[256];
 
 	int Lump;
 	FName FontName = NAME_None;

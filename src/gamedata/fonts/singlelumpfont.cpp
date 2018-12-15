@@ -172,8 +172,8 @@ void FSingleLumpFont::CreateFontFromPic (FTextureID picnum)
 	GlobalKerning = 0;
 
 	FirstChar = LastChar = 'A';
-	Chars = new CharData[1];
-	Chars->Pic = pic;
+	Chars.Resize(1);
+	Chars[0].Pic = pic;
 
 	// Only one color range. Don't bother with the others.
 	ActiveColors = 0;
@@ -241,7 +241,7 @@ void FSingleLumpFont::LoadFON1 (int lump, const uint8_t *data)
 	// The default console font is for Windows-1252 and fills the 0x80-0x9f range with valid glyphs.
 	// Since now all internal text is processed as Unicode, these have to be remapped to their proper places.
 	// The highest valid character in this range is 0x2122, so we need 0x2123 entries in our character table.
-	Chars = new CharData[0x2123];
+	Chars.Resize(0x2123);
 
 	w = data[4] + data[5]*256;
 	h = data[6] + data[7]*256;
@@ -252,7 +252,6 @@ void FSingleLumpFont::LoadFON1 (int lump, const uint8_t *data)
 	FirstChar = 0;
 	LastChar = 255;	// This is to allow LoadTranslations to function. The way this is all set up really needs to be changed.
 	GlobalKerning = 0;
-	PatchRemap = new uint8_t[256];
 
 	for(unsigned int i = 0;i < 0x2123;++i)
 		Chars[i].Pic = nullptr;
@@ -282,7 +281,6 @@ void FSingleLumpFont::LoadFON1 (int lump, const uint8_t *data)
 void FSingleLumpFont::LoadFON2 (int lump, const uint8_t *data)
 {
 	int count, i, totalwidth;
-	int *widths2;
 	uint16_t *widths;
 	const uint8_t *palette;
 	const uint8_t *data_p;
@@ -292,12 +290,11 @@ void FSingleLumpFont::LoadFON2 (int lump, const uint8_t *data)
 	FirstChar = data[6];
 	LastChar = data[7];
 	ActiveColors = data[10]+1;
-	PatchRemap = NULL;
 	RescalePalette = data[9] == 0;
 	
 	count = LastChar - FirstChar + 1;
-	Chars = new CharData[count];
-	widths2 = new int[count];
+	Chars.Resize(count);
+	TArray<int> widths2(count, true);
 	if (data[11] & 1)
 	{ // Font specifies a kerning value.
 		GlobalKerning = LittleShort(*(int16_t *)&data[12]);
@@ -381,7 +378,6 @@ void FSingleLumpFont::LoadFON2 (int lump, const uint8_t *data)
 	}
 
 	LoadTranslations();
-	delete[] widths2;
 }
 
 //==========================================================================
@@ -440,7 +436,7 @@ void FSingleLumpFont::LoadBMF(int lump, const uint8_t *data)
 		I_FatalError("BMF font defines no characters");
 	}
 	count = LastChar - FirstChar + 1;
-	Chars = new CharData[count];
+	Chars.Resize(count);
 	for (i = 0; i < count; ++i)
 	{
 		Chars[i].Pic = NULL;
@@ -466,7 +462,6 @@ void FSingleLumpFont::LoadBMF(int lump, const uint8_t *data)
 	qsort(sort_palette + 1, ActiveColors - 1, sizeof(PalEntry), BMFCompare);
 
 	// Create the PatchRemap table from the sorted "alpha" values.
-	PatchRemap = new uint8_t[ActiveColors];
 	PatchRemap[0] = 0;
 	for (i = 1; i < ActiveColors; ++i)
 	{

@@ -79,7 +79,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 
 	noTranslate = notranslate;
 	Lump = fdlump;
-	PatchRemap = new uint8_t[256];
 	GlobalKerning = false;
 	FontName = name;
 	Next = FirstFont;
@@ -279,7 +278,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 		FirstChar = minchar;
 		LastChar = maxchar;
 		auto count = maxchar - minchar + 1;
-		Chars = new CharData[count];
+		Chars.Resize(count);
 		int fontheight = 0;
 
 		for (i = 0; i < count; i++)
@@ -346,30 +345,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 
 FFont::~FFont ()
 {
-	if (Chars)
-	{
-		int count = LastChar - FirstChar + 1;
-
-		// A noTranslate font directly references the original textures.
-		if (!noTranslate)
-		{
-			for (int i = 0; i < count; ++i)
-			{
-				if (Chars[i].Pic != NULL && Chars[i].Pic->Name[0] == 0)
-				{
-					delete Chars[i].Pic;
-				}
-			}
-		}
-		delete[] Chars;
-		Chars = NULL;
-	}
-	if (PatchRemap)
-	{
-		delete[] PatchRemap;
-		PatchRemap = NULL;
-	}
-
 	FFont **prev = &FirstFont;
 	FFont *font = *prev;
 
@@ -395,8 +370,7 @@ FFont::~FFont ()
 void FFont::CheckCase()
 {
 	int lowercount = 0, uppercount = 0;
-	unsigned count = LastChar - FirstChar + 1;
-	for (unsigned i = 0; i < count; i++)
+	for (unsigned i = 0; i < Chars.Size(); i++)
 	{
 		unsigned chr = i + FirstChar;
 		if (lowerforupper[chr] == chr && upperforlower[chr] == chr)
@@ -415,7 +389,7 @@ void FFont::CheckCase()
 	if (lowercount == 0) return;	// This is an uppercase-only font and we are done.
 
 	// The ß needs special treatment because it is far more likely to be supplied lowercase only, even in an uppercase font.
-/*	if (Chars[0xdf - FirstChar].Pic != nullptr)
+	if (Chars[0xdf - FirstChar].Pic != nullptr)
 	{
 		if (LastChar < 0x1e9e)
 		{
@@ -429,7 +403,7 @@ void FFont::CheckCase()
 			uppercount++;
 			if (lowercount == 0) return;
 		}
-	}*/
+	}
 }
 
 //==========================================================================
@@ -530,7 +504,7 @@ static int compare (const void *arg1, const void *arg2)
 //
 //==========================================================================
 
-int FFont::SimpleTranslation (uint32_t *colorsused, uint8_t *translation, uint8_t *reverse, double **luminosity)
+int FFont::SimpleTranslation (uint32_t *colorsused, uint8_t *translation, uint8_t *reverse, TArray<double> &Luminosity)
 {
 	double min, max, diver;
 	int i, j;
@@ -548,26 +522,26 @@ int FFont::SimpleTranslation (uint32_t *colorsused, uint8_t *translation, uint8_
 
 	qsort (reverse+1, j-1, 1, compare);
 
-	*luminosity = new double[j];
-	(*luminosity)[0] = 0.0; // [BL] Prevent uninitalized memory
+	Luminosity.Resize(j);
+	Luminosity[0] = 0.0; // [BL] Prevent uninitalized memory
 	max = 0.0;
 	min = 100000000.0;
 	for (i = 1; i < j; i++)
 	{
 		translation[reverse[i]] = i;
 
-		(*luminosity)[i] = RPART(GPalette.BaseColors[reverse[i]]) * 0.299 +
+		Luminosity[i] = RPART(GPalette.BaseColors[reverse[i]]) * 0.299 +
 						   GPART(GPalette.BaseColors[reverse[i]]) * 0.587 +
 						   BPART(GPalette.BaseColors[reverse[i]]) * 0.114;
-		if ((*luminosity)[i] > max)
-			max = (*luminosity)[i];
-		if ((*luminosity)[i] < min)
-			min = (*luminosity)[i];
+		if (Luminosity[i] > max)
+			max = Luminosity[i];
+		if (Luminosity[i] < min)
+			min = Luminosity[i];
 	}
 	diver = 1.0 / (max - min);
 	for (i = 1; i < j; i++)
 	{
-		(*luminosity)[i] = ((*luminosity)[i] - min) * diver;
+		Luminosity[i] = (Luminosity[i] - min) * diver;
 	}
 
 	return j;
@@ -929,7 +903,7 @@ void FFont::LoadTranslations()
 	unsigned int count = LastChar - FirstChar + 1;
 	uint32_t usedcolors[256] = {};
 	uint8_t identity[256];
-	double *luminosity;
+	TArray<double> Luminosity;
 
 	for (unsigned int i = 0; i < count; i++)
 	{
@@ -941,7 +915,7 @@ void FFont::LoadTranslations()
 		}
 	}
 
-	ActiveColors = SimpleTranslation (usedcolors, PatchRemap, identity, &luminosity);
+	ActiveColors = SimpleTranslation (usedcolors, PatchRemap, identity, Luminosity);
 
 	for (unsigned int i = 0; i < count; i++)
 	{
@@ -949,9 +923,7 @@ void FFont::LoadTranslations()
 			static_cast<FFontChar1 *>(Chars[i].Pic)->SetSourceRemap(PatchRemap);
 	}
 
-	BuildTranslations (luminosity, identity, &TranslationParms[TranslationType][0], ActiveColors, nullptr);
-
-	delete[] luminosity;
+	BuildTranslations (Luminosity.Data(), identity, &TranslationParms[TranslationType][0], ActiveColors, nullptr);
 }
 
 //==========================================================================
@@ -963,8 +935,6 @@ void FFont::LoadTranslations()
 FFont::FFont (int lump)
 {
 	Lump = lump;
-	Chars = nullptr;
-	PatchRemap = nullptr;
 	FontName = NAME_None;
 	Cursor = '_';
 	noTranslate = false;
