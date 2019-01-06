@@ -236,6 +236,18 @@ public:
         return i;
     }
 
+	template<class Func> const
+	unsigned int FindEx(Func compare) const
+	{
+		unsigned int i;
+		for (i = 0; i < Count; ++i)
+		{
+			if (compare(Array[i]))
+				break;
+		}
+		return i;
+	}
+
 	unsigned int Push (const T &item)
 	{
 		Grow (1);
