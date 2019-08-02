@@ -331,6 +331,7 @@ struct GameInfoStruct native
 	native GIFont mStatscreenMapNameFont;
 	native GIFont mStatscreenEnteringFont;
 	native GIFont mStatscreenFinishedFont;
+	native GIFont mStatscreenAuthorFont;
 	native double gibfactor;
 	native bool intermissioncounter;
 }
@@ -498,6 +499,7 @@ struct LevelLocals native
 	native String NextSecretMap;
 	native String F1Pic;
 	native readonly int maptype;
+	native readonly String AuthorName;
 	native readonly String Music;
 	native readonly int musicorder;
 	native int total_secrets;

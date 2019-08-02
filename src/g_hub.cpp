@@ -137,6 +137,7 @@ void G_LeavingHub(int mode, cluster_info_t * cluster, wbstartstruct_t * wbs)
 				else
 				{
 					level.LevelName = cluster->ClusterName;
+					wbs->thisauthor = "";
 				}
 			}
 		}

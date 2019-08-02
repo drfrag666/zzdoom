@@ -49,6 +49,8 @@ struct wbstartstruct_t
 	FString		current;	// [RH] Name of map just finished
 	FString		next;		// next level, [RH] actual map name
 	FString		nextname;	// printable name for next level.
+	FString		nextauthor;	// printable name for next level.
+	FString		thisauthor;	// printable name for next level.
 
 	FTextureID	LName0;
 	FTextureID	LName1;

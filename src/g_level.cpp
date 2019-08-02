@@ -744,6 +744,7 @@ void G_DoCompleted (void)
 
 	wminfo.finished_ep = level.cluster - 1;
 	wminfo.LName0 = TexMan.CheckForTexture(level.info->PName, FTexture::TEX_MiscPatch);
+	wminfo.thisauthor = level.info->AuthorName;
 	wminfo.current = level.MapName;
 
 	if (deathmatch &&
@@ -752,6 +753,7 @@ void G_DoCompleted (void)
 	{
 		wminfo.next = level.MapName;
 		wminfo.LName1 = wminfo.LName0;
+		wminfo.nextauthor = wminfo.thisauthor;
 	}
 	else
 	{
@@ -760,11 +762,13 @@ void G_DoCompleted (void)
 		{
 			wminfo.next = nextlevel;
 			wminfo.LName1.SetInvalid();
+			wminfo.nextauthor = "";
 		}
 		else
 		{
 			wminfo.next = nextinfo->MapName;
 			wminfo.LName1 = TexMan.CheckForTexture(nextinfo->PName, FTexture::TEX_MiscPatch);
+			wminfo.nextauthor = nextinfo->AuthorName;
 		}
 	}
 
@@ -1498,6 +1502,7 @@ void G_InitLevelLocals ()
 	level.NextMap = info->NextMap;
 	level.NextSecretMap = info->NextSecretMap;
 	level.F1Pic = info->F1Pic;
+	level.AuthorName = info->AuthorName;
 	level.hazardcolor = info->hazardcolor;
 	level.hazardflash = info->hazardflash;
 
@@ -2005,6 +2010,7 @@ DEFINE_FIELD(FLevelLocals, MapName)
 DEFINE_FIELD(FLevelLocals, NextMap)
 DEFINE_FIELD(FLevelLocals, NextSecretMap)
 DEFINE_FIELD(FLevelLocals, F1Pic)
+DEFINE_FIELD(FLevelLocals, AuthorName)
 DEFINE_FIELD(FLevelLocals, maptype)
 DEFINE_FIELD(FLevelLocals, Music)
 DEFINE_FIELD(FLevelLocals, musicorder)

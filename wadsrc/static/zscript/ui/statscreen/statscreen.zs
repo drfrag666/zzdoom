@@ -103,6 +103,7 @@ class StatusScreen abstract play version("2.5")
 	PatchInfo 		mapname;
 	PatchInfo 		finished;
 	PatchInfo 		entering;
+	PatchInfo		author;
 
 	TextureID 		p_secret;
 	TextureID 		kills;
@@ -114,6 +115,7 @@ class StatusScreen abstract play version("2.5")
 
 	// [RH] Info to dynamically generate the level name graphics
 	String			lnametexts[2];
+	String			authortexts[2];
 
 	bool 			snl_pointeron;
 
@@ -179,6 +181,32 @@ class StatusScreen abstract play version("2.5")
 
 	//====================================================================
 	//
+	// Draws a level author's name with the big font
+	//
+	//====================================================================
+
+	int DrawAuthor(int y, String levelname)
+	{
+		if (levelname.Length() > 0)
+		{
+			int h = 0;
+			int lumph = author.mFont.GetHeight() * CleanYfac;
+			
+			BrokenLines lines = author.mFont.BreakLines(levelname, screen.GetWidth() / CleanXfac);
+
+			int count = lines.Count();
+			for (int i = 0; i < count; i++)
+			{
+				screen.DrawText(author.mFont, author.mColor, (screen.GetWidth() - lines.StringWidth(i) * CleanXfac) / 2, y + h, lines.StringAt(i), DTA_CleanNoMove, true);
+				h += lumph;
+			}
+			return y + h;
+		}
+		return 0;
+	}
+
+	//====================================================================
+	//
 	// Draws a text, either as patch or as string from the string table
 	//
 	//====================================================================
@@ -216,7 +244,9 @@ class StatusScreen abstract play version("2.5")
 		int y = TITLEY * CleanYfac;
 
 		y = DrawName(y, wbs.LName0, lnametexts[0]);
-	
+
+		DrawAuthor(y, authortexts[0]);
+
 		// Adjustment for different font sizes for map name and 'finished'.
 		y -= ((mapname.mFont.GetHeight() - finished.mFont.GetHeight()) * CleanYfac) / 4;
 
@@ -245,7 +275,9 @@ class StatusScreen abstract play version("2.5")
 
 		y = DrawPatchText(y, entering, "$ENTERING");
 		y += entering.mFont.GetHeight() * CleanYfac / 4;
-		DrawName(y, wbs.LName1, lnametexts[1]);
+		y = DrawName(y, wbs.LName1, lnametexts[1]);
+		DrawAuthor(y, authortexts[1]);
+
 	}
 
 
@@ -703,6 +735,7 @@ class StatusScreen abstract play version("2.5")
 		entering.Init(gameinfo.mStatscreenEnteringFont);
 		finished.Init(gameinfo.mStatscreenFinishedFont);
 		mapname.Init(gameinfo.mStatscreenMapNameFont);
+		author.Init(gameinfo.mStatscreenAuthorFont);
 
 		Kills = TexMan.CheckForTexture("WIOSTK", TexMan.Type_MiscPatch);		// "kills"
 		Secret = TexMan.CheckForTexture("WIOSTS", TexMan.Type_MiscPatch);		// "scrt"
@@ -715,6 +748,8 @@ class StatusScreen abstract play version("2.5")
 		// Use the local level structure which can be overridden by hubs
 		lnametexts[0] = level.LevelName;		
 		lnametexts[1] = wbstartstruct.nextname;
+		authortexts[0] = wbstartstruct.thisauthor;
+		authortexts[1] = wbstartstruct.nextauthor;
 
 		bg = InterBackground.Create(wbs);
 		bg.LoadBackground(false);

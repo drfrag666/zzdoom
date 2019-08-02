@@ -66,6 +66,7 @@ struct FLevelLocals
 	FString		MapName;			// the lump name (E1M1, MAP01, etc)
 	FString		NextMap;			// go here when using the regular exit
 	FString		NextSecretMap;		// map to go to when used secret exit
+	FString		AuthorName;
 	FString		F1Pic;
 	EMapType	maptype;
 
