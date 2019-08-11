@@ -324,6 +324,7 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(MF7, SPRITEFLIP, AActor, flags7),
 
 	DEFINE_FLAG(MF8, FRIGHTENING, AActor, flags8),
+	DEFINE_FLAG(MF8, RETARGETAFTERSLAM, AActor, flags8),
 
 	DEFINE_FLAG(MF8, FRIGHTENING, AActor, flags8),
 

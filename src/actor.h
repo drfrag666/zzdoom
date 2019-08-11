@@ -396,6 +396,7 @@ enum ActorFlag8
 {
 	MF8_FRIGHTENING		= 0x00000001,	// for those moments when halloween just won't do
 	MF8_INSCROLLSEC		= 0x00000002,	// actor is partially inside a scrolling sector
+	MF8_RETARGETAFTERSLAM	= 0x00000080	// Forces jumping to the idle state after slamming into something
 };
 
 // --- mobj.renderflags ---
