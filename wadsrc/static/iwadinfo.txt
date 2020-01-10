@@ -291,6 +291,21 @@ IWad
 
 IWad
 {
+	Name = "DOOM: Unity Edition"
+	Autoname = "doom.doom1.unity"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/ultdoom.txt"
+	Compatibility = "Shorttex"
+	MustContain = "E1M1","E2M1","E2M2","E2M3","E2M4","E2M5","E2M6","E2M7","E2M8","E2M9",
+		          "E3M1","E3M2","E3M3","E3M4","E3M5","E3M6","E3M7","E3M8","E3M9",
+		          "DPHOOF","BFGGA0","HEADA1","CYBRA1","SPIDA1D1", "E4M2",
+		          "DMENUPIC"
+	BannerColors = "00 7c 00", "a8 a8 a8"
+}
+
+IWad
+{
 	Name = "DOOM: Complete: WadSmoosh"
 	Autoname = "doom.doom2.wadsmoosh"
 	Game = "Doom"
@@ -388,7 +403,19 @@ IWad
 	Load = "nerve.wad"
 }
 
-// Doom 2 must be last to be checked becaude MAP01 is its only requirement
+IWad
+{
+	Name = "DOOM 2: Unity Edition"
+	Autoname = "doom.doom2.unity"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/doom2unity.txt"
+	Compatibility = "Shorttex"
+	MustContain = "MAP01", "DMENUPIC"
+	BannerColors = "00 7c 00", "a8 a8 a8"
+}
+
+// Doom 2 must be last to be checked because MAP01 is its only requirement
 IWad
 {
 	Name = "DOOM 2: Hell on Earth"
@@ -416,6 +443,8 @@ Names
 	"doom2bfg.wad"
 	"bfgdoom.wad"
 	"doombfg.wad"
+	"doom1unity.wad"
+	"doom2unity.wad"
 	"doom2f.wad"
 	"freedoom1.wad"
 	"freedoom2.wad"
