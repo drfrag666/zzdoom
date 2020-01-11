@@ -368,6 +368,18 @@ IWad
 
 IWad
 {
+	Name = "Final Doom: TNT - Evilution: Unity Edition"
+	Autoname = "doom.doom2.tnt.unity"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/tnt.txt"
+	Compatibility = "Shorttex", "Stairs"
+	MustContain = "MAP01", "REDTNT2", "DMAPINFO"
+	BannerColors = "00 7c 00", "a8 a8 a8"
+}
+
+IWad
+{
 	Name = "Final Doom: TNT - Evilution"
 	Autoname = "doom.doom2.tnt"
 	Game = "Doom"
@@ -376,6 +388,18 @@ IWad
 	Compatibility = "Shorttex", "Stairs"
 	MustContain = "MAP01", "REDTNT2"
 	BannerColors = "a8 00 00", "a8 a8 a8"
+}
+
+IWad
+{
+	Name = "Final Doom: Plutonia Experiment: Unity Edition"
+	Autoname = "doom.doom2.plutonia.unity"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/plutonia.txt"
+	Compatibility = "Shorttex"
+	MustContain = "MAP01", "CAMO1", "DMAPINFO"
+	BannerColors = "00 7c 00", "a8 a8 a8"
 }
 
 IWad
@@ -443,9 +467,11 @@ Names
 	"doom2bfg.wad"
 	"bfgdoom.wad"
 	"doombfg.wad"
-	"doom1unity.wad"
+	"doomunity.wad"
 	"doom2unity.wad"
 	"doom2f.wad"
+	"tntunity.wad"
+	"plutoniaunity.wad"
 	"freedoom1.wad"
 	"freedoom2.wad"
 	"freedoomu.wad"
