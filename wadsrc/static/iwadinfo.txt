@@ -466,6 +466,18 @@ IWad
 	Load = "NERVE.WAD"
 }
 
+IWad
+{
+	Name = "DOOM 2: L'Enfer sur Terre"
+	Autoname = "doom.doom2.commercial.french"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/doom2.txt"
+	Compatibility = "Shorttex"
+	MustContain = "MAP01", "WIOBJ"
+	BannerColors = "ff ff ff", "a8 00 00"
+}
+
 // Doom 2 must be last to be checked because MAP01 is its only requirement
 IWad
 {
@@ -485,6 +497,7 @@ Names
 {	
 	"doom_complete.pk3"
 	"doom2.wad"
+	"doom2f.wad"
 	"plutonia.wad"
 	"tnt.wad"
 	"doomu.wad"
