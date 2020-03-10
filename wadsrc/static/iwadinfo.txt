@@ -177,6 +177,7 @@ IWad
 IWad
 {
 	Name = "Hexen: Demo Version"
+	Autoname = "hexen.shareware"
 	Game = "Hexen"
 	Config = "Hexen"
 	Mapinfo = "mapinfo/hexen.txt"
@@ -221,6 +222,7 @@ IWad
 
 IWad
 {
+	Autoname = "heretic.shareware"
 	Name = "Heretic Shareware"
 	Game = "Heretic"
 	Config = "Heretic"
@@ -372,6 +374,7 @@ IWad
 IWad
 {
 	Name = "DOOM Shareware"
+	Autoname = "doom.doom1.shareware"
 	Game = "Doom"
 	Config = "Doom"
 	Mapinfo = "mapinfo/doom1.txt"
