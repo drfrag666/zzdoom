@@ -154,6 +154,8 @@ enum DrawTextureTags
 	DTA_TextLen,		// stop after this many characters, even if \0 not hit
 	DTA_CellX,			// horizontal size of character cell
 	DTA_CellY,			// vertical size of character cell
+
+	DTA_FullscreenEx,		// advanced fullscreen control.
 };
 
 struct Screen native
