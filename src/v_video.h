@@ -128,6 +128,8 @@ enum
 
 	// New additions. 
 	DTA_Color,
+
+	DTA_FullscreenEx,
 };
 
 enum
@@ -180,6 +182,8 @@ struct DrawParms
 	int maxstrlen;
 	bool fortext;
 	bool virtBottom;
+	bool burn;
+	uint8_t fsscalemode;
 };
 
 struct Va_List
@@ -562,7 +566,6 @@ int AspectBaseHeight(float aspect);
 double AspectPspriteOffset(float aspect);
 int AspectMultiplier(float aspect);
 bool AspectTallerThanWide(float aspect);
-void ScaleWithAspect(int &w, int &h, int Width, int Height);
 
 int GetUIScale(int altval);
 
