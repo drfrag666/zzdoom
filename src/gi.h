@@ -190,7 +190,7 @@ struct gameinfo_t
 	FName statusscreen_single;
 	FName statusscreen_coop;
 	FName statusscreen_dm;
-	int fullscreenautoaspect = 3;
+	int fullscreenautoaspect = 0;
 
 	const char *GetFinalePage(unsigned int num) const;
 };
