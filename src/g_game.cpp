@@ -1954,7 +1954,7 @@ void G_DoLoadGame ()
 	arc("Engine", engine);
 	arc("Current Map", map);
 
-	if (engine.CompareNoCase(GAMESIG) != 0)
+	if (engine.CompareNoCase(GAMESIG) != 0 && engine.CompareNoCase("GZDOOM") != 0)
 	{
 		// Make a special case for the message printed for old savegames that don't
 		// have this information.
