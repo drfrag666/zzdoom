@@ -42,6 +42,26 @@
 #include "r_data/renderstyle.h"
 #include "c_cvars.h"
 
+struct DoubleRect
+{
+	double left, top;
+	double width, height;
+
+
+	void Offset(double xofs, double yofs)
+	{
+		left += xofs;
+		top += yofs;
+	}
+	void Scale(double xfac, double yfac)
+	{
+		left *= xfac;
+		width *= xfac;
+		top *= yfac;
+		height *= yfac;
+	}
+};
+
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;
 extern int DisplayWidth, DisplayHeight, DisplayBits;
@@ -130,6 +150,7 @@ enum
 	DTA_Color,
 
 	DTA_FullscreenEx,
+	DTA_FullscreenScale,
 };
 
 enum
@@ -183,7 +204,7 @@ struct DrawParms
 	bool fortext;
 	bool virtBottom;
 	bool burn;
-	uint8_t fsscalemode;
+	int8_t fsscalemode;
 };
 
 struct Va_List
@@ -269,6 +290,7 @@ public:
 	void SetClipRect(int x, int y, int w, int h);
 	void GetClipRect(int *x, int *y, int *w, int *h);
 
+	void CalcFullscreenScale(double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);

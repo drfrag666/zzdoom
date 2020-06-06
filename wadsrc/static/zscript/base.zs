@@ -156,6 +156,8 @@ enum DrawTextureTags
 	DTA_CellY,			// vertical size of character cell
 
 	DTA_FullscreenEx,		// advanced fullscreen control.
+	DTA_FullscreenScale,	// enable DTA_Fullscreen coordinate calculation for placed overlays.
+
 };
 
 struct Screen native
