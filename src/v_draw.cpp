@@ -509,6 +509,7 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 	parms->bilinear = false;
 	parms->specialcolormap = NULL;
 	parms->colormapstyle = NULL;
+	parms->desaturate = 0;
 	parms->cleanmode = DTA_Base;
 	parms->scalex = parms->scaley = 1;
 	parms->cellx = parms->celly = 0;
@@ -856,6 +857,10 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 
 		case DTA_ColormapStyle:
 			parms->colormapstyle = ListGetColormapStyle(tags);
+			break;
+
+		case DTA_Desaturate:
+			parms->desaturate = ListGetInt(tags);
 			break;
 
 		case DTA_TextLen:
