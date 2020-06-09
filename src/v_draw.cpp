@@ -497,6 +497,7 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 	parms->colorOverlay = 0;
 	parms->alphaChannel = false;
 	parms->flipX = false;
+	parms->flipY = false;
 	parms->color = 0xffffffff;
 	//parms->shadowAlpha = 0;
 	parms->shadowColor = 0;
@@ -513,6 +514,10 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 	parms->cellx = parms->celly = 0;
 	parms->maxstrlen = INT_MAX;
 	parms->virtBottom = false;
+	parms->srcx = 0.;
+	parms->srcy = 0.;
+	parms->srcwidth = 1.;
+	parms->srcheight = 1.;
 
 	// Parse the tag list for attributes. (For floating point attributes,
 	// consider that the C ABI dictates that all floats be promoted to
@@ -680,6 +685,26 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 
 		case DTA_FlipX:
 			parms->flipX = ListGetInt(tags);
+			break;
+
+		case DTA_FlipY:
+			parms->flipY = ListGetInt(tags);
+			break;
+
+		case DTA_SrcX:
+			parms->srcx = ListGetDouble(tags) / img->GetScaledWidthDouble();
+			break;
+
+		case DTA_SrcY:
+			parms->srcy = ListGetDouble(tags) / img->GetScaledHeightDouble();
+			break;
+
+		case DTA_SrcWidth:
+			parms->srcwidth = ListGetDouble(tags) / img->GetScaledWidthDouble();
+			break;
+
+		case DTA_SrcHeight:
+			parms->srcheight = ListGetDouble(tags) / img->GetScaledHeightDouble();
 			break;
 
 		case DTA_TopOffset:

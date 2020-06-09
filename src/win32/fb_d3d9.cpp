@@ -2825,6 +2825,10 @@ void D3DFB::DrawTextureParms (FTexture *img, DrawParms &parms)
 	{
 		swapvalues(u0, u1);
 	}
+	if (parms.flipY)
+	{
+		swapvalues(v0, v1);
+	}
 	if (parms.windowleft > 0 || parms.windowright < parms.texwidth)
 	{
 		double wi = MIN(parms.windowright, parms.texwidth);
