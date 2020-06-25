@@ -407,6 +407,10 @@ void P_PlayerInSpecialSector (player_t *player, sector_t * sector)
 	}
 
 	// [RH] Apply any customizable damage
+
+	if (sector->damageinterval <= 0)
+		sector->damageinterval = 32; // repair invalid damageinterval values
+
 	if (sector->damageamount > 0)
 	{
 		// Allow subclasses. Better would be to implement it as armor and let that reduce

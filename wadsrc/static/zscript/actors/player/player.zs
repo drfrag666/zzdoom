@@ -1254,6 +1254,8 @@ class PlayerPawn : Actor native
 			if (player.hazardcount)
 			{
 				player.hazardcount--;
+				if (player.hazardinterval <= 0)
+					player.hazardinterval = 32; // repair invalid hazardinterval
 				if (!(level.time % player.hazardinterval) && player.hazardcount > 16*TICRATE)
 					player.mo.DamageMobj (NULL, NULL, 5, player.hazardtype);
 			}
