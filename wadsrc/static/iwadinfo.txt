@@ -572,6 +572,6 @@ Names
 	"square1.pk3"
 	"delaweare.wad"
 	"rotwb.wad"
-	"sigil.wad"
+	"sigil_v1_21.wad"
 	"nerve.wad"
 }
