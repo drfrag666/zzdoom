@@ -421,9 +421,9 @@ void FGameConfigFile::DoGlobalSetup ()
 			{
 				// Transfer the messed up mouse scaling config to something sane and consistent.
 #ifndef _WIN32
-				double xfact = 3, yfact = 2;
+				double xfact = 2, yfact = 2;
 #else
-				double xfact = in_mouse == 1? 1.5 : 4, yfact = 1;
+				double xfact = in_mouse == 1? 1 : 2, yfact = 1;
 #endif
 				auto var = FindCVar("m_noprescale", NULL);
 				if (var != NULL)
