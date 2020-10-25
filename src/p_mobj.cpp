@@ -5734,7 +5734,6 @@ APlayerPawn *P_SpawnPlayer (FPlayerStart *mthing, int playernum, int flags)
 	return mobj;
 }
 
-
 //
 // P_SpawnMapThing
 // The fields of the mapthing should
@@ -5746,6 +5745,8 @@ AActor *P_SpawnMapThing (FMapThing *mthing, int position)
 	PClassActor *i;
 	int mask;
 	AActor *mobj;
+
+	bool spawnmulti = G_SkillProperty(SKILLP_SpawnMulti) || multiplayer;
 
 	if (mthing->EdNum == 0 || mthing->EdNum == -1)
 		return NULL;
@@ -5835,6 +5836,10 @@ AActor *P_SpawnMapThing (FMapThing *mthing, int position)
 		else if (multiplayer)
 		{
 			mask = MTF_COOPERATIVE;
+		}
+		else if (spawnmulti)
+		{
+			mask = MTF_COOPERATIVE|MTF_SINGLE;
 		}
 		else
 		{
