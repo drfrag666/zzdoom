@@ -2123,6 +2123,7 @@ GMPLYMNU_KEEPPOWERUPS		= "Keep powerups";
 GMPLYMNU_KEEPAMMO			= "Keep ammo";
 GMPLYMNU_LOSEHALFAMMO		= "Lose half ammo";
 GMPLYMNU_SPAWNWHEREDIED		= "Spawn where died";
+GMPLYMNU_ALWAYSSPAWNMULTI	= "Always spawn multiplayer objects";
 
 // Compatibility Options
 CMPTMNU_TITLE				= "COMPATIBILITY OPTIONS";
