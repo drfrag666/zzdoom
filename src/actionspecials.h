@@ -266,6 +266,7 @@ DEFINE_SPECIAL(Sector_SetFloorGlow, 277, 5, 5, 5)
 DEFINE_SPECIAL(Sector_SetCeilingGlow, 278, 5, 5, 5)
 DEFINE_SPECIAL(Floor_MoveToValueAndCrush, 279, 4, 5, 5)
 DEFINE_SPECIAL(Ceiling_MoveToValueAndCrush, 280, 4, 5, 5)
+DEFINE_SPECIAL(Polyobj_StopSound, 283, 1, 1, 1)
 DEFINE_SPECIAL(Generic_CrusherDist, 284, 5, 5, 5)
 
 DEFINE_SPECIAL(Line_QuickPortal, 301, -1, -1, 1)
