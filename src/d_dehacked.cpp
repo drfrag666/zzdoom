@@ -815,8 +815,8 @@ static void CreateSpawnFunc(EmitterArray &emitters, int value1, int value2, MBFP
 		I_Error("No class found for dehackednum %d!\n", value1+1);
 	}
 	emitters.AddParameterPointerConst(p);	// itemtype
-	emitters.AddParameterFloatConst(value2);				// distance
-	emitters.AddParameterFloatConst(0);						// height
+	emitters.AddParameterFloatConst(0);						// distance
+	emitters.AddParameterFloatConst(value2);				// height
 	emitters.AddParameterIntConst(0);						// useammo
 	emitters.AddParameterIntConst(0);						// transfer_translation
 }
