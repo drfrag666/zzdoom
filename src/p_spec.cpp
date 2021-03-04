@@ -1409,6 +1409,7 @@ void P_SpawnSpecials (void)
 			break;
 
 		case Line_SetPortal:
+		case Line_QuickPortal:
 			P_SpawnLinePortal(&line);
 			break;
 
