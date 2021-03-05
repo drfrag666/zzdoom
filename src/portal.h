@@ -254,6 +254,7 @@ struct FSectorPortal
 
 void P_ClearPortals();
 void P_SpawnLinePortal(line_t* line);
+line_t *FindDestination(line_t *src, int tag, int matchtype = -1);
 void P_FinalizePortals();
 bool P_ChangePortal(line_t *ln, int thisid, int destid);
 void P_CreateLinkedPortals();

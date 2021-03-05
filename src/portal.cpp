@@ -213,7 +213,7 @@ void FLinePortalTraverse::AddLineIntercepts(int bx, int by)
 //
 //============================================================================
 
-static line_t *FindDestination(line_t *src, int tag)
+line_t *FindDestination(line_t *src, int tag, int matchtype)
 {
 	if (tag)
 	{
@@ -222,7 +222,7 @@ static line_t *FindDestination(line_t *src, int tag)
 
 		while ((lineno = it.Next()) >= 0)
 		{
-			if (&level.lines[lineno] != src)
+			if (&level.lines[lineno] != src && (matchtype == -1 || matchtype == level.lines[lineno].special))
 			{
 				return &level.lines[lineno];
 			}
@@ -284,7 +284,7 @@ void P_SpawnLinePortal(line_t* line)
 	{
 		int type = (line->special != Line_QuickPortal) ? line->args[2] : line->args[0] == 0 ? PORTT_LINKED : PORTT_VISUAL;
 		int tag = (line->special == Line_QuickPortal) ? tagManager.GetFirstLineID(line) : line->args[0];
-		dst = FindDestination(line, tag);
+		dst = FindDestination(line, tag, line->special == Line_QuickPortal? Line_QuickPortal : -1);
 
 		line->portalindex = linePortals.Reserve(1);
 		FLinePortal *port = &linePortals.Last();
