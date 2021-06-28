@@ -541,11 +541,33 @@ void P_SpawnScrollers(void)
 		}
 
 		case Scroll_Texture_Offsets:
+		{
 			// killough 3/2/98: scroll according to sidedef offsets
-			s = level.lines[i].sidedef[0]->Index();
-			Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
-				level.sides[s].GetTextureYOffset(side_t::mid), -1, s, accel, SCROLLTYPE(l->args[0]));
+			s = l->sidedef[0]->Index();
+			if (l->args[2] & 3)
+			{
+				// if 1, then displacement
+				// if 2, then accelerative (also if 3)
+				control = l->sidedef[0]->sector->Index();
+				if (l->args[2] & 2)
+					accel = 1;
+			}
+			if (l->args[1] == 0)
+			{
+				Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
+					level.sides[s].GetTextureYOffset(side_t::mid), control, s, accel, SCROLLTYPE(l->args[0]));
+			}
+			else
+			{
+				FLineIdIterator itr(l->args[1]);
+				while (int ln = itr.Next())
+				{
+					Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
+						level.sides[s].GetTextureYOffset(side_t::mid), control, level.lines[ln].sidedef[0]->Index(), accel, SCROLLTYPE(l->args[0]));
+				}
+			}
 			break;
+		}
 
 		case Scroll_Texture_Left:
 			l->special = special;	// Restore the special, for compat_useblocking's benefit.
