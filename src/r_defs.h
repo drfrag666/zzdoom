@@ -453,13 +453,16 @@ enum
 	SECF_ENDLEVEL		= 512,	// ends level when health goes below 10
 	SECF_HAZARD			= 1024,	// Change to Strife's delayed damage handling.
 	SECF_NOATTACK		= 2048,	// monsters cannot start attacks in this sector.
+	SECF_EXIT1			= 4096,
+	SECF_EXIT2			= 8192,
+	SECF_KILLMONSTERS	= 16384,
 
 	SECF_WASSECRET		= 1 << 30,	// a secret that was discovered
 	SECF_SECRET			= 1 << 31,	// a secret sector
 
 	SECF_DAMAGEFLAGS = SECF_ENDGODMODE|SECF_ENDLEVEL|SECF_DMGTERRAINFX|SECF_HAZARD,
 	SECF_NOMODIFY = SECF_SECRET|SECF_WASSECRET,	// not modifiable by Sector_ChangeFlags
-	SECF_SPECIALFLAGS = SECF_DAMAGEFLAGS|SECF_FRICTION|SECF_PUSH,	// these flags originate from 'special and must be transferrable by floor thinkers
+	SECF_SPECIALFLAGS = SECF_DAMAGEFLAGS|SECF_FRICTION|SECF_PUSH|SECF_EXIT1|SECF_EXIT2|SECF_KILLMONSTERS,	// these flags originate from 'special' and must be transferrable by floor thinkers
 };
 
 enum
@@ -542,7 +545,7 @@ struct secspecial_t
 {
 	FNameNoInit damagetype;		// [RH] Means-of-death for applied damage
 	int damageamount;			// [RH] Damage to do while standing on floor
-	short special;
+	int special;
 	short damageinterval;	// Interval for damage application
 	short leakydamage;		// chance of leaking through radiation suit
 	int Flags;
@@ -913,7 +916,7 @@ public:
 
 	TObjPtr<AActor*> SoundTarget;
 
-	short		special;
+	int		special;
 	short		lightlevel;
 	short		seqType;		// this sector's sound sequence
 

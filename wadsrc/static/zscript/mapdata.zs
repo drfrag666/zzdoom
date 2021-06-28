@@ -192,7 +192,7 @@ struct SecSpecial play
 {
 	Name damagetype;
 	int damageamount;
-	short special;
+	int special;
 	short damageinterval;
 	short leakydamage;
 	int Flags;
@@ -215,7 +215,7 @@ struct Sector native play
 
 	native Actor 		SoundTarget;
 
-	native int16 		special;
+	native int			special;
 	native int16 		lightlevel;
 	native int16		seqType;	
 
