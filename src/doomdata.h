@@ -122,7 +122,7 @@ struct maplinedef2_t
 // LineDef attributes.
 //
 
-enum ELineFlags : unsigned
+enum ELineFlags : uint32_t
 {
 	ML_BLOCKING					=0x00000001,	// solid, is an obstacle
 	ML_BLOCKMONSTERS			=0x00000002,	// blocks monsters only
@@ -166,6 +166,8 @@ enum ELineFlags : unsigned
 	ML_3DMIDTEX_IMPASS			= 0x10000000,	// [TP] if 3D midtex, behaves like a height-restricted ML_BLOCKING
 
 	ML_PORTALCONNECT			= 0x80000000,	// for internal use only: This line connects to a sector with a linked portal (used to speed up sight checks.)
+	// Flag words may not exceed 32 bit due to VM limitations.
+	ML2_BLOCKLANDMONSTERS		= 0x1,	// MBF21
 };
 
 

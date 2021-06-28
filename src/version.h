@@ -83,7 +83,7 @@ const char *GetVersionString();
 
 // Use 4500 as the base git save version, since it's higher than the
 // SVN revision ever got.
-#define SAVEVER 4551
+#define SAVEVER 4552
 
 // MAXSAVEVER is the maximum level snapshot version that can be loaded.
 #define MAXSAVEVER 4554
