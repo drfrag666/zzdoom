@@ -1047,6 +1047,19 @@ DEFINE_PROPERTY(designatedteam, I, Actor)
 }
 
 //==========================================================================
+// MBF21
+//==========================================================================
+DEFINE_PROPERTY(infightinggroup, I, Actor)
+{
+	PROP_INT_PARM(i, 0);
+	if (i < 0)
+	{
+		I_Error("Infighting groups must be >= 0.");
+	}
+	info->ActorInfo()->infighting_group = i;
+}
+
+//==========================================================================
 // [BB]
 //==========================================================================
 DEFINE_PROPERTY(visibletoteam, I, Actor)
