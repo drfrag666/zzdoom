@@ -1582,7 +1582,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 					{ // Ok to spawn blood
 						P_RipperBlood(tm.thing, thing);
 					}
-					S_Sound(tm.thing, CHAN_BODY, "misc/ripslop", 1, ATTN_IDLE);
+					S_Sound(tm.thing, CHAN_BODY, tm.thing->SoundVar(NAME_RipSound), 1, ATTN_IDLE);
 
 					// Do poisoning (if using new style poison)
 					if (tm.thing->PoisonDamage > 0 && tm.thing->PoisonDuration != INT_MIN)
