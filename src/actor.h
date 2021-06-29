@@ -396,7 +396,15 @@ enum ActorFlag8
 {
 	MF8_FRIGHTENING		= 0x00000001,	// for those moments when halloween just won't do
 	MF8_INSCROLLSEC		= 0x00000002,	// actor is partially inside a scrolling sector
-	MF8_RETARGETAFTERSLAM	= 0x00000080	// Forces jumping to the idle state after slamming into something
+	MF8_RETARGETAFTERSLAM	= 0x00000080,	// Forces jumping to the idle state after slamming into something
+	MF8_FULLVOLSEE		= 0x00010000,	// Play see sound at full volume
+	MF8_E1M8BOSS		= 0x00020000,	// MBF21 boss death.
+	MF8_E2M8BOSS		= 0x00040000,	// MBF21 boss death.
+	MF8_E3M8BOSS		= 0x00080000,	// MBF21 boss death.
+	MF8_E4M8BOSS		= 0x00100000,	// MBF21 boss death.
+	MF8_E4M6BOSS		= 0x00200000,	// MBF21 boss death.
+	MF8_MAP07BOSS1		= 0x00400000,	// MBF21 boss death.
+	MF8_MAP07BOSS2		= 0x00800000,	// MBF21 boss death.
 };
 
 // --- mobj.renderflags ---
