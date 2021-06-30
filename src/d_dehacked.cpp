@@ -156,7 +156,7 @@ struct MBFParamState
 {
 	FState *state;
 	int pointer;
-	int args[8];
+	int64_t args[8];
 	int argsused;
 };
 static TArray<MBFParamState> MBFParamStates;
@@ -644,7 +644,7 @@ static int GetLine (void)
 }
 
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
-static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Mushroom
 	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// spawntype
 	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// numspawns
@@ -671,7 +671,7 @@ static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2
 }
 
 // misc1 = type (arg +0), misc2 = Z-pos (arg +2)
-static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_SpawnItem
 	if (InfoNames[value1-1] == NULL)
 	{
@@ -689,21 +689,21 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, i
 }
 
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
-static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Turn
 	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
 // misc1 = angle (in degrees) (arg +0)
-static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_FaceTarget
 	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
 // misc1 = damage, misc 2 = sound
-static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_CustomMeleeAttack
 	buildit.EmitParamInt(value1);					// damage
 	if (value2)
@@ -715,7 +715,7 @@ static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2,
 }
 
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
-static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_PlaySound
 	int float1 = buildit.GetConstantFloat(1);
 	int attenreg = buildit.GetConstantFloat(value2 ? ATTN_NONE : ATTN_NORM);
@@ -729,7 +729,7 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 }
 
 // misc1 = state, misc2 = probability
-static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Jump
 	int statereg = buildit.GetConstantAddress(FindState(value1));
 
@@ -739,7 +739,7 @@ static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int valu
 }
 
 // misc1 = Boom linedef type, misc2 = sector tag
-static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_LineEffect
 	// This is the second MBF codepointer that couldn't be translated easily.
 	// Calling P_TranslateLineDef() here was a simple matter, as was adding an
@@ -752,7 +752,7 @@ static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int valu
 }
 
 // No misc, but it's basically A_Explode with an added effect
-static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
+static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Explode
 	// This one does not actually have MBF-style parameters. But since
 	// we're aliasing it to an extension of A_Explode...
@@ -776,7 +776,7 @@ static PClassActor* GetDehType(int num)
 
 
 // This array must be in sync with the Aliases array in DEHSUPP.
-static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, int*, int) =
+static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, MBFParamState*) =
 {
 	// Die and Detonate are not in this list because these codepointers have
 	// no dehacked arguments and therefore do not need special handling.
@@ -794,7 +794,7 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, int*, int)
 
 // Creates new functions for the given state so as to convert MBF-args (misc1 and misc2) into real args.
 
-void SetDehParams(FState *state, int codepointer, int* args, int argsused)
+void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 {
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
@@ -828,7 +828,7 @@ void SetDehParams(FState *state, int codepointer, int* args, int argsused)
 			buildit.Emit(OP_PARAM, 0, REGT_POINTER, i);
 		}
 		// Emit code for action parameters.
-		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2, args, argsused);
+		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2, pstate);
 		buildit.Emit(OP_TAIL_K, buildit.GetConstantAddress(sym->Variants[0].Implementation), numargs + argcount, 0);
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
@@ -954,7 +954,8 @@ static int PatchThing (int thingy)
 	while ((result = GetLine ()) == 1)
 	{
 		char *endptr;
-		unsigned long val = (unsigned long)strtoull (Line2, &endptr, 10);
+		uint64_t val64 = strtoull (Line2, &endptr, 10);
+		uint32_t val = (uint32_t)val64;
 		size_t linelen = strlen (Line1);
 
 		if (linelen == 10 && stricmp (Line1, "Hit points") == 0)
@@ -1238,12 +1239,6 @@ static int PatchThing (int thingy)
 				}
 				if (vchanged[0])
 				{
-					if (value[0] & MF_SLIDE)
-					{
-						// SLIDE (which occupies in Doom what is the MF_INCHASE slot in ZDoom)
-						value[0] &= ~MF_SLIDE; // clean the slot
-						// Nothing else to do, this flag is never actually used.
-					}
 					if (value[0] & MF_TRANSLATION)
 					{
 						info->Translation = TRANSLATION (TRANSLATION_Standard,
@@ -2914,7 +2909,7 @@ static void UnloadDehSupp ()
 		// Handle MBF params here, before the required arrays are cleared
 		for (unsigned int i=0; i < MBFParamStates.Size(); i++)
 		{
-			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, MBFParamStates[i].args, MBFParamStates[i].argsused);
+			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, &MBFParamStates[i]);
 		}
 		MBFParamStates.Clear();
 		MBFParamStates.ShrinkToFit();
@@ -3567,7 +3562,7 @@ static FlagHandler flag1handlers[32] = {
 	F(MF_DROPOFF),
 	F(MF_PICKUP),
 	F(MF_NOCLIP),
-	{ nullptr, nullptr, nullptr}, // MF_SLIDE no longer exists.
+	F(MF_SLIDE),
 	F(MF_FLOAT),
 	F(MF_TELEPORT),
 	F(MF_MISSILE),
