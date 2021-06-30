@@ -1832,6 +1832,23 @@ FPathTraverse::~FPathTraverse()
 }
 
 
+//
+// P_CheckFov
+// Returns true if t2 is within t1's field of view.
+//
+int P_CheckFov(AActor* t1, AActor* t2, double fov)
+{
+	return absangle(t1->AngleTo(t2), t1->Angles.Yaw) <= fov;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, CheckFov, P_CheckFov)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER(t, AActor);
+	PARAM_FLOAT(fov);
+	ACTION_RETURN_BOOL(P_CheckFov(self, t, fov));
+}
+
 //===========================================================================
 //
 // P_RoughMonsterSearch
@@ -1936,6 +1953,7 @@ struct BlockCheckInfo
 	bool onlyseekable;
 	bool frontonly;
 	divline_t frontline;
+	double fov;
 };
 
 //===========================================================================
@@ -1962,6 +1980,12 @@ static AActor *RoughBlockCheck (AActor *mo, int index, void *param)
 			{
 				continue;
 			}
+			// skip actors outside of specified FOV
+			if (info->fov > 0 && !P_CheckFov(mo, link->Me, info->fov))
+			{
+				continue;
+			}
+
 			if (mo->IsOkayToAttack (link->Me))
 			{
 				return link->Me;
@@ -1971,7 +1995,7 @@ static AActor *RoughBlockCheck (AActor *mo, int index, void *param)
 	return NULL;
 }
 
-AActor *P_RoughMonsterSearch(AActor *mo, int distance, bool onlyseekable, bool frontonly)
+AActor *P_RoughMonsterSearch(AActor *mo, int distance, bool onlyseekable, bool frontonly, double fov)
 {
 	BlockCheckInfo info;
 	info.onlyseekable = onlyseekable;
@@ -1992,7 +2016,8 @@ DEFINE_ACTION_FUNCTION(AActor, RoughMonsterSearch)
 	PARAM_INT(distance);
 	PARAM_BOOL_DEF(onlyseekable);
 	PARAM_BOOL_DEF(frontonly);
-	ACTION_RETURN_OBJECT(P_RoughMonsterSearch(self, distance, onlyseekable, frontonly));
+	PARAM_FLOAT(fov);
+	ACTION_RETURN_OBJECT(P_RoughMonsterSearch(self, distance, onlyseekable, frontonly, fov));
 }
 
 //==========================================================================

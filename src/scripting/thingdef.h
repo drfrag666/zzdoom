@@ -191,6 +191,7 @@ enum
 	DEPF_DOOMBOUNCE,
 	DEPF_INTERHUBSTRIP,
 	DEPF_NOTRAIL,
+	DEPF_HIGHERMPROB,
 };
 
 // Types of old style decorations

@@ -337,6 +337,9 @@ void HandleDeprecatedFlags(AActor *defaults, PClassActor *info, bool set, int in
 	case DEPF_INTERHUBSTRIP: // Old system was 0 or 1, so if the flag is cleared, assume 1.
 		static_cast<AInventory*>(defaults)->InterHubAmount = set ? 0 : 1;
 		break;
+	case DEPF_HIGHERMPROB:
+		defaults->MinMissileChance = set ? 160 : 200;
+		break;
 	case DEPF_NOTRAIL:
 	{
 		FString propname = "@property@powerspeed.notrail";
@@ -413,6 +416,9 @@ bool CheckDeprecatedFlags(const AActor *actor, PClassActor *info, int index)
 
 	case DEPF_INTERHUBSTRIP:
 		return !(static_cast<const AInventory*>(actor)->InterHubAmount);
+
+	case DEPF_HIGHERMPROB:
+		return actor->MinMissileChance <= 160;
 	}
 
 	return false; // Any entirely unknown flag is not set

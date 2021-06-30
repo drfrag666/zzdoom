@@ -7,6 +7,7 @@ version "3.1"
 #include "zscript/actors/actor.zs"
 #include "zscript/actors/checks.zs"
 #include "zscript/events.zs"
+#include "zscript/actors/mbf21.zs"
 
 #include "zscript/ui/menu/menuitembase.zs"
 #include "zscript/ui/menu/menu.zs"

@@ -1,4 +1,4 @@
-﻿// Emacs style mode select	 -*- C++ -*- 
+// Emacs style mode select	 -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
 // $Id:$
@@ -3813,7 +3813,7 @@ bool AActor::IsOkayToAttack (AActor *link)
 	// its target; and for a summoned minion, its tracer.
 	AActor * Friend;
 	if (flags5 & MF5_SUMMONEDMONSTER)					Friend = tracer;
-	else if (flags2 & MF2_SEEKERMISSILE)				Friend = target;
+	else if (flags & MF_MISSILE)						Friend = target;
 	else if ((flags & MF_FRIENDLY) && FriendPlayer)		Friend = players[FriendPlayer-1].mo;
 	else												Friend = this;
 
@@ -8142,6 +8142,17 @@ DEFINE_ACTION_FUNCTION(AActor, GetDefaultByType)
 	PARAM_PROLOGUE;
 	PARAM_CLASS(cls, AActor);
 	ACTION_RETURN_OBJECT(cls == nullptr? nullptr : GetDefaultByType(cls));
+}
+
+static double PitchFromVel(AActor* self)
+{
+	return self->Vel.Pitch().Degrees;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, PitchFromVel)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(PitchFromVel(self));
 }
 
 // This combines all 3 variations of the internal function

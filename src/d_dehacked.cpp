@@ -76,6 +76,7 @@
 #include "backend/vmbuilder.h"
 #include "types.h"
 #include "m_argv.h"
+#include "g_levellocals.h"
 
 // [SO] Just the way Randy said to do it :)
 // [RH] Made this CVAR_SERVERINFO
@@ -155,14 +156,15 @@ struct MBFParamState
 {
 	FState *state;
 	int pointer;
+	int args[8];
+	int argsused;
 };
 static TArray<MBFParamState> MBFParamStates;
 // Data on how to correctly modify the codepointers
 struct CodePointerAlias
 {
 	FName name;
-	char alias[20];
-	uint8_t params;
+	FString alias;
 };
 static TArray<CodePointerAlias> MBFCodePointers;
 
@@ -642,7 +644,7 @@ static int GetLine (void)
 }
 
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
-static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_Mushroom
 	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// spawntype
 	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);		// numspawns
@@ -669,7 +671,7 @@ static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2
 }
 
 // misc1 = type (arg +0), misc2 = Z-pos (arg +2)
-static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_SpawnItem
 	if (InfoNames[value1-1] == NULL)
 	{
@@ -687,21 +689,21 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2)
 }
 
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
-static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_Turn
 	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
 // misc1 = angle (in degrees) (arg +0)
-static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_FaceTarget
 	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
 	return 1;
 }
 
 // misc1 = damage, misc 2 = sound
-static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_CustomMeleeAttack
 	buildit.EmitParamInt(value1);					// damage
 	if (value2)
@@ -713,7 +715,7 @@ static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2)
 }
 
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
-static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_PlaySound
 	int float1 = buildit.GetConstantFloat(1);
 	int attenreg = buildit.GetConstantFloat(value2 ? ATTN_NONE : ATTN_NORM);
@@ -727,7 +729,7 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 }
 
 // misc1 = state, misc2 = probability
-static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_Jump
 	int statereg = buildit.GetConstantAddress(FindState(value1));
 
@@ -737,7 +739,7 @@ static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int valu
 }
 
 // misc1 = Boom linedef type, misc2 = sector tag
-static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_LineEffect
 	// This is the second MBF codepointer that couldn't be translated easily.
 	// Calling P_TranslateLineDef() here was a simple matter, as was adding an
@@ -750,7 +752,7 @@ static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int valu
 }
 
 // No misc, but it's basically A_Explode with an added effect
-static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2, int* args, int argsused)
 { // A_Explode
 	// This one does not actually have MBF-style parameters. But since
 	// we're aliasing it to an extension of A_Explode...
@@ -764,8 +766,17 @@ static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2
 	return 7;
 }
 
+static PClassActor* GetDehType(int num)
+{
+	PClassActor* type = nullptr;
+	if (num >= 0 && num < int(InfoNames.Size())) type = InfoNames[num];
+	if (type == nullptr) type = RUNTIME_CLASS(AActor);
+
+}
+
+
 // This array must be in sync with the Aliases array in DEHSUPP.
-static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int) =
+static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, int*, int) =
 {
 	// Die and Detonate are not in this list because these codepointers have
 	// no dehacked arguments and therefore do not need special handling.
@@ -778,12 +789,12 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int) =
 	CreatePlaySoundFunc,
 	CreateRandomJumpFunc,
 	CreateLineEffectFunc,
-	CreateNailBombFunc
+	CreateNailBombFunc,
 };
 
 // Creates new functions for the given state so as to convert MBF-args (misc1 and misc2) into real args.
 
-void SetDehParams(FState *state, int codepointer)
+void SetDehParams(FState *state, int codepointer, int* args, int argsused)
 {
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
@@ -817,7 +828,7 @@ void SetDehParams(FState *state, int codepointer)
 			buildit.Emit(OP_PARAM, 0, REGT_POINTER, i);
 		}
 		// Emit code for action parameters.
-		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2);
+		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2, args, argsused);
 		buildit.Emit(OP_TAIL_K, buildit.GetConstantAddress(sym->Variants[0].Implementation), numargs + argcount, 0);
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
@@ -1059,7 +1070,7 @@ static int PatchThing (int thingy)
 		}
 		else if (linelen == 11 && stricmp(Line1, "melee range") == 0)
 		{
-			info->meleerange = DEHToDouble(val);
+			info->meleerange = DEHToDouble(val) - 20;	// -20 is needed because DSDA subtracts it in P_CheckMeleeRange, while GZDoom does not.
 		}
 		else if (linelen == 10 && stricmp(Line1, "MBF21 Bits") == 0)
 		{
@@ -1522,6 +1533,8 @@ DehBits sbits[] = {
 
 static int PatchFrame (int frameNum)
 {
+	int args[8]{};
+	int argsused = 0;
 	int result;
 	int tics, misc1, frame;
 	FState *info, dummy;
@@ -1602,6 +1615,19 @@ static int PatchFrame (int frameNum)
 		else if (keylen == 16 && stricmp (Line1, "Sprite subnumber") == 0)
 		{
 			frame = val;
+		}
+		else if (keylen == 5 && strnicmp(Line1, "Args", 4) == 0)
+		{
+			int arg = Line1[4] - '1';
+			if (arg < 0 || arg >= 8)
+			{
+				Printf("Invalid frame arg %d\n", arg);
+			}
+			else
+			{
+				args[arg] = val;
+				argsused |= (1 << arg);
+			}
 		}
 		else if (stricmp(Line1, "MBF21 Bits") == 0)
 		{
@@ -1970,12 +1996,11 @@ static int PatchWeapon (int weapNum)
 	return result;
 }
 
-static void SetPointer(FState *state, PFunction *sym, int frame = 0)
+static int SetPointer(FState *state, PFunction *sym, int frame = 0)
 {
 	if (sym == NULL)
 	{
 		state->ClearAction();
-		return;
 	}
 	else
 	{
@@ -1985,14 +2010,12 @@ static void SetPointer(FState *state, PFunction *sym, int frame = 0)
 		{
 			if (sym->SymbolName == MBFCodePointers[i].name)
 			{
-				MBFParamState newstate;
-				newstate.state = state;
-				newstate.pointer = i;
-				MBFParamStates.Push(newstate);
-				break; // No need to cycle through the rest of the list.
+				MBFParamState newstate = { state, int(i) };
+				return MBFParamStates.Push(newstate);
 			}
 		}
 	}
+	return -1;
 }
 
 static int PatchPointer (int ptrNum)
@@ -2891,7 +2914,7 @@ static void UnloadDehSupp ()
 		// Handle MBF params here, before the required arrays are cleared
 		for (unsigned int i=0; i < MBFParamStates.Size(); i++)
 		{
-			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer);
+			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, MBFParamStates[i].args, MBFParamStates[i].argsused);
 		}
 		MBFParamStates.Clear();
 		MBFParamStates.ShrinkToFit();
@@ -3235,14 +3258,10 @@ static bool LoadDehSupp ()
 				{
 					CodePointerAlias temp;
 					sc.MustGetString();
-					strncpy(temp.alias, sc.String, 19);
-					temp.alias[19]=0;
+					temp.alias = sc.String;
 					sc.MustGetStringName(",");
 					sc.MustGetString();
 					temp.name = sc.String;
-					sc.MustGetStringName(",");
-					sc.MustGetNumber();
-					temp.params = sc.Number;
 					MBFCodePointers.Push(temp);
 					if (sc.CheckString("}")) break;
 					sc.MustGetStringName(",");
@@ -3430,3 +3449,240 @@ DEFINE_ACTION_FUNCTION(ADehackedPickup, DetermineType)
 	ACTION_RETURN_POINTER(nullptr);
 }
 
+// Handling the flags is not as trivial as it seems...
+
+struct FlagHandler
+{
+	void (*setter)(AActor*);
+	void (*clearer)(AActor*);
+	bool (*checker)(AActor*);
+};
+
+// cut down on boilerplate
+#define F(flag) { [](AActor* a) { a->flags |= flag; }, [](AActor* a) { a->flags &= ~flag; }, [](AActor* a)->bool { return a->flags & flag; } }
+#define F2(flag) { [](AActor* a) { a->flags2 |= flag; }, [](AActor* a) { a->flags2 &= ~flag; }, [](AActor* a)->bool { return a->flags2 & flag; } }
+#define F3(flag) { [](AActor* a) { a->flags3 |= flag; }, [](AActor* a) { a->flags3 &= ~flag; }, [](AActor* a)->bool { return a->flags3 & flag; } }
+#define F4(flag) { [](AActor* a) { a->flags4 |= flag; }, [](AActor* a) { a->flags4 &= ~flag; }, [](AActor* a)->bool { return a->flags4 & flag; } }
+#define F8(flag) { [](AActor* a) { a->flags8 |= flag; }, [](AActor* a) { a->flags8 &= ~flag; }, [](AActor* a)->bool { return a->flags8 & flag; } }
+#define DEPF(flag) { [](AActor* a) { HandleDeprecatedFlags(a, nullptr, true, flag); }, [](AActor* a) { HandleDeprecatedFlags(a, nullptr, false, flag); }, [](AActor* a)->bool { return CheckDeprecatedFlags(a, nullptr, flag); } }
+
+void SetNoSector(AActor* a) 
+{ 
+	a->UnlinkFromWorld(nullptr); 
+	a->flags |= MF_NOSECTOR; 
+	a->LinkToWorld(nullptr); 
+}
+
+void ClearNoSector(AActor* a)
+{
+	a->UnlinkFromWorld(nullptr);
+	a->flags &= ~MF_NOSECTOR;
+	a->LinkToWorld(nullptr);
+}
+
+void SetNoBlockmap(AActor* a)
+{
+	a->UnlinkFromWorld(nullptr);
+	a->flags |= MF_NOBLOCKMAP;
+	a->LinkToWorld(nullptr);
+}
+
+void ClearNoBlockmap(AActor* a)
+{
+	a->UnlinkFromWorld(nullptr);
+	a->flags &= ~MF_NOBLOCKMAP;
+	a->LinkToWorld(nullptr);
+}
+
+void SetCountkill(AActor* a)
+{
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters--;
+	a->flags |= MF_COUNTKILL;
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters++;
+}
+
+void ClearCountkill(AActor* a)
+{
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters--;
+	a->flags &= ~MF_COUNTKILL;
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters++;
+}
+
+void SetCountitem(AActor* a)
+{
+	if (!(a->flags & MF_COUNTITEM))
+	{
+		a->flags |= MF_COUNTITEM;
+		level.total_items++;
+	}
+}
+
+void ClearCountitem(AActor* a)
+{
+	if (a->flags & MF_COUNTITEM)
+	{
+		a->flags |= MF_COUNTITEM;
+		level.total_items--;
+	}
+}
+
+void SetFriendly(AActor* a)
+{
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters--;
+	a->flags |= MF_FRIENDLY;
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters++;
+}
+
+void ClearFriendly(AActor* a)
+{
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters--;
+	a->flags &= ~MF_FRIENDLY;
+	if (a->CountsAsKill() && a->health > 0) level.total_monsters++;
+}
+
+void SetFullVol(AActor* a)
+{
+	a->flags8 |= MF8_FULLVOLSEE; 
+	a->flags3 |= MF3_FULLVOLDEATH;
+}
+
+void ClearFullVol(AActor* a)
+{
+	a->flags8 &= ~MF8_FULLVOLSEE;
+	a->flags3 &= ~MF3_FULLVOLDEATH;
+}
+
+
+static FlagHandler flag1handlers[32] = {
+	F(MF_SPECIAL),
+	F(MF_SOLID),
+	F(MF_SHOOTABLE),
+	{ SetNoSector, ClearNoSector, [](AActor* a)->bool { return a->flags & MF_NOSECTOR; } },
+	{ SetNoBlockmap, ClearNoBlockmap, [](AActor* a)->bool { return a->flags & MF_NOBLOCKMAP; } },
+	F(MF_AMBUSH),
+	F(MF_JUSTHIT),
+	F(MF_JUSTATTACKED),
+	F(MF_SPAWNCEILING),
+	F(MF_NOGRAVITY),
+	F(MF_DROPOFF),
+	F(MF_PICKUP),
+	F(MF_NOCLIP),
+	{ nullptr, nullptr, nullptr}, // MF_SLIDE no longer exists.
+	F(MF_FLOAT),
+	F(MF_TELEPORT),
+	F(MF_MISSILE),
+	F(MF_DROPPED),
+	F(MF_SHADOW),
+	F(MF_NOBLOOD),
+	F(MF_CORPSE),
+	F(MF_INFLOAT),
+	{ SetCountkill, ClearCountkill, [](AActor* a)->bool { return a->flags & MF_COUNTKILL; } },
+	{ SetCountitem, ClearCountitem, [](AActor* a)->bool { return a->flags & MF_COUNTITEM; } },
+	F(MF_SKULLFLY),
+	F(MF_NOTDMATCH),
+	// translation, unused and translucent are no longer checkable in any way. Pity.
+};
+
+static FlagHandler flag2handlers[32] = {
+	DEPF(DEPF_LOWGRAVITY),
+	DEPF(DEPF_SHORTMISSILERANGE),
+	F3(MF3_NOTARGET),
+	F3(MF3_NORADIUSDMG),
+	F4(MF4_FORCERADIUSDMG),
+	DEPF(DEPF_HIGHERMPROB),
+	F4(MF4_MISSILEMORE),
+	F4(MF4_QUICKTORETALIATE),
+	DEPF(DEPF_LONGMELEERANGE),
+	F2(MF2_BOSS),
+	F8(MF8_MAP07BOSS1),
+	F8(MF8_MAP07BOSS2),
+	F8(MF8_E1M8BOSS),
+	F8(MF8_E2M8BOSS),
+	F8(MF8_E3M8BOSS),
+	F8(MF8_E4M6BOSS),
+	F8(MF8_E4M8BOSS),
+	F2(MF2_RIP),
+	{ SetFullVol, ClearFullVol, [](AActor* a)->bool { return a->flags8 & MF8_FULLVOLSEE; } }, // checking one of the two flags should suffice here.
+};
+
+
+//
+// A_JumpIfFlagsSet
+// Jumps to a state if caller has the specified thing flags set.
+//   args[0]: State to jump to
+//   args[1]: Standard Flag(s) to check
+//   args[2]: MBF21 Flag(s) to check
+//
+DEFINE_ACTION_FUNCTION(AActor, MBF21_JumpIfFlagsSet)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_POINTER(tstate, FState);
+	PARAM_INT(flags);
+	PARAM_INT(flags2);
+
+	for (int i = 0; i < 32; i++)
+	{
+		if (flags & (1 << i) && flag1handlers[i].checker)
+		{
+			if (!flag1handlers[i].checker(self)) return 0;
+		}
+		if (flags2 & (1 << i) && flag2handlers[i].checker)
+		{
+			if (!flag2handlers[i].checker(self)) return 0;
+		}
+	}
+	self->SetState(tstate);
+	return 0;
+}
+
+//
+// A_AddFlags
+// Adds the specified thing flags to the caller.
+//   args[0]: Standard Flag(s) to add
+//   args[1]: MBF21 Flag(s) to add
+//
+DEFINE_ACTION_FUNCTION(AActor, MBF21_AddFlags)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(flags);
+	PARAM_INT(flags2);
+
+	for (int i = 0; i < 32; i++)
+	{
+		if (flags & (1 << i) && flag1handlers[i].setter)
+		{
+			flag1handlers[i].setter(self);
+		}
+		if (flags2 & (1 << i) && flag2handlers[i].setter)
+		{
+			flag2handlers[i].setter(self);
+		}
+	}
+	return 0;
+}
+
+//
+// A_RemoveFlags
+// Removes the specified thing flags from the caller.
+//   args[0]: Flag(s) to remove
+//   args[1]: MBF21 Flag(s) to remove
+//
+DEFINE_ACTION_FUNCTION(AActor, MBF21_RemoveFlags)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(flags);
+	PARAM_INT(flags2);
+
+	for (int i = 0; i < 32; i++)
+	{
+		if (flags & (1 << i) && flag1handlers[i].clearer)
+		{
+			flag1handlers[i].clearer(self);
+		}
+		if (flags2 & (1 << i) && flag2handlers[i].clearer)
+		{
+			flag2handlers[i].clearer(self);
+		}
+	}
+	return 0;
+}
