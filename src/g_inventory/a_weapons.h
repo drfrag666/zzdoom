@@ -178,7 +178,8 @@ enum
 										// AmmoUse1 will be set to the first attack's ammo use so that checking for empty weapons still works
 	WIF_NODEATHDESELECT =	0x00020000, // Don't jump to the Deselect state when the player dies
 	WIF_NODEATHINPUT =		0x00040000, // The weapon cannot be fired/reloaded/whatever when the player is dead
-	WIF_CHEATNOTWEAPON	=	0x08000000,	// Give cheat considers this not a weapon (used by Sigil)
+	WIF_CHEATNOTWEAPON	=	0x00080000,	// Give cheat considers this not a weapon (used by Sigil)
+	WIF_NOAUTOSWITCHTO =	0x00100000, // cannot be switched to when autoswitching weapons.
 
 	// Flags used only by bot AI:
 
