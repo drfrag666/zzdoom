@@ -880,199 +880,155 @@ static void CreateLineEffectFunc(FunctionCallEmitter &emitters, int value1, int 
 	emitters.AddParameterIntConst(value2);		// tag
 }
 
-// No misc, but it's basically A_Explode with an added effect
-static void CreateNailBombFunc(FunctionCallEmitter &emitters, int value1, int value2)
-{ // A_Explode
-	// This one does not actually have MBF-style parameters. But since
-	// we're aliasing it to an extension of A_Explode...
-	emitters.AddParameterIntConst(-1);		// damage
-	emitters.AddParameterIntConst(-1);		// distance
-	emitters.AddParameterIntConst(1);		// flags (1=XF_HURTSOURCE)
-	emitters.AddParameterIntConst(0);		// alert
-	emitters.AddParameterIntConst(0);		// fulldamagedistance
-	emitters.AddParameterIntConst(30);		// nails
-	emitters.AddParameterIntConst(10);		// naildamage
-	emitters.AddParameterPointerConst(PClass::FindClass(NAME_BulletPuff));	// itemtype
-	emitters.AddParameterIntConst(NAME_None);	// damage type
+static void CreateSpawnObjectFunc(FunctionCallEmitter& emitters, int value1, int value2, MBFParamState* state)
+{
+	state->ValidateArgCount(8, "A_SpawnObject");
+	emitters.AddParameterPointerConst(state->GetTypeArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
+	emitters.AddParameterFloatConst(state->GetFloatArg(2));
+	emitters.AddParameterFloatConst(state->GetFloatArg(3));
+	emitters.AddParameterFloatConst(state->GetFloatArg(4));
+	emitters.AddParameterFloatConst(state->GetFloatArg(5));
+	emitters.AddParameterFloatConst(state->GetFloatArg(6));
+	emitters.AddParameterFloatConst(state->GetFloatArg(7));
 }
 
-static int CreateMonsterProjectileFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateMonsterProjectileFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(5, "A_MonsterProjectile");
-	int typereg = buildit.GetConstantAddress(state->GetTypeArg(0));
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(2));
-	int float3 = buildit.GetConstantFloat(state->GetFloatArg(3));
-	int float4 = buildit.GetConstantFloat(state->GetFloatArg(4));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float3);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float4);
-	return 5;
+	emitters.AddParameterPointerConst(state->GetTypeArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
+	emitters.AddParameterFloatConst(state->GetFloatArg(2));
+	emitters.AddParameterFloatConst(state->GetFloatArg(3));
+	emitters.AddParameterFloatConst(state->GetFloatArg(4));
 }
 
-static int CreateMonsterBulletAttackFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateMonsterBulletAttackFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(5, "A_MonsterBulletAttack");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(2));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	buildit.EmitParamInt(state->GetIntArg(2, 1));
-	buildit.EmitParamInt(state->GetIntArg(3, 3));
-	buildit.EmitParamInt(state->GetIntArg(4, 5));
-	return 5;
+	emitters.AddParameterFloatConst(state->GetFloatArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
+	emitters.AddParameterIntConst(state->GetIntArg(2, 1));
+	emitters.AddParameterIntConst(state->GetIntArg(3, 3));
+	emitters.AddParameterIntConst(state->GetIntArg(4, 5));
 }
 
-static int CreateMonsterMeleeAttackFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateMonsterMeleeAttackFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(4, "A_MonsterMeleeAttack");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(3));
-	buildit.EmitParamInt(state->GetIntArg(0, 3));
-	buildit.EmitParamInt(state->GetIntArg(1, 8));
-	buildit.EmitParamInt(state->GetSoundArg(2, 0));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	return 4;
+	emitters.AddParameterIntConst(state->GetIntArg(0, 3));
+	emitters.AddParameterIntConst(state->GetIntArg(1, 8));
+	emitters.AddParameterIntConst(state->GetSoundArg(2, 0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(3));
+
 }
 
-static int CreateRadiusDamageFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateRadiusDamageFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_RadiusDamage");
-	buildit.EmitParamInt(state->GetIntArg(0, 0));
-	buildit.EmitParamInt(state->GetIntArg(1, 0));
-	return 2;
+	emitters.AddParameterIntConst(state->GetIntArg(0, 0));
+	emitters.AddParameterIntConst(state->GetIntArg(1, 0));
 }
 
-static int CreateHealChaseFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateHealChaseFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_HealChase");
-	int statereg = buildit.GetConstantAddress(state->GetStateArg(0));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);
-	buildit.EmitParamInt(state->GetSoundArg(1));
-	return 2;
+	emitters.AddParameterPointerConst(state->GetStateArg(0));
+	emitters.AddParameterIntConst(state->GetSoundArg(1));
 }
 
-static int CreateSeekTracerFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateSeekTracerFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_SeekTracer");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(0, 0));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(1, 0));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	return 2;
+	emitters.AddParameterFloatConst(state->GetFloatArg(0, 0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1, 0));
 }
 
-static int CreateFindTracerFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateFindTracerFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_FindTracer");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(0));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.EmitParamInt(state->GetIntArg(1, 10));
-	return 2;
+	emitters.AddParameterFloatConst(state->GetFloatArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1, 10));
 }
 
-static int CreateJumpIfHealthBelowFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateJumpIfHealthBelowFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_JumpIfHealthBelow");
-	int statereg = buildit.GetConstantAddress(state->GetStateArg(0));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);
-	buildit.EmitParamInt(state->GetIntArg(1));
-	return 2;
+	emitters.AddParameterPointerConst(state->GetStateArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1));
 }
 
-static int CreateJumpIfFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateJumpIfFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_JumpIf..");
-	int statereg = buildit.GetConstantAddress(state->GetStateArg(0));
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	return 2;
+	emitters.AddParameterPointerConst(state->GetStateArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
 }
 
-static int CreateJumpIfFlagSetFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateJumpIfFlagSetFunc(FunctionCallEmitter& emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_JumpIfFlagsSet");
-	int statereg = buildit.GetConstantAddress(state->GetStateArg(0));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);
-	buildit.EmitParamInt(state->GetIntArg(1));
-	buildit.EmitParamInt(state->GetIntArg(2));
-	return 2;
+	emitters.AddParameterPointerConst(state->GetStateArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1));
+	emitters.AddParameterIntConst(state->GetIntArg(2));
 }
 
-static int CreateFlagSetFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateFlagSetFunc(FunctionCallEmitter& emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_...Flags");
-	buildit.EmitParamInt(state->GetIntArg(0));
-	buildit.EmitParamInt(state->GetIntArg(1));
-	return 2;
+	emitters.AddParameterIntConst(state->GetIntArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1));
 }
 
-static int CreateWeaponProjectileFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateWeaponProjectileFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(5, "A_WeaponProjectile");
-	int typereg = buildit.GetConstantAddress(state->GetTypeArg(0));
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(2));
-	int float3 = buildit.GetConstantFloat(state->GetFloatArg(3));
-	int float4 = buildit.GetConstantFloat(state->GetFloatArg(4));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float3);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float4);
-	return 5;
+	emitters.AddParameterPointerConst(state->GetTypeArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
+	emitters.AddParameterFloatConst(state->GetFloatArg(2));
+	emitters.AddParameterFloatConst(state->GetFloatArg(3));
+	emitters.AddParameterFloatConst(state->GetFloatArg(4));
 }
 
-static int CreateWeaponBulletAttackFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateWeaponBulletAttackFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(5, "A_WeaponBulletAttack");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(0));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(1));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	buildit.EmitParamInt(state->GetIntArg(2, 1));
-	buildit.EmitParamInt(state->GetIntArg(3, 5));
-	buildit.EmitParamInt(state->GetIntArg(4, 3));
-	return 5;
+	emitters.AddParameterFloatConst(state->GetFloatArg(0));
+	emitters.AddParameterFloatConst(state->GetFloatArg(1));
+	emitters.AddParameterIntConst(state->GetIntArg(2, 1));
+	emitters.AddParameterIntConst(state->GetIntArg(3, 5));
+	emitters.AddParameterIntConst(state->GetIntArg(4, 3));
 }
 
-static int CreateWeaponMeleeAttackFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateWeaponMeleeAttackFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(5, "A_WeaponMeleeAttack");
-	int float1 = buildit.GetConstantFloat(state->GetFloatArg(2, 1));
-	int float2 = buildit.GetConstantFloat(state->GetFloatArg(4));
-	buildit.EmitParamInt(state->GetIntArg(0, 2));
-	buildit.EmitParamInt(state->GetIntArg(1, 10));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.EmitParamInt(state->GetSoundArg(3));
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
-	return 5;
+	emitters.AddParameterIntConst(state->GetIntArg(0, 2));
+	emitters.AddParameterIntConst(state->GetIntArg(1, 10));
+	emitters.AddParameterFloatConst(state->GetFloatArg(2, 1));
+	emitters.AddParameterIntConst(state->GetSoundArg(3));
+	emitters.AddParameterFloatConst(state->GetFloatArg(4));
 }
 
-static int CreateWeaponSoundFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateWeaponSoundFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_WeaponSound");
-	buildit.EmitParamInt(state->GetSoundArg(0));
-	buildit.EmitParamInt(state->GetIntArg(1));
-	return 2;
+	emitters.AddParameterIntConst(state->GetSoundArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1));
 }
 
-static int CreateWeaponJumpFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateWeaponJumpFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(2, "A_WeaponJump");
-	int statereg = buildit.GetConstantAddress(state->GetStateArg(0));
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);
-	buildit.EmitParamInt(state->GetIntArg(1));
-	return 2;
+	emitters.AddParameterPointerConst(state->GetStateArg(0));
+	emitters.AddParameterIntConst(state->GetIntArg(1));
 }
 
-static int CreateConsumeAmmoFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
+static void CreateConsumeAmmoFunc(FunctionCallEmitter &emitters, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(1, "A_ConsumeAmmo");
-	buildit.EmitParamInt(state->GetIntArg(0));
-	return 1;
+	emitters.AddParameterIntConst(state->GetIntArg(0));
+
 }
 
 // This array must be in sync with the Aliases array in DEHSUPP.
