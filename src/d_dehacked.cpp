@@ -150,14 +150,20 @@ static TArray<StyleName> StyleNames;
 static TArray<PClassActor *> AmmoNames;
 static TArray<PClassActor *> WeaponNames;
 
+struct MBFArgs
+{
+	int64_t args[8];
+	int argsused;
+};
+static TMap<FState*, MBFArgs> stateargs;
+
 // DeHackEd trickery to support MBF-style parameters
 // List of states that are hacked to use a codepointer
 struct MBFParamState
 {
 	FState *state;
 	int pointer;
-	int64_t args[8];
-	int argsused;
+	MBFArgs args;
 };
 static TArray<MBFParamState> MBFParamStates;
 // Data on how to correctly modify the codepointers
@@ -1528,8 +1534,7 @@ DehBits sbits[] = {
 
 static int PatchFrame (int frameNum)
 {
-	int args[8]{};
-	int argsused = 0;
+	MBFArgs args{};
 	int result;
 	int tics, misc1, frame;
 	FState *info, dummy;
@@ -1562,7 +1567,8 @@ static int PatchFrame (int frameNum)
 
 	while ((result = GetLine ()) == 1)
 	{
-		int val = atoi (Line2);
+		int64_t val64 = atoll(Line2);
+		int val = int(val64);
 		size_t keylen = strlen (Line1);
 
 		if (keylen == 8 && stricmp (Line1, "Duration") == 0)
@@ -1620,8 +1626,8 @@ static int PatchFrame (int frameNum)
 			}
 			else
 			{
-				args[arg] = val;
-				argsused |= (1 << arg);
+				args.args[arg] = val64;
+				args.argsused |= (1 << arg);
 			}
 		}
 		else if (stricmp(Line1, "MBF21 Bits") == 0)
@@ -1691,6 +1697,7 @@ static int PatchFrame (int frameNum)
 		info->Frame = frame & 0x3f;
 		if (frame & 0x8000) info->StateFlags |= STF_FULLBRIGHT;
 		else info->StateFlags &= ~STF_FULLBRIGHT;
+		stateargs.Insert(info, args);
 	}
 
 	return result;
@@ -2911,6 +2918,7 @@ static void UnloadDehSupp ()
 		{
 			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, &MBFParamStates[i]);
 		}
+		stateargs.Clear();
 		MBFParamStates.Clear();
 		MBFParamStates.ShrinkToFit();
 		MBFCodePointers.Clear();
