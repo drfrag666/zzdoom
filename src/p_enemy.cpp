@@ -585,7 +585,7 @@ bool P_Move (AActor *actor)
 	// want to yank them to the ground here as Doom did, since that makes
 	// it difficult to thrust them vertically in a reasonable manner.
 	// [GZ] Let jumping actors jump.
-	if (!((actor->flags & MF_NOGRAVITY) || (actor->flags6 & MF6_CANJUMP))
+	if (!((actor->flags & MF_NOGRAVITY) || CanJump(actor))
 		&& actor->Z() > actor->floorz && !(actor->flags2 & MF2_ONMOBJ))
 	{
 		return false;
@@ -698,7 +698,7 @@ bool P_Move (AActor *actor)
 	// to the floor if it is within MaxStepHeight, presuming that it is
 	// actually walking down a step.
 	if (try_ok &&
-		!((actor->flags & MF_NOGRAVITY) || (actor->flags6 & MF6_CANJUMP))
+		!((actor->flags & MF_NOGRAVITY) || CanJump(actor))
 			&& actor->Z() > actor->floorz && !(actor->flags2 & MF2_ONMOBJ))
 	{
 		if (actor->Z() <= actor->floorz + actor->MaxStepHeight)
@@ -725,7 +725,7 @@ bool P_Move (AActor *actor)
 
 	if (!try_ok)
 	{
-		if (((actor->flags6 & MF6_CANJUMP)||(actor->flags & MF_FLOAT)) && tm.floatok)
+		if ((CanJump(actor) || (actor->flags & MF_FLOAT)) && tm.floatok)
 		{ // must adjust height
 			double savedz = actor->Z();
 
@@ -736,7 +736,7 @@ bool P_Move (AActor *actor)
 
 
 			// [RH] Check to make sure there's nothing in the way of the float
-			if (P_TestMobjZ (actor))
+			if (P_TestMobjZ(actor))
 			{
 				actor->flags |= MF_INFLOAT;
 				return true;
