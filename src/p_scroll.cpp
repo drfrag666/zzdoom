@@ -542,6 +542,7 @@ void P_SpawnScrollers(void)
 
 		case Scroll_Texture_Offsets:
 		{
+			double divider = MAX(1, l->args[3]);
 			// killough 3/2/98: scroll according to sidedef offsets
 			s = l->sidedef[0]->Index();
 			if (l->args[2] & 3)
@@ -552,18 +553,18 @@ void P_SpawnScrollers(void)
 				if (l->args[2] & 2)
 					accel = 1;
 			}
+			double dx = -level.sides[s].GetTextureXOffset(side_t::mid) / divider;
+			double dy = level.sides[s].GetTextureYOffset(side_t::mid) / divider;
 			if (l->args[1] == 0)
 			{
-				Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
-					level.sides[s].GetTextureYOffset(side_t::mid), control, s, accel, SCROLLTYPE(l->args[0]));
+				Create<DScroller> (EScroll::sc_side, dx, dy, control, s, accel, SCROLLTYPE(l->args[0]));
 			}
 			else
 			{
 				FLineIdIterator itr(l->args[1]);
 				while (int ln = itr.Next())
 				{
-					Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
-						level.sides[s].GetTextureYOffset(side_t::mid), control, level.lines[ln].sidedef[0]->Index(), accel, SCROLLTYPE(l->args[0]));
+					Create<DScroller> (EScroll::sc_side, dx, dy, control, level.lines[ln].sidedef[0]->Index(), accel, SCROLLTYPE(l->args[0]));
 				}
 			}
 			break;
