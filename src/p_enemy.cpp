@@ -596,7 +596,7 @@ bool P_Move (AActor *actor)
 	// and only if the target is immediately on the other side of the line.
 	AActor *target = actor->target;
 
-	if ((actor->flags6 & MF6_JUMPDOWN) && target &&
+	if ((actor->flags6 & MF6_JUMPDOWN) && target && !(level.flags3 & LEVEL3_NOJUMPDOWN) &&
 			!(target->IsFriend(actor)) &&
 			actor->Distance2D(target) < 144 &&
 			pr_dropoff() < 235)
