@@ -1514,6 +1514,7 @@ MapFlagHandlers[] =
 	{ "needclustertext",				MITYPE_SETFLAG3,	LEVEL3_NEEDCLUSTERTEXT, 0 },
 	{ "noclustertext",					MITYPE_SETFLAG3,	LEVEL3_NOCLUSTERTEXT, 0 },	// Normally there shouldn't be a need to explicitly set this 
 	{ "forcefakecontrast",				MITYPE_SETFLAG3,	LEVEL3_FORCEFAKECONTRAST, 0 },
+	{ "avoidmelee",						MITYPE_SETFLAG3,	LEVEL3_AVOIDMELEE, 0 },
 	{ "nobotnodes",						MITYPE_IGNORE,	0, 0 },		// Skulltag option: nobotnodes
 	{ "compat_shorttex",				MITYPE_COMPATFLAG, COMPATF_SHORTTEX, 0 },
 	{ "compat_stairs",					MITYPE_COMPATFLAG, COMPATF_STAIRINDEX, 0 },

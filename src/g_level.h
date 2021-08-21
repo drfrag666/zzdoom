@@ -250,6 +250,7 @@ enum ELevelFlags : unsigned int
 	LEVEL3_E3M8SPECIAL			= 0x00002000,
 	LEVEL3_E4M8SPECIAL			= 0x00004000,
 	LEVEL3_E4M6SPECIAL			= 0x00008000,
+	LEVEL3_AVOIDMELEE			= 0x00020000,	// global flag needed for proper MBF support.
 };
 
 
