@@ -447,6 +447,11 @@ int FIWadManager::IdentifyVersion (TArray<FString> &wadfiles, const char *iwad, 
 		{
 			CheckIWAD (steam_path[i], &wads[0]);
 		}
+		TArray<FString> bethesda_path = I_GetBethesdaPath();
+		for (i = 0; i < bethesda_path.Size(); ++i)
+		{
+			CheckIWAD (bethesda_path[i], &wads[0]);
+		}
 	}
 
 	if (iwadparm != NULL && !wads[0].Path.IsEmpty())
