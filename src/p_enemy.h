@@ -51,7 +51,7 @@ bool P_HitFriend (AActor *self);
 void P_NoiseAlert (AActor *target, AActor *emmiter, bool splash=false, double maxdist=0);
 
 bool P_CheckMeleeRange2 (AActor *actor);
-bool P_Move (AActor *actor);
+int P_SmartMove (AActor *actor);
 bool P_TryWalk (AActor *actor);
 void P_NewChaseDir (AActor *actor);
 AInventory *P_DropItem (AActor *source, PClassActor *type, int special, int chance);
