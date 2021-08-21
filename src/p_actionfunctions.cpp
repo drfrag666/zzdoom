@@ -1637,7 +1637,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CustomMeleeAttack)
 		return 0;
 				
 	A_FaceTarget (self);
-	if (self->CheckMeleeRange ())
+	if (P_CheckMeleeRange(self))
 	{
 		if (meleesound)
 			S_Sound (self, CHAN_WEAPON, meleesound, 1, ATTN_NORM);
@@ -1672,7 +1672,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CustomComboAttack)
 		return 0;
 				
 	A_FaceTarget (self);
-	if (self->CheckMeleeRange())
+	if (P_CheckMeleeRange(self))
 	{
 		if (damagetype == NAME_None)
 			damagetype = NAME_Melee;	// Melee is the default type

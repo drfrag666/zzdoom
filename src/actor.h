@@ -645,9 +645,6 @@ public:
 	int AbsorbDamage(int damage, FName dmgtype);
 	void AlterWeaponSprite(visstyle_t *vis);
 
-	// Returns true if this actor is within melee range of its target
-	bool CheckMeleeRange(double range = -1);
-
 	bool CheckNoDelay();
 
 	virtual void BeginPlay();			// Called immediately after the actor is created
