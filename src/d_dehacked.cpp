@@ -78,6 +78,8 @@
 #include "m_argv.h"
 #include "g_levellocals.h"
 
+extern TArray<PalEntry> TranslationColors;
+
 // [SO] Just the way Randy said to do it :)
 // [RH] Made this CVAR_SERVERINFO
 CVAR (Int, infighting, 0, CVAR_SERVERINFO)
@@ -1340,6 +1342,37 @@ static int PatchThing (int thingy)
 		else if (linelen == 11 && stricmp(Line1, "melee range") == 0)
 		{
 			info->meleerange = DEHToDouble(val) - 20;	// -20 is needed because DSDA subtracts it in P_CheckMeleeRange, while GZDoom does not.
+		}
+		else if (linelen == 12 && stricmp(Line1, "dropped item") == 0)
+		{
+			if ((unsigned)val < InfoNames.Size())
+			{
+				FDropItem* di = (FDropItem*)ClassDataAllocator.Alloc(sizeof(FDropItem));
+
+				di->Name = InfoNames[val]->TypeName.GetChars();
+				di->Probability = 255;
+				di->Amount = -1;
+				info->GetInfo()->DropItems = di;
+			}
+		}
+		else if (linelen == 11 && stricmp(Line1, "blood color") == 0)
+		{
+			static const unsigned int bloodcolor[] = {
+			  0,          // 0 - Red (normal)
+			  0xffcccccc, // 1 - Grey
+			  0xff63af57, // 2 - Green
+			  0xff6357af, // 3 - Blue
+			  0xffffd300, // 4 - Yellow
+			  0xff333333, // 5 - Black
+			  0xffff30ff, // 6 - Purple
+			  0xffffffff, // 7 - White
+			  0xffff8000, // 8 - Orange
+			};
+
+			if (val < 0 || val > 8) val = 0;
+			unsigned color = bloodcolor[val];
+			info->BloodColor = color;
+			info->BloodTranslation = val == 0? 0 : TRANSLATION(TRANSLATION_Blood, CreateBloodTranslation(color));
 		}
 		else if (linelen == 10 && stricmp(Line1, "MBF21 Bits") == 0)
 		{
