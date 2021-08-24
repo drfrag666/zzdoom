@@ -437,6 +437,7 @@ enum
 	SECF_UNDERWATERMASK	= 32+64,
 	SECF_DRAWN			= 128,	// sector has been drawn at least once
 	SECF_HIDDEN			= 256,	// Do not draw on textured automap
+	SECMF_LIFT			= 2048,	// For MBF monster AI
 };
 
 enum
