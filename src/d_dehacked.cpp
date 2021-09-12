@@ -105,6 +105,7 @@ static TArray<int> OrgHeights;
 // disappear, but that doesn't explain why frame patches specify an exact
 // state rather than a code pointer.)
 static TArray<int> CodePConv;
+static bool dsdhacked = false;
 
 // Sprite names in the order Doom originally had them.
 struct DEHSprName
@@ -129,6 +130,28 @@ static TArray<FSoundID> SoundMap;
 
 // Names of different actor types, in original Doom 2 order
 static TArray<PClassActor *> InfoNames;
+
+static PClassActor* FindInfoName(int index, bool mustexist = false)
+{
+	if (index < 0) return nullptr;
+	if (index < (int)InfoNames.Size()) return InfoNames[index];
+
+	if (dsdhacked)
+	{
+		FStringf name("~Dsdhacked~%d", index);
+		auto cls = PClass::FindActor(name);
+		if (cls)
+		{
+			GetDefaultByType(cls)->flags8 |= MF8_RETARGETAFTERSLAM; // This flag is not a ZDoom default, but it must be a Dehacked default.
+			return cls;
+		}
+		if (!mustexist)
+		{
+			return static_cast<PClassActor*>(RUNTIME_CLASS(AActor)->CreateDerivedClass(name.GetChars(), (unsigned)sizeof(AActor)));
+		}
+	}
+	return nullptr;
+}
 
 // bit flags for PatchThing (a .bex extension):
 struct BitName
@@ -171,10 +194,8 @@ struct MBFParamState
 
 	PClassActor* GetTypeArg(int i)
 	{
-		PClassActor* type = nullptr;
 		int num = (int)args[i];
-		if (num > 0 && num < int(InfoNames.Size())) type = InfoNames[num-1];	// Dehacked is 1-based.
-		return type;
+		return FindInfoName(num-1, true);
 	}
 
 	FState* GetStateArg(int i)
@@ -348,7 +369,7 @@ static char *PatchFile, *PatchPt, *PatchName;
 static int PatchSize;
 static char *Line1, *Line2;
 static int	 dversion, pversion;
-static bool  including, includenotext, dsdhacked = false;
+static bool  including, includenotext;
 
 static const char *unknown_str = "Unknown key %s encountered in %s %d.\n";
 
@@ -379,8 +400,8 @@ static int PatchPars (int);
 static int PatchCodePtrs (int);
 static int PatchMusic (int);
 static int DoInclude (int);
-static int PatchSpriteNames (int);
-static int PatchSoundNames(int) {} // todo
+static int PatchSpriteNames(int) { return 0; } // todo
+static int PatchSoundNames(int) { return 0; } // todo
 static bool DoDehPatch();
 
 static const struct {
@@ -739,12 +760,13 @@ static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2
 // misc1 = type (arg +0), misc2 = Z-pos (arg +2)
 static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_SpawnItem
-	if (InfoNames[value1-1] == NULL)
+	auto p = FindInfoName(value1 - 1, true);
+	if (p == nullptr)
 	{
 		I_Error("No class found for dehackednum %d!\n", value1+1);
 		return 0;
 	}
-	int typereg = buildit.GetConstantAddress(InfoNames[value1-1]);
+	int typereg = buildit.GetConstantAddress(p);
 	int heightreg = buildit.GetConstantFloat(value2);
 
 	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, typereg);	// itemtype
@@ -1195,29 +1217,16 @@ static int PatchThing (int thingy)
 	type = NULL;
 	info = (AActor *)&dummy;
 	ednum = &dummyed;
-	if (thingy > (int)InfoNames.Size() || thingy <= 0)
+	auto thingytype = FindInfoName(thingy-1);
+	if (thingytype == nullptr)
 	{
-		Printf ("Thing %d out of range.\n", thingy);
+		Printf ("Thing %d out of range or invalid.\n", thingy);
 	}
 	else
 	{
 		DPrintf (DMSG_SPAMMY, "Thing %d\n", thingy);
-		if (thingy > 0)
-		{
-			type = InfoNames[thingy - 1];
-			if (type == NULL)
-			{
-				info = (AActor *)&dummy;
-				ednum = &dummyed;
-				// An error for the name has already been printed while loading DEHSUPP.
-				Printf ("Could not find thing %d\n", thingy);
-			}
-			else
-			{
-				info = GetDefaultByType (type);
-				ednum = &type->ActorInfo()->DoomEdNum;
-			}
-		}
+		info = GetDefaultByType (type);
+		ednum = &type->ActorInfo()->DoomEdNum;
 	}
 
 	oldflags = info->flags;
@@ -1345,13 +1354,13 @@ static int PatchThing (int thingy)
 		}
 		else if (linelen == 12 && stricmp(Line1, "dropped item") == 0)
 		{
-			val--;	// This is 1-based and 0 means 'no drop'.
-			if ((unsigned)val < InfoNames.Size())
+			auto drop = FindInfoName(val - 1);
+			if (drop)
 			{
 				FDropItem* di = (FDropItem*)ClassDataAllocator.Alloc(sizeof(FDropItem));
 
 				di->Next = nullptr;
-				di->Name = InfoNames[val]->TypeName.GetChars();
+				di->Name = drop->TypeName;
 				di->Probability = 255;
 				di->Amount = -1;
 				info->GetInfo()->DropItems = di;
