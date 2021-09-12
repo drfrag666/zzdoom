@@ -83,6 +83,7 @@ enum
 };
 
 int S_FindSound (const char *logicalname);
+int S_FindSoundTentative (const char *name);
 
 // the complete set of sound effects
 extern TArray<sfxinfo_t> S_sfx;
@@ -134,6 +135,14 @@ public:
 	{
 		return ID != other;
 	}
+	bool operator ==(FSoundID other) const
+	{
+		return ID == other.ID;
+	}
+	bool operator ==(int other) const
+	{
+		return ID == other;
+	}
 	operator int() const
 	{
 		return ID;
@@ -175,6 +184,9 @@ public:
 		return FSoundID::operator=(name);
 	}
 };
+
+const FSoundID NO_SOUND = FSoundID(0);
+const FSoundID INVALID_SOUND = FSoundID(-1);
 
 extern FRolloffInfo S_Rolloff;
 extern uint8_t *S_SoundCurve;
