@@ -1928,6 +1928,13 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FState *&state, FState
 					arc.w->Uint((uint32_t)(state - info->GetStates()));
 					arc.w->EndArray();
 				}
+				else if (state->DehIndex >= 0)
+				{
+					arc.w->StartArray();
+					arc.w->String("@DehExtraState@");
+					arc.w->Uint(state->DehIndex);
+					arc.w->EndArray();
+				}
 				else
 				{
 					arc.w->Null();

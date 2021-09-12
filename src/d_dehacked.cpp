@@ -158,7 +158,7 @@ struct MBFArgs
 	int argsused;
 };
 static TMap<FState*, MBFArgs> stateargs;
-static FState* FindState(int statenum);
+static FState* FindState(int statenum, bool mustexist = false);
 
 // DeHackEd trickery to support MBF-style parameters
 // List of states that are hacked to use a codepointer
@@ -348,7 +348,7 @@ static char *PatchFile, *PatchPt, *PatchName;
 static int PatchSize;
 static char *Line1, *Line2;
 static int	 dversion, pversion;
-static bool  including, includenotext;
+static bool  including, includenotext, dsdhacked = false;
 
 static const char *unknown_str = "Unknown key %s encountered in %s %d.\n";
 
@@ -379,6 +379,8 @@ static int PatchPars (int);
 static int PatchCodePtrs (int);
 static int PatchMusic (int);
 static int DoInclude (int);
+static int PatchSpriteNames (int);
+static int PatchSoundNames(int) {} // todo
 static bool DoDehPatch();
 
 static const struct {
@@ -402,6 +404,8 @@ static const struct {
 	{ "[PARS]",		PatchPars },
 	{ "[CODEPTR]",	PatchCodePtrs },
 	{ "[MUSIC]",	PatchMusic },
+	{ "[SPRITES]",	PatchSpriteNames },
+	{ "[SOUNDS]",	PatchSoundNames },
 	{ NULL, NULL },
 };
 
@@ -469,12 +473,12 @@ static int FindSprite (const char *sprname)
 	return -1;
 }
 
-static FState *FindState (int statenum)
+static FState *FindState (int statenum, bool mustexist)
 {
 	int stateacc;
 	unsigned i;
 
-	if (statenum == 0)
+	if (statenum <= 0)
 		return NULL;
 
 	for (i = 0, stateacc = 1; i < StateMap.Size(); i++)
@@ -492,6 +496,18 @@ static FState *FindState (int statenum)
 			else return NULL;
 		}
 		stateacc += StateMap[i].StateSpan;
+	}
+	if (dsdhacked && !mustexist)
+	{
+		auto p = dehExtStates.CheckKey(statenum);
+		if (p) return *p;
+		auto state = (FState*)ClassDataAllocator.Alloc(sizeof(FState));
+		dehExtStates.Insert(statenum, state);
+		memset(state, 0, sizeof(*state));
+		state->Tics = -1;
+		state->NextState = state;
+		state->DehIndex = statenum;
+
 	}
 	return NULL;
 }
@@ -781,7 +797,7 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 // misc1 = state, misc2 = probability
 static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 { // A_Jump
-	int statereg = buildit.GetConstantAddress(FindState(value1));
+	int statereg = buildit.GetConstantAddress(FindState(value1, true));
 
 	buildit.EmitParamInt(value2);									// maxchance
 	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, statereg);	// jumpto
@@ -2328,7 +2344,7 @@ static int PatchPointer (int ptrNum)
 	{
 		if ((unsigned)ptrNum < CodePConv.Size() && (!stricmp (Line1, "Codep Frame")))
 		{
-			FState *state = FindState (CodePConv[ptrNum]);
+			FState *state = FindState (CodePConv[ptrNum], true);
 			if (state)
 			{
 				int index = atoi(Line2);
@@ -3142,6 +3158,11 @@ static bool DoDehPatch()
 		dversion = 1;
 	else if (dversion == 21)
 		dversion = 4;
+	else if (dversion == 2021)
+	{
+		dversion = 4;
+		dsdhacked = true;
+	}
 	else
 	{
 		Printf ("Patch created with unknown DOOM version.\nAssuming version 1.9.\n");
@@ -3374,6 +3395,7 @@ static bool LoadDehSupp ()
 			else if (sc.Compare("StateMap"))
 			{
 				bool addit = StateMap.Size() == 0;
+				int dehcount = 0;
 
 				sc.MustGetStringName("{");
 				while (!sc.CheckString("}"))
@@ -3415,6 +3437,13 @@ static bool LoadDehSupp ()
 
 					if (sc.CheckString("}")) break;
 					sc.MustGetStringName(",");
+					// This mapping is mainly for P_SetSafeFlash.
+					for (int i = 0; i < s.StateSpan; i++)
+					{
+						dehExtStates.Insert(dehcount, s.State + i);
+						s.State[i].DehIndex = dehcount;
+						dehcount++;
+					}
 				}
 			}
 			else if (sc.Compare("SoundMap"))
