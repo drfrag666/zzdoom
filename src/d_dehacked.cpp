@@ -1054,6 +1054,7 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, MBFParamSt
 	CreateWeaponJumpFunc,
 	CreateWeaponJumpFunc,
 	CreateJumpIfFlagSetFunc,
+	CreateFlagSetFunc,
 	CreateFlagSetFunc
 };
 
@@ -1063,7 +1064,6 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 {
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
-	if (!(value1|value2)) return;
 	
 	// Fakey fake script position thingamajig. Because NULL cannot be used instead.
 	// Even if the lump was parsed by an FScanner, there would hardly be a way to
