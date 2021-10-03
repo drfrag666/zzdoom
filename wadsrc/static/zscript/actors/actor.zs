@@ -1126,6 +1126,18 @@ class Actor : Thinker native
 	action native void A_OverlayOffset(int layer = PSP_WEAPON, double wx = 0, double wy = 32, int flags = 0);
 	action native void A_OverlayFlags(int layer, int flags, bool set);
 
+	deprecated("2.3")
+	void A_NailBomb()
+	{
+		A_Explode(nails:30);
+	}
+
+	deprecated("2.3")
+	void A_RadiusDamage(int dam, int dist)
+	{
+		A_Explode(dam, dist);
+	}
+
 	int ACS_NamedExecute(name script, int mapnum=0, int arg1=0, int arg2=0, int arg3=0)
 	{
 		return ACS_Execute(-int(script), mapnum, arg1, arg2, arg3);

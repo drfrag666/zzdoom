@@ -1262,7 +1262,7 @@ class PlayerPawn : Actor native
 			player.mo.CheckAirSupply();
 		}
 	}
-	
+
 	//----------------------------------------------------------------------------
 	//
 	// 

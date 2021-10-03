@@ -801,21 +801,6 @@ static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int valu
 	return 2;
 }
 
-// No misc, but it's basically A_Explode with an added effect
-static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
-{ // A_Explode
-	// This one does not actually have MBF-style parameters. But since
-	// we're aliasing it to an extension of A_Explode...
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);			// damage
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);			// distance
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);			// flags
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);			// alert
-	buildit.Emit(OP_PARAM, 0, REGT_NIL, 0);			// fulldamagedistance
-	buildit.Emit(OP_PARAMI, 30);					// nails
-	buildit.Emit(OP_PARAMI, 10);					// naildamage
-	return 7;
-}
-
 static int CreateSpawnObjectFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 {
 	state->ValidateArgCount(8, "A_SpawnObject");
@@ -1021,7 +1006,6 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, MBFParamSt
 {
 	// Die and Detonate are not in this list because these codepointers have
 	// no dehacked arguments and therefore do not need special handling.
-	// NailBomb has no argument but is implemented as new parameters for A_Explode.
 	CreateMushroomFunc,
 	CreateSpawnFunc,
 	CreateTurnFunc,
@@ -1030,7 +1014,6 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int, MBFParamSt
 	CreatePlaySoundFunc,
 	CreateRandomJumpFunc,
 	CreateLineEffectFunc,
-	CreateNailBombFunc,
 	CreateSpawnObjectFunc,
 	CreateMonsterProjectileFunc,
 	CreateMonsterBulletAttackFunc,
