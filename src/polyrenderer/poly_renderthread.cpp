@@ -38,6 +38,7 @@
 #include "r_data/colormaps.h"
 #include "poly_renderthread.h"
 #include "poly_renderer.h"
+#include <chrono>
 #include <mutex>
 
 #ifdef WIN32

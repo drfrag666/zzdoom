@@ -121,7 +121,6 @@
 
 EXTERN_CVAR(Bool, hud_althud)
 void DrawHUD();
-void D_DoAnonStats();
 
 
 // MACROS ------------------------------------------------------------------
@@ -137,7 +136,6 @@ extern void M_SetDefaultMode ();
 extern void G_NewInit ();
 extern void SetupPlayerClasses ();
 extern void HUD_InitHud();
-void gl_PatchMenu();	// remove modern OpenGL options on old hardware.
 void DeinitMenus();
 const FIWADInfo *D_FindIWAD(TArray<FString> &wadfiles, const char *iwad, const char *basewad);
 
@@ -219,9 +217,7 @@ CUSTOM_CVAR (String, vid_cursor, "None", CVAR_ARCHIVE | CVAR_NOINITCALL)
 	}
 }
 
-// Controlled by startup dialog
 CVAR (Bool, disableautoload, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
-CVAR (Bool, autoloadbrightmaps, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, autoloadlights, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, r_debug_disable_vis_filter, false, 0)
 
@@ -703,13 +699,6 @@ void D_Display ()
 	// [RH] change the screen mode if needed
 	if (setmodeneeded)
 	{
-		int oldrenderer;
-		extern int currentrenderer;
-		EXTERN_CVAR(Int, vid_renderer)
-		oldrenderer = vid_renderer; // [SP] Save pending vid_renderer setting (hack)
-		if (currentrenderer != vid_renderer)
-			vid_renderer = currentrenderer;
-
 		// Change screen mode.
 		if (Video->SetResolution (NewWidth, NewHeight, NewBits))
 		{
@@ -728,7 +717,6 @@ void D_Display ()
 			// Reset the mouse cursor in case the bit depth changed
 			vid_cursor.Callback();
 		}
-		vid_renderer = oldrenderer; // [SP] Restore pending vid_renderer setting
 	}
 
 	// change the view size if needed
@@ -2096,7 +2084,6 @@ static void AddAutoloadFiles(const char *autoname)
 {
 	LumpFilterIWAD.Format("%s.", autoname);	// The '.' is appened to simplify parsing the string 
 
-	// [SP] Dialog reaction - load lights.pk3 and brightmaps.pk3 based on user choices
 	if (!(gameinfo.flags & GI_SHAREWARE))
 	{
 		if (autoloadlights)
@@ -2104,12 +2091,6 @@ static void AddAutoloadFiles(const char *autoname)
 			const char *lightswad = BaseFileSearch ("lights.pk3", NULL);
 			if (lightswad)
 				D_AddFile (allwads, lightswad);
-		}
-		if (autoloadbrightmaps)
-		{
-			const char *bmwad = BaseFileSearch ("brightmaps.pk3", NULL);
-			if (bmwad)
-				D_AddFile (allwads, bmwad);
 		}
 	}
 
@@ -2351,9 +2332,6 @@ void D_DoomMain (void)
 	if (!batchrun) Printf(PRINT_LOG, "%s version %s\n", GAMENAME, GetVersionString());
 
 	D_DoomInit();
-
-	extern void D_ConfirmSendStats();
-	D_ConfirmSendStats();
 
 	// [RH] Make sure zdoom.pk3 is always loaded,
 	// as it contains magic stuff we need.
@@ -2675,7 +2653,6 @@ void D_DoomMain (void)
 			}
 
 			V_Init2();
-			gl_PatchMenu();
 			UpdateJoystickMenu(NULL);
 
 			v = Args->CheckValue ("-loadgame");
@@ -2748,8 +2725,6 @@ void D_DoomMain (void)
 			D_StartTitle ();				// start up intro loop
 			setmodeneeded = false;			// This may be set to true here, but isn't needed for a restart
 		}
-
-		D_DoAnonStats();
 
 		if (I_FriendlyWindowTitle)
 			I_SetWindowTitle(DoomStartupInfo.Name.GetChars());

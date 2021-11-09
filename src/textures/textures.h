@@ -419,9 +419,6 @@ public:
 		bool bNoFilter:1;
 		bool bNoCompress:1;
 		bool bNoExpand:1;
-
-		MiscGLInfo() throw ();
-		~MiscGLInfo();
 	};
 	MiscGLInfo gl_info;
 

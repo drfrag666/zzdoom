@@ -65,74 +65,6 @@ bool ForceWindowed;
 
 IVideo *Video;
 
-// do not include GL headers here, only declare the necessary functions.
-IVideo *gl_CreateVideo();
-FRenderer *gl_CreateInterface();
-
-void I_RestartRenderer();
-int currentrenderer = -1;
-int currentcanvas = -1;
-int currentgpuswitch = -1;
-bool changerenderer;
-
-// Optimus/Hybrid switcher
-CUSTOM_CVAR(Int, vid_gpuswitch, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
-{
-	if (self != currentgpuswitch)
-	{
-		switch (self)
-		{
-		case 0:
-			Printf("Selecting default GPU...\n");
-			break;
-		case 1:
-			Printf("Selecting high-performance dedicated GPU...\n");
-			break;
-		case 2:
-			Printf("Selecting power-saving integrated GPU...\n");
-			break;
-		default:
-			Printf("Unknown option (%d) - falling back to 'default'\n", *vid_gpuswitch);
-			self = 0;
-			break;
-		}
-		Printf("You must restart " GAMENAME " for this change to take effect.\n");
-	}
-}
-
-// Software OpenGL canvas
-CUSTOM_CVAR(Bool, vid_glswfb, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
-{
-	if ((self ? 1 : 0) != currentcanvas)
-		Printf("You must restart " GAMENAME " for this change to take effect.\n");
-}
-
-// [ZDoomGL]
-CUSTOM_CVAR (Int, vid_renderer, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
-{
-	// 0: Software renderer
-	// 1: OpenGL renderer
-
-	if (self != currentrenderer)
-	{
-		switch (self)
-		{
-		case 0:
-			Printf("Switching to software renderer...\n");
-			break;
-		case 1:
-			Printf("Switching to OpenGL renderer...\n");
-			break;
-		default:
-			Printf("Unknown renderer (%d).  Falling back to software renderer...\n", *vid_renderer);
-			self = 0; // make sure to actually switch to the software renderer
-			break;
-		}
-		//changerenderer = true;
-		Printf("You must restart " GAMENAME " to switch the renderer\n");
-	}
-}
-
 CCMD (vid_restart)
 {
 }
@@ -154,13 +86,6 @@ void I_InitGraphics ()
 {
 	UCVarValue val;
 
-	// todo: implement ATI version of this. this only works for nvidia notebooks, for now.
-	currentgpuswitch = vid_gpuswitch;
-	if (currentgpuswitch == 1)
-		putenv("SHIM_MCCOMPAT=0x800000001"); // discrete
-	else if (currentgpuswitch == 2)
-		putenv("SHIM_MCCOMPAT=0x800000000"); // integrated
-
 	// If the focus window is destroyed, it doesn't go back to the active window.
 	// (e.g. because the net pane was up, and a button on it had focus)
 	if (GetFocus() == NULL && GetActiveWindow() == Window)
@@ -178,14 +103,7 @@ void I_InitGraphics ()
 	}
 	val.Bool = !!Args->CheckParm ("-devparm");
 	ticker.SetGenericRepDefault (val, CVAR_Bool);
-
-	if (currentcanvas == 0) // Software Canvas: 0 = D3D or DirectDraw, 1 = OpenGL
-		if (currentrenderer == 1)
-			Video = gl_CreateVideo();
-		else
-			Video = new Win32Video(0);
-	else
-		Video = gl_CreateVideo();
+	Video = new Win32Video (0);
 
 	if (Video == NULL)
 		I_FatalError ("Failed to initialize display");
@@ -202,22 +120,9 @@ static void I_DeleteRenderer()
 
 void I_CreateRenderer()
 {
-	currentrenderer = vid_renderer;
-	currentcanvas = vid_glswfb;
-	if (currentrenderer == 1)
-		Printf("Renderer: OpenGL\n");
-	else if (currentcanvas == 1)
-		Printf("Renderer: Software on OpenGL\n");
-	else if (currentcanvas == 0 && vid_forceddraw == false)
-		Printf("Renderer: Software on Direct3D\n");
-	else if (currentcanvas == 0)
-		Printf("Renderer: Software on DirectDraw\n");
-	else
-		Printf("Renderer: Unknown\n");
 	if (Renderer == NULL)
 	{
-		if (currentrenderer==1) Renderer = gl_CreateInterface();
-		else Renderer = new FSoftwareRenderer;
+		Renderer = new FSoftwareRenderer;
 		atterm(I_DeleteRenderer);
 	}
 }
@@ -431,13 +336,10 @@ CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITC
 {
 	// Strictly speaking this doesn't require a mode switch, but it is the easiest
 	// way to force a CreateFramebuffer call without a lot of refactoring.
-	if (currentrenderer == 0)
-	{
-		NewWidth = screen->VideoWidth;
-		NewHeight = screen->VideoHeight;
-		NewBits = DisplayBits;
-		setmodeneeded = true;
-	}
+	NewWidth = screen->VideoWidth;
+	NewHeight = screen->VideoHeight;
+	NewBits = DisplayBits;
+	setmodeneeded = true;
 }
 
 CUSTOM_CVAR(Bool, win_borderless, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)

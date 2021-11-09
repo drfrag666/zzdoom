@@ -78,6 +78,8 @@ CVAR(Bool, r_mipmap, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 // Level of detail texture bias
 CVAR(Float, r_lod_bias, -1.5, 0); // To do: add CVAR_ARCHIVE | CVAR_GLOBALCONFIG when a good default has been decided
 
+EXTERN_CVAR(Int, gl_particles_style)
+
 namespace swrenderer
 {
 	void SWTruecolorDrawers::DrawWallColumn(const WallDrawerArgs &args)

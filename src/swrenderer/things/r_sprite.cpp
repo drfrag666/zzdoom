@@ -68,7 +68,10 @@
 #include "r_data/r_vanillatrans.h"
 
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor)
-EXTERN_CVAR(Bool, gl_light_sprites)
+CVAR (Bool, gl_light_sprites, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
+CVAR(Float, gl_sclipthreshold, 10.0, CVAR_ARCHIVE)
+CVAR(Float, gl_sclipfactor, 1.8, CVAR_ARCHIVE)
+CVAR(Int, gl_particles_style, 2, CVAR_ARCHIVE | CVAR_GLOBALCONFIG) // 0 = square, 1 = round, 2 = smooth
 
 namespace swrenderer
 {

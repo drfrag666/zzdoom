@@ -107,7 +107,6 @@ if( WIN32 )
 	endif()
 
 	set( ZDOOM_LIBS
-		opengl32
 		wsock32
 		winmm
 		"${DX_dinput8_LIBRARY}"
@@ -248,22 +247,6 @@ if (NOT ZDOOM_USE_SSE2)
 		endif()
 	endif()
 endif()
-
-if( X64 )
-	set( HAVE_MMX 1 )
-else( X64 )
-	set( SAFE_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
-
-	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmmx")
-	endif( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-
-	CHECK_CXX_SOURCE_COMPILES("#include <mmintrin.h>
-		int main(void) { __m64 v = _m_from_int(0); }"
-		HAVE_MMX)
-
-	set( CMAKE_CXX_FLAGS ${SAFE_CMAKE_CXX_FLAGS} )
-endif( X64 )
 
 CHECK_CXX_SOURCE_COMPILES("#include <ppl.h>
 	int main() { concurrency::parallel_for(0, 1, 1, [](int) { } ); }"
@@ -507,7 +490,6 @@ set( PLAT_WIN32_SOURCES
 	win32/i_system.cpp
 	win32/i_specialpaths.cpp
 	win32/st_start.cpp
-	win32/win32gliface.cpp
 	win32/win32video.cpp )
 set( PLAT_POSIX_SOURCES
 	posix/i_cd.cpp
@@ -522,7 +504,6 @@ set( PLAT_SDL_SOURCES
 	posix/sdl/i_main.cpp
 	posix/sdl/i_system.cpp
 	posix/sdl/sdlvideo.cpp
-	posix/sdl/sdlglvideo.cpp
 	posix/sdl/st_start.cpp )
 set( PLAT_UNIX_SOURCES
 	posix/unix/i_specialpaths.cpp
@@ -570,24 +551,6 @@ else()
 	set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} )
 endif()
 
-if( HAVE_MMX )
-	add_definitions( -DHAVE_MMX=1 )
-
-	set( SYSTEM_SOURCES ${SYSTEM_SOURCES}
-		gl/hqnx_asm/hq2x_asm.cpp
-		gl/hqnx_asm/hq3x_asm.cpp
-		gl/hqnx_asm/hq4x_asm.cpp
-		gl/hqnx_asm/hqnx_asm_Image.cpp)
-
-	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-		set_source_files_properties(
-			gl/hqnx_asm/hq2x_asm.cpp
-			gl/hqnx_asm/hq3x_asm.cpp
-			gl/hqnx_asm/hq4x_asm.cpp
-			gl/textures/gl_hqresize.cpp
-			PROPERTIES COMPILE_FLAGS "-mmmx" )
-	endif( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
-endif( HAVE_MMX )
 
 if( HAVE_PARALLEL_FOR )
 	add_definitions( -DHAVE_PARALLEL_FOR=1 )
@@ -636,12 +599,6 @@ if( DYN_FLUIDSYNTH )
 	add_definitions( -DHAVE_FLUIDSYNTH -DDYN_FLUIDSYNTH )
 elseif( FLUIDSYNTH_FOUND )
 	add_definitions( -DHAVE_FLUIDSYNTH )
-endif()
-
-option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
-
-if( NOT SEND_ANON_STATS )
-	add_definitions( -DNO_SEND_STATS )
 endif()
 
 # OPLMIDI needs for USE_LEGACY_EMULATOR macro to be correctly built
@@ -714,21 +671,6 @@ file( GLOB HEADER_FILES
 	polyrenderer/math/*.h
 	polyrenderer/drawers/*.h
 	polyrenderer/scene/*.h
-	gl/*.h
-	gl/api/*.h
-	gl/data/*.h
-	gl/dynlights/*.h
-	gl/hqnx/*.h
-	gl/hqnx_asm/*.h
-	gl/xbr/*.h
-	gl/models/*.h
-	gl/renderer/*.h
-	gl/scene/*.h
-	gl/stereo3d/*.h
-	gl/shaders/*.h
-	gl/system/*.h
-	gl/textures/*.h
-	gl/utility/*.h
 	*.h
 )
 
@@ -835,34 +777,6 @@ set( FASTMATH_SOURCES
 	sound/sndfile_decoder.cpp
 	sound/timiditypp/fft4g.cpp
 	sound/timiditypp/reverb.cpp
-	gl/utility/gl_clock.cpp
-	gl/renderer/gl_2ddrawer.cpp
-	gl/hqnx/init.cpp
-	gl/hqnx/hq2x.cpp
-	gl/hqnx/hq3x.cpp
-	gl/hqnx/hq4x.cpp
-	gl/xbr/xbrz.cpp
-	gl/xbr/xbrz_old.cpp
-	gl/scene/gl_bsp.cpp
-	gl/scene/gl_fakeflat.cpp
-	gl/scene/gl_clipper.cpp
-	gl/scene/gl_decal.cpp
-	gl/scene/gl_drawinfo.cpp
-	gl/scene/gl_flats.cpp
-	gl/scene/gl_walls.cpp
-	gl/scene/gl_sprite.cpp
-	gl/scene/gl_skydome.cpp
-	gl/scene/gl_renderhacks.cpp
-	gl/scene/gl_weapon.cpp
-	gl/scene/gl_scene.cpp
-	gl/scene/gl_sky.cpp
-	gl/scene/gl_portal.cpp
-	gl/scene/gl_walls_draw.cpp
-	gl/scene/gl_vertex.cpp
-	gl/scene/gl_spritelight.cpp
-	gl/dynlights/gl_dynlight1.cpp
-	gl/system/gl_load.c
-	gl/models/gl_models.cpp
 	r_data/models/models.cpp
 	r_data/matrix.cpp
 	sound/adlmidi/adldata.cpp
@@ -907,7 +821,6 @@ set (PCH_SOURCES
 	d_dehacked.cpp
 	d_iwad.cpp
 	d_main.cpp
-	d_stats.cpp
 	d_net.cpp
 	d_netinfo.cpp
 	d_protocol.cpp
@@ -1044,58 +957,6 @@ set (PCH_SOURCES
 	g_statusbar/sbarinfo.cpp
 	g_statusbar/sbar_mugshot.cpp
 	g_statusbar/shared_sbar.cpp
-	gl/compatibility/gl_20.cpp
-	gl/data/gl_data.cpp
-	gl/data/gl_portaldata.cpp
-	gl/data/gl_setup.cpp
-	gl/data/gl_vertexbuffer.cpp
-	gl/dynlights/gl_glow.cpp
-	gl/dynlights/gl_lightbuffer.cpp
-	gl/dynlights/gl_aabbtree.cpp
-	gl/dynlights/gl_shadowmap.cpp
-	gl/renderer/gl_quaddrawer.cpp
-	gl/renderer/gl_renderer.cpp
-	gl/renderer/gl_renderstate.cpp
-	gl/renderer/gl_renderbuffers.cpp
-	gl/renderer/gl_lightdata.cpp
-	gl/renderer/gl_postprocess.cpp
-	gl/renderer/gl_postprocessstate.cpp
-	gl/shaders/gl_shader.cpp
-	gl/shaders/gl_texshader.cpp
-	gl/shaders/gl_shaderprogram.cpp
-	gl/shaders/gl_postprocessshader.cpp
-	gl/shaders/gl_shadowmapshader.cpp
-	gl/shaders/gl_presentshader.cpp
-	gl/shaders/gl_present3dRowshader.cpp
-	gl/shaders/gl_bloomshader.cpp
-	gl/shaders/gl_ambientshader.cpp
-	gl/shaders/gl_blurshader.cpp
-	gl/shaders/gl_colormapshader.cpp
-	gl/shaders/gl_tonemapshader.cpp
-	gl/shaders/gl_lensshader.cpp
-	gl/shaders/gl_fxaashader.cpp
-	gl/stereo3d/gl_stereo3d.cpp
-	gl/stereo3d/gl_stereo_cvars.cpp
-	gl/stereo3d/gl_stereo_leftright.cpp
-	gl/stereo3d/scoped_view_shifter.cpp
-	gl/stereo3d/gl_anaglyph.cpp
-	gl/stereo3d/gl_quadstereo.cpp
-	gl/stereo3d/gl_sidebyside3d.cpp
-	gl/stereo3d/gl_interleaved3d.cpp
-	gl/system/gl_interface.cpp
-	gl/system/gl_framebuffer.cpp
-	gl/system/gl_swframebuffer.cpp
-	gl/system/gl_swwipe.cpp
-	gl/system/gl_debug.cpp
-	gl/system/gl_menu.cpp
-	gl/system/gl_wipe.cpp
-	gl/textures/gl_hwtexture.cpp
-	gl/textures/gl_texture.cpp
-	gl/textures/gl_material.cpp
-	gl/textures/gl_hirestex.cpp
-	gl/textures/gl_samplers.cpp
-	gl/textures/gl_translate.cpp
-	gl/textures/gl_hqresize.cpp
 	menu/joystickmenu.cpp
 	menu/loadsavemenu.cpp
 	menu/menu.cpp
@@ -1363,7 +1224,7 @@ endif()
 
 add_custom_command(TARGET zdoom POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	${CMAKE_SOURCE_DIR}/soundfont/gzdoom.sf2 $<TARGET_FILE_DIR:zdoom>/soundfonts/gzdoom.sf2)
+	${CMAKE_SOURCE_DIR}/soundfont/zzdoom.sf2 $<TARGET_FILE_DIR:zdoom>/soundfonts/zzdoom.sf2)
 
 if( CMAKE_COMPILER_IS_GNUCXX )
 	# GCC misoptimizes this file
@@ -1373,7 +1234,6 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	# Need to enable intrinsics for these files.
 	if( SSE_MATTERS )
 		set_source_files_properties(
-			gl/system/gl_swframebuffer.cpp
 			polyrenderer/poly_all.cpp
 			swrenderer/r_all.cpp
 			x86.cpp
@@ -1416,20 +1276,6 @@ source_group("FraggleScript" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/fr
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
 source_group("Inventory" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_inventory/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
-source_group("OpenGL Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/.+")
-source_group("OpenGL Renderer\\Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/data/.+")
-source_group("OpenGL Renderer\\Dynamic Lights" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/dynlights/.+")
-source_group("OpenGL Renderer\\HQ Resize" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/hqnx/.+")
-source_group("OpenGL Renderer\\HQ Resize MMX version" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/hqnx_asm/.+")
-source_group("OpenGL Renderer\\XBRZ" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/hqnx_asm/.+")
-source_group("OpenGL Renderer\\Models" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/models/.+")
-source_group("OpenGL Renderer\\Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/renderer/.+")
-source_group("OpenGL Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/scene/.+")
-source_group("OpenGL Renderer\\Stereo3D" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/stereo3d/.+")
-source_group("OpenGL Renderer\\Shaders" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/shaders/.+")
-source_group("OpenGL Renderer\\System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/system/.+")
-source_group("OpenGL Renderer\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/textures/.+")
-source_group("OpenGL Renderer\\Utilities" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gl/utility/.+")
 source_group("Software Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/.+")
 source_group("Software Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/drawers/.+")
 source_group("Software Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/scene/.+")
