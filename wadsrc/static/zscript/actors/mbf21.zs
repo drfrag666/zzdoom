@@ -503,5 +503,11 @@ extend class Weapon
 		player.SetPsprite(PSP_FLASH, tstate);
 	}
 
+	// needed to call A_SeekerMissile with proper defaults.
+	deprecated("2.3")
+	void MBF21_SeekTracer(int threshold, int turnmax)
+	{
+		A_SeekerMissile(threshold, turnmax);
+	}
 
 }
