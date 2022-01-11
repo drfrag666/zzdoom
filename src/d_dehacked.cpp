@@ -967,13 +967,14 @@ static int CreateWeaponBulletAttackFunc(VMFunctionBuilder &buildit, int value1, 
 
 static int CreateWeaponMeleeAttackFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
 {
-	state->ValidateArgCount(5, "A_WeaponBulletAttack");
+	state->ValidateArgCount(5, "A_WeaponMeleeAttack");
 	int float1 = buildit.GetConstantFloat(state->GetFloatArg(2, 1));
+	int float2 = buildit.GetConstantFloat(state->GetFloatArg(4));
 	buildit.EmitParamInt(state->GetIntArg(0, 2));
 	buildit.EmitParamInt(state->GetIntArg(1, 10));
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	buildit.EmitParamInt(state->GetIntArg(3));
-	buildit.EmitParamInt(state->GetIntArg(4));
+	buildit.EmitParamInt(state->GetSoundArg(3));
+	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float2);
 	return 5;
 }
 
