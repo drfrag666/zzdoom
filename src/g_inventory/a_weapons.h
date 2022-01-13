@@ -141,8 +141,8 @@ public:
 		AltFire,
 		EitherFire
 	};
-	bool CheckAmmo (int fireMode, bool autoSwitch, bool requireAmmo=false, int ammocount = -1);
-	bool DepleteAmmo (bool altFire, bool checkEnough=true, int ammouse = -1);
+	bool CheckAmmo (int fireMode, bool autoSwitch, bool requireAmmo = false, int ammocount = -1);
+	bool DepleteAmmo (bool altFire, bool checkEnough = true, int ammouse = -1, bool forceammouse = false);
 
 	enum
 	{

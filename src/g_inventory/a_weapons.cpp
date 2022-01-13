@@ -306,7 +306,7 @@ DEFINE_ACTION_FUNCTION(AWeapon, CheckAmmo)
 //
 //===========================================================================
 
-bool AWeapon::DepleteAmmo (bool altFire, bool checkEnough, int ammouse)
+bool AWeapon::DepleteAmmo (bool altFire, bool checkEnough, int ammouse, bool forceammouse)
 {
 	if (!((dmflags & DF_INFINITE_AMMO) || (Owner->FindInventory (PClass::FindActor(NAME_PowerInfiniteAmmo), true) != nullptr)))
 	{
@@ -318,7 +318,7 @@ bool AWeapon::DepleteAmmo (bool altFire, bool checkEnough, int ammouse)
 		{
 			if (Ammo1 != nullptr)
 			{
-				if (ammouse >= 0 && (WeaponFlags & WIF_DEHAMMO))
+				if (ammouse >= 0 && (WeaponFlags & WIF_DEHAMMO || forceammouse))
 				{
 					Ammo1->Amount -= ammouse;
 				}
@@ -357,7 +357,8 @@ DEFINE_ACTION_FUNCTION(AWeapon, DepleteAmmo)
 	PARAM_BOOL(altfire);
 	PARAM_BOOL_DEF(checkenough);
 	PARAM_INT_DEF(ammouse);
-	ACTION_RETURN_BOOL(self->DepleteAmmo(altfire, checkenough, ammouse));
+	PARAM_BOOL_DEF(forceammouse);
+	ACTION_RETURN_BOOL(self->DepleteAmmo(altfire, checkenough, ammouse, forceammouse));
 }
 
 
