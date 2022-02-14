@@ -143,6 +143,8 @@ struct FLevelLocals
 
 	double		teamdamage;
 
+	bool 		MBF21Enabled() const;
+
 	bool		IsJumpingAllowed() const;
 	bool		IsCrouchingAllowed() const;
 	bool		IsFreelookAllowed() const;

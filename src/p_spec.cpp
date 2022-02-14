@@ -1109,11 +1109,12 @@ void P_InitSectorSpecial(sector_t *sector, int special)
 	{
 		sector->Flags |= SECF_PUSH;
 	}
-	if (sector->special & KILL_MONSTERS_MASK)
+	// Non MBF21 compatibility needs to be checked here, because after this point there is no longer any context in which it can be done.
+	if ((sector->special & KILL_MONSTERS_MASK) && level.MBF21Enabled())
 	{
 		sector->Flags |= SECF_KILLMONSTERS;
 	}
-	if (!(sector->special & DEATH_MASK))
+	if (!(sector->special & DEATH_MASK) || !level.MBF21Enabled())
 	{
 		if ((sector->special & DAMAGE_MASK) == 0x100)
 		{

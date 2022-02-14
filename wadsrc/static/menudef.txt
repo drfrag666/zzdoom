@@ -1380,6 +1380,7 @@ OptionMenu "CompatibilityOptions"
 	Option "$CMPTMNU_TELEPORT",						"compat_teleport", "YesNo"
 	Option "$CMPTMNU_PUSHWINDOW",					"compat_pushwindow", "YesNo"
 	Option "$CMPTMNU_CHECKSWITCHRANGE",				"compat_checkswitchrange", "YesNo"
+	Option "$CMPTMNU_NOMBF21",						"compat_nombf21", "YesNo"
 
 	StaticText " "
 	StaticText "$CMPTMNU_PHYSICSBEHAVIOR",1
