@@ -245,7 +245,7 @@ static AmmoPerAttack AmmoPerAttacks[] = {
 	{ NAME_A_FireBFG, -1},	// uses deh.BFGCells
 	{ NAME_A_FireOldBFG, 1},
 	{ NAME_A_FireRailgun, 1},
-	{ NAME_A_ConsumeAmmo, 1}, // MBF21
+	{ NAME_MBF21_ConsumeAmmo, 1}, // MBF21
 	{ NAME_None, 0}
 };
 
@@ -3670,8 +3670,9 @@ void FinishDehPatch ()
 					{
 						auto p = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(AmmoPerAttacks[j].func, true));
 						if (p != nullptr) AmmoPerAttacks[j].ptr = p->Variants[0].Implementation;
+						assert(AmmoPerAttacks[j].ptr);
 					}
-					if (state->ActionFunc == AmmoPerAttacks[j].ptr)
+					if (state->ActionFunc == AmmoPerAttacks[j].ptr && AmmoPerAttacks[j].ptr)
 					{
 						found = true;
 						int use = AmmoPerAttacks[j].ammocount;
