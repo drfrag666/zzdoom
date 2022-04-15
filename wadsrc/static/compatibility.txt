@@ -185,6 +185,11 @@ CA267398C9B3A8F79349D3394F8B2106 // map20
 	nombf21
 }
 
+178605D81D8E8C4B78D91BC72C8A89ED // ht.wad map31
+{
+	nombf21
+}
+
 DCE862393CAAA6FF1294FB7056B53057 // UAC Ultra map07: Contains a scroller depending on Boom side effects
 {
 	setlinespecial 391 Sector_CopyScroller 99 6 0 0 0
