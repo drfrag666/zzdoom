@@ -2125,6 +2125,7 @@ static int PatchWeapon (int weapNum)
 		Printf ("Weapon %d out of range.\n", weapNum);
 	}
 
+	FState* readyState = nullptr;
 	while ((result = GetLine ()) == 1)
 	{
 		int val = atoi (Line2);
@@ -2144,8 +2145,11 @@ static int PatchWeapon (int weapNum)
 				statedef.SetStateLabel("Select", state);
 			else if (strnicmp (Line1, "Select", 6) == 0)
 				statedef.SetStateLabel("Deselect", state);
-			else if (strnicmp (Line1, "Bobbing", 7) == 0)
+			else if (strnicmp(Line1, "Bobbing", 7) == 0)
+			{
+				readyState = state;
 				statedef.SetStateLabel("Ready", state);
+			}
 			else if (strnicmp (Line1, "Shooting", 8) == 0)
 				statedef.SetStateLabel("Fire", state);
 			else if (strnicmp (Line1, "Firing", 6) == 0)
@@ -2246,7 +2250,21 @@ static int PatchWeapon (int weapNum)
 		}
 	}
 
-	if (info->AmmoType1 == NULL)
+	// Emulate the hard coded ready sound of the chainsaw as good as possible.
+	if (readyState)
+	{
+		FState* state = FindState(67); // S_SAW
+		if (readyState == state)
+		{
+			info->ReadySound = (FSoundID)S_FindSound("weapons/sawidle");
+		}
+		else
+		{
+			info->ReadySound = 0;
+		}
+	}
+
+	if (info->AmmoType1 == nullptr)
 	{
 		info->AmmoUse1 = 0;
 	}
