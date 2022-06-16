@@ -858,9 +858,9 @@ static int CreateMonsterMeleeAttackFunc(VMFunctionBuilder &buildit, int value1, 
 	int float1 = buildit.GetConstantFloat(state->GetFloatArg(3));
 	buildit.EmitParamInt(state->GetIntArg(0, 3));
 	buildit.EmitParamInt(state->GetIntArg(1, 8));
-	buildit.EmitParamInt(state->GetIntArg(2, 0));
+	buildit.EmitParamInt(state->GetSoundArg(2, 0));
 	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);
-	return 5;
+	return 4;
 }
 
 static int CreateRadiusDamageFunc(VMFunctionBuilder &buildit, int value1, int value2, MBFParamState* state)
