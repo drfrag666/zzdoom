@@ -147,12 +147,26 @@ TArray<FString> I_GetGogPaths()
 		result.Push(path);	// directly in install folder
 	}
 
+	// Look for Doom I Enhanced
+	gamepath = gogregistrypath + "\\2015545325";
+	if (QueryPathKey(HKEY_LOCAL_MACHINE, gamepath.GetChars(), "Path", path))
+	{
+		result.Push(path + "/DOOM_Data/StreamingAssets");	// in a subdirectory
+	}
+
 	// Look for Doom II
 	gamepath = gogregistrypath + "\\1435848814";
 	if (QueryPathKey(HKEY_LOCAL_MACHINE, gamepath.GetChars(), "Path", path))
 	{
 		result.Push(path + "/doom2");	// in a subdirectory
 		// If direct support for the Master Levels is ever added, they are in path + /master/wads
+	}
+
+	// Look for Doom II Enhanced
+	gamepath = gogregistrypath + "\\1426071866";
+	if (QueryPathKey(HKEY_LOCAL_MACHINE, gamepath.GetChars(), "Path", path))
+	{
+		result.Push(path + "/DOOM II_Data/StreamingAssets");	// in a subdirectory
 	}
 
 	// Look for Final Doom
