@@ -199,7 +199,7 @@ TArray<FString> I_GetSteamPath()
 		return result;
 	}
 
-	SteamInstallFolders.Push(appSupportPath + "/Steam/SteamApps/common");
+	SteamInstallFolders.Push(appSupportPath + "/Steam/steamapps/common");
 #else
 	char* home = getenv("HOME");
 	if(home != NULL && *home != '\0')
@@ -222,7 +222,7 @@ TArray<FString> I_GetSteamPath()
 			return result;
 		}
 
-		regPath.Format("%s/.local/share/Steam/SteamApps/common", home);
+		regPath.Format("%s/.local/share/Steam/steamapps/common", home);
 		SteamInstallFolders.Push(regPath);
 	}
 #endif
