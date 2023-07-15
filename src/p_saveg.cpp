@@ -954,6 +954,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 
 	arc("level.flags", level.flags)
 		("level.flags2", level.flags2)
+		("level.flags3", level.flags3)
 		("level.fadeto", level.fadeto)
 		("level.found_secrets", level.found_secrets)
 		("level.found_items", level.found_items)
