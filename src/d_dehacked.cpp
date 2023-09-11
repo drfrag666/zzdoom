@@ -1142,11 +1142,6 @@ void SetDehParams(FState *state, int codepointer, MBFParamState* pstate)
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
 	
-	// Fakey fake script position thingamajig. Because NULL cannot be used instead.
-	// Even if the lump was parsed by an FScanner, there would hardly be a way to
-	// identify which line is troublesome.
-	FScriptPosition *pos = new FScriptPosition(FString("DEHACKED"), 0);
-	
 	// Let's identify the codepointer we're dealing with.
 	PFunction *sym;
 	sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(FName(MBFCodePointers[codepointer].name), true));
