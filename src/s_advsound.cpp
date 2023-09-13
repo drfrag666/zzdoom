@@ -192,6 +192,7 @@ struct FSavedPlayerSoundInfo
 // This specifies whether Timidity or Windows playback is preferred for a certain song (only useful for Windows.)
 MusicAliasMap MusicAliases;
 MidiDeviceMap MidiDevices;
+static bool sndinfo_locked;
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
@@ -997,7 +998,10 @@ void S_ParseSndInfo (bool redefine)
 {
 	int lump;
 
-	if (!redefine) SavedPlayerSounds.Clear();	// clear skin sounds only for initial parsing.
+	if (redefine && sndinfo_locked) return;
+
+	SavedPlayerSounds.Clear();	// clear skin sounds only for initial parsing.
+
 	atterm (S_ClearSoundData);
 	S_ClearSoundData();	// remove old sound data first!
 
@@ -1038,6 +1042,11 @@ void S_ParseSndInfo (bool redefine)
 	S_CheckIntegrity();
 }
 
+void S_LockLocalSndinfo()
+{
+	sndinfo_locked = true;
+}
+
 //==========================================================================
 //
 // Adds a level specific SNDINFO lump
@@ -1046,6 +1055,11 @@ void S_ParseSndInfo (bool redefine)
 
 void S_AddLocalSndInfo(int lump)
 {
+	if (sndinfo_locked)
+	{
+		Printf("Local SNDINFO cannot be combined with DSDHacked sounds!");
+		return;
+	}
 	S_AddSNDINFO(lump);
 	S_HashSounds ();
 	S_sfx.ShrinkToFit ();

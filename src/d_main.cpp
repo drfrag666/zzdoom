@@ -2529,6 +2529,8 @@ void D_DoomMain (void)
 		if (!batchrun) Printf ("DecalLibrary: Load decals.\n");
 		DecalLibrary.ReadAllDecals ();
 
+		auto numbasesounds = S_sfx.Size();
+
 		// Load embedded Dehacked patches
 		D_LoadDehLumps(FromIWAD);
 
@@ -2557,6 +2559,9 @@ void D_DoomMain (void)
 
 		// Create replacements for dehacked pickups
 		FinishDehPatch();
+
+		auto numdehsounds = S_sfx.Size();
+		if (numbasesounds < numdehsounds) S_LockLocalSndinfo(); // DSDHacked sounds are not compatible with map-local SNDINFOs.
 
 		if (!batchrun) Printf("M_Init: Init menus.\n");
 		M_Init();
