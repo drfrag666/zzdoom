@@ -311,12 +311,12 @@ extend class Actor
 		}
 	}
 	
-	void A_CPosAttack()
+	private void A_CPosAttackInternal(Sound snd)
 	{
 		if (target)
 		{
 			if (bStealth) visdir = 1;
-			A_PlaySound(AttackSound, CHAN_WEAPON);
+			A_PlaySound(snd, CHAN_WEAPON);
 			A_FaceTarget();
 			double slope = AimLineAttack(angle, MISSILERANGE);
 			double ang = angle + Random2[CPosAttack]() * (22.5/256);
@@ -324,6 +324,17 @@ extend class Actor
 			LineAttack(ang, MISSILERANGE, slope, damage, "Hitscan", "Bulletpuff");
 		}
 	}
+
+	void A_CPosAttack()
+	{
+		A_CPosAttackInternal(AttackSound);
+	}
+	
+	void A_CPosAttackDehacked()
+	{
+		A_CPosAttackInternal("chainguy/attack");
+	}
+
 	
 	void A_CPosRefire()
 	{
