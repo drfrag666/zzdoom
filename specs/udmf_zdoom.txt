@@ -118,6 +118,8 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       blockuse = <bool>;          // Line blocks all use actions
       blocksight = <bool>;        // Line blocks monster line of sight
       blockhitscan = <bool>;      // Line blocks hitscan attacks
+      blockfloaters = <bool>;     // Line blocks floating monsters' movement.
+      blocklandmonsters = <bool>; // Line blocks walking monsters' movement.
       locknumber = <int>;         // Line special is locked
       arg0str = <string>;         // Alternate string-based version of arg0
       moreids = <string>;         // Additional line IDs, specified as a space separated list of numbers (e.g. "2 666 1003 4505")
@@ -410,6 +412,9 @@ Replaced tabs with spaces.
 
 1.32 28.06.2021
 Blocklandmonsters MBF21 flag
+
+1.35 15.09.2023
+fixed omissions: Blocklandmonsters and Blockfloaters line flags.
 
 ===============================================================================
 EOF
