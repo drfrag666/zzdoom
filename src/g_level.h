@@ -252,6 +252,7 @@ enum ELevelFlags : unsigned int
 	LEVEL3_E4M6SPECIAL			= 0x00008000,
 	LEVEL3_AVOIDMELEE			= 0x00020000,	// global flag needed for proper MBF support.
 	LEVEL3_NOJUMPDOWN			= 0x00040000,	// only for MBF21. Inverse of MBF's dog_jumping flag.
+	LEVEL3_HAS_CUSTOM_COLORMAP  = 0x00100000,	// custom colormap property from dsda-doom
 };
 
 
@@ -331,6 +332,7 @@ struct level_info_t
 	FString		SkyPic1;
 	FString		SkyPic2;
 	FString		FadeTable;
+	FString		CustomColorMap;
 	FString		F1Pic;
 	FString		BorderTexture;
 	FString		MapBackground;

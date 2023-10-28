@@ -246,6 +246,7 @@ void level_info_t::Reset()
 	LevelName = "";
 	AuthorName = "";
 	FadeTable = "COLORMAP";
+	CustomColorMap = "COLORMAP";
 	WallHorizLight = -8;
 	WallVertLight = +8;
 	F1Pic = "";
@@ -1017,6 +1018,12 @@ DEFINE_MAP_OPTION(fadetable, true)
 {
 	parse.ParseAssign();
 	parse.ParseLumpOrTextureName(info->FadeTable);
+}
+
+DEFINE_MAP_OPTION(colormap, true)
+{
+	parse.ParseAssign();
+	parse.ParseLumpOrTextureName(info->CustomColorMap);
 }
 
 DEFINE_MAP_OPTION(evenlighting, true)

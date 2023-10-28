@@ -1459,12 +1459,11 @@ void G_InitLevelLocals ()
 		{
 			level.flags |= LEVEL_HASFADETABLE;
 		}
-		/*
 	}
-	else
+
+	if (strnicmp (info->CustomColorMap.GetChars(), "COLORMAP", 8) != 0)
 	{
-		NormalLight.ChangeFade (level.fadeto);
-		*/
+		level.flags3 |= LEVEL3_HAS_CUSTOM_COLORMAP;
 	}
 	level.airsupply = info->airsupply*TICRATE;
 	level.outsidefog = info->outsidefog;
@@ -1510,6 +1509,11 @@ void G_InitLevelLocals ()
 	compatflags2.Callback();
 
 	NormalLight.ChangeFade (level.fadeto);
+
+	if (info->flags3 & LEVEL3_HAS_CUSTOM_COLORMAP)
+	{
+		R_SetDefaultColormap(info->CustomColorMap.GetChars());
+	}
 
 	level.DefaultEnvironment = info->DefaultEnvironment;
 }
