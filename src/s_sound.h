@@ -159,6 +159,10 @@ public:
 	{
 		S_sfx[ID].MarkUsed();
 	}
+	const bool isvalid() const
+	{
+		return ID > 0;
+	}
 private:
 	int ID;
 protected:

@@ -160,9 +160,12 @@ static PClassActor* FindInfoName(int index, bool mustexist = false)
 static FSoundID DehFindSound(int index, bool mustexist = false)
 {
 	if (index < 0) return NO_SOUND;
-	if (index < (int) SoundMap.Size()) return SoundMap[index];
-	FStringf name("~dsdhacked/#%d", index);
-	if (dsdhacked && !mustexist) return S_FindSoundTentative(name);
+	if (index < (int) SoundMap.Size() && SoundMap[index].isvalid()) return SoundMap[index];
+	if (dsdhacked && !mustexist)
+	{
+		FStringf name("~dsdhacked/#%d", index);
+		return S_FindSoundTentative(name);
+	}
 	return NO_SOUND;
 }
 
@@ -1532,7 +1535,7 @@ static int PatchThing (int thingy)
 			}
 			else if (stricmp (Line1 + linelen - 6, " sound") == 0)
 			{
-				FSoundID snd = DehFindSound(val - 1);
+				FSoundID snd = DehFindSound(val - 1, false);
 				
 				if (snd == NO_SOUND) // This won't trigger for dsdhacked patches!
 				{
