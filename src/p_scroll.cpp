@@ -43,7 +43,7 @@ class DScroller : public DThinker
 	HAS_OBJECT_POINTERS
 public:
 	
-	DScroller (EScroll type, double dx, double dy, sector_t *control, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos = EScrollPos::scw_all);
+	DScroller (EScroll type, double dx, double dy, sector_t *control, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos = EScrollPos::scw_all, int aff = SCROLL_All);
 	DScroller (double dx, double dy, const line_t *l, sector_t *control, int accel, EScrollPos scrollpos = EScrollPos::scw_all);
 	void OnDestroy() override;
 
@@ -58,7 +58,8 @@ public:
 	EScrollPos GetScrollParts() const { return m_Parts; }
 
 protected:
-	EScroll m_Type;		// Type of scroll effect
+	EScroll m_Type;			// Type of scroll effect
+	int m_Affect;
 	double m_dx, m_dy;		// (dx,dy) scroll speeds
 	sector_t *m_Sector;		// Affected sector
 	side_t *m_Side;			// ... or side
@@ -114,8 +115,11 @@ void DScroller::Serialize(FSerializer &arc)
 		("vdx", m_vdx)
 		("vdy", m_vdy)
 		("accel", m_Accel)
+		("affect", m_Affect)
 		.Enum("parts", m_Parts)
 		.Array("interpolations", m_Interpolations, 3);
+
+	if (arc.isReading() && m_Affect == 0) m_Affect = SCROLL_All;
 }
 
 //-----------------------------------------------------------------------------
@@ -227,11 +231,55 @@ void DScroller::Tick ()
 			// mark all potentially affected things here so that the very expensive calculation loop in AActor::Tick does not need to run for actors which do not touch a scrolling sector.
 			for (auto n = m_Sector->touching_thinglist; n; n = n->m_snext)
 			{
+				AActor* actor = n->m_thing;
+				if (actor->player)
+				{
+					if (!(m_Affect & SCROLL_Players))
+						continue;
+				}
+				else if (actor->flags3 & MF3_ISMONSTER)
+				{
+					if (!(m_Affect & SCROLL_Monsters))
+						continue;
+				}
+				else if (!(m_Affect & SCROLL_StaticObjects))
+					continue;
+
 				n->m_thing->flags8 |= MF8_INSCROLLSEC;
 			}
 			break;
 
-		case EScroll::sc_carry_ceiling:       // to be added later
+		case EScroll::sc_carry_ceiling:
+			// this just copies DSDA's implementation. Usability is limited.
+			for (auto n = m_Sector->touching_thinglist; n; n = n->m_snext)
+			{
+				AActor* actor = n->m_thing;
+
+				if (
+					!(actor->flags & MF_NOCLIP) &&
+					actor->flags & MF_SPAWNCEILING &&
+					actor->flags & MF_NOGRAVITY &&
+					actor->Top() == m_Sector->ceilingplane.ZatPoint(actor->Pos().XY())
+					)
+				{
+
+					if (actor->player)
+					{
+						if (!(m_Affect & SCROLL_Players))
+							continue;
+					}
+					else if (actor->flags3 & MF3_ISMONSTER)
+					{
+						if (!(m_Affect & SCROLL_Monsters))
+							continue;
+					}
+					else if (!(m_Affect & SCROLL_StaticObjects))
+						continue;
+
+					n->m_thing->Vel.X = m_dx;
+					n->m_thing->Vel.Y = m_dy;
+				}
+			}
 			break;
 	}
 }
@@ -256,7 +304,7 @@ void DScroller::Tick ()
 //
 //-----------------------------------------------------------------------------
 
-DScroller::DScroller (EScroll type, double dx, double dy,  sector_t *ctrl, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos)
+DScroller::DScroller (EScroll type, double dx, double dy,  sector_t *ctrl, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos, int aff)
 	: DThinker (STAT_SCROLLER)
 {
 	m_Type = type;
@@ -266,6 +314,7 @@ DScroller::DScroller (EScroll type, double dx, double dy,  sector_t *ctrl, secto
 	m_Parts = scrollpos;
 	m_vdx = m_vdy = 0;
 	m_LastHeight = 0;
+	m_Affect = aff;
 	if ((m_Controller = ctrl) != nullptr)
 	{
 		m_LastHeight = m_Controller->CenterFloor() + m_Controller->CenterCeiling();
@@ -355,6 +404,7 @@ DScroller::DScroller (double dx, double dy, const line_t *l, sector_t * control,
 	m_Accel = accel;
 	m_Parts = scrollpos;
 	m_LastHeight = 0;
+	m_Affect = SCROLL_All; // not really relevant, so use the default.
 	if ((m_Controller = control) != nullptr)
 	{
 		m_LastHeight = m_Controller->CenterFloor() + m_Controller->CenterCeiling();
@@ -724,7 +774,7 @@ void SetScroller (int tag, EScroll type, double dx, double dy)
 	}
 }
 
-void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos)
+void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos, int scrollmode)
 {
-	Create<DScroller>(type, dx, dy, nullptr, affectee, nullptr, accel, scrollpos);
+	Create<DScroller>(type, dx, dy, nullptr, affectee, nullptr, accel, scrollpos, scrollmode);
 }

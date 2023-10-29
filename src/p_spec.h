@@ -56,7 +56,16 @@ enum EScrollPos : int
 	scw_all = 7,
 };
 
-void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos = EScrollPos::scw_all);
+enum EScrollAffect
+{
+	SCROLL_Textures = 1,
+	SCROLL_StaticObjects = 2,
+	SCROLL_Players = 4,
+	SCROLL_Monsters = 8,
+	SCROLL_All = 15
+};
+
+void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos = EScrollPos::scw_all, int scrollmode = 15/*SCROLL_All*/);
 
 
 //jff 2/23/98 identify the special classes that can share sectors
