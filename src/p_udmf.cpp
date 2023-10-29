@@ -449,7 +449,7 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, GetUDMFString)
 
 struct UDMFScroll
 {
-	bool ceiling;
+	int where;
 	int index;
 	double x, y;
 	int scrolltype;
@@ -466,7 +466,8 @@ class UDMFParser : public UDMFParserBase
 	TArray<intmapsidedef_t> ParsedSideTextures;
 	TArray<sector_t> ParsedSectors;
 	TArray<vertex_t> ParsedVertices;
-	TArray<UDMFScroll> UDMFScrollers;
+	TArray<UDMFScroll> UDMFSectorScrollers;
+	TArray<UDMFScroll> UDMFWallScrollers;
 
 	FDynamicColormap	*fogMap, *normMap;
 	FMissingTextureTracker &missingTex;
@@ -1192,6 +1193,7 @@ public:
 	void ParseSidedef(side_t *sd, intmapsidedef_t *sdt, int index)
 	{
 		double texOfs[2]={0,0};
+		DVector2 scrolls[4] = {};
 
 		memset(sd, 0, sizeof(*sd));
 		sdt->bottomtexture = "-";
@@ -1317,6 +1319,30 @@ public:
 				Flag(sd->Flags, WALLF_NOAUTODECALS, key);
 				continue;
 
+			case NAME_xscroll:
+				scrolls[0].X = CheckFloat(key);
+				break;
+			case NAME_yscroll:
+				scrolls[0].Y = CheckFloat(key);
+				break;
+			case NAME_xscrolltop:
+				scrolls[1].X = CheckFloat(key);
+				break;
+			case NAME_yscrolltop:
+				scrolls[1].Y = CheckFloat(key);
+				break;
+			case NAME_xscrollmid:
+				scrolls[2].X = CheckFloat(key);
+				break;
+			case NAME_yscrollmid:
+				scrolls[2].Y = CheckFloat(key);
+				break;
+			case NAME_xscrollbottom:
+				scrolls[3].X = CheckFloat(key);
+				break;
+			case NAME_yscrollbottom:
+				scrolls[3].Y = CheckFloat(key);
+				break;
 			default:
 				break;
 
@@ -1333,6 +1359,21 @@ public:
 		sd->AddTextureYOffset(side_t::top, texOfs[1]);
 		sd->AddTextureYOffset(side_t::mid, texOfs[1]);
 		sd->AddTextureYOffset(side_t::bottom, texOfs[1]);
+		int scroll = scw_all;
+		for (int i = 1; i < 4; i++)
+		{
+			auto& scrl = scrolls[i];
+			if (!scrl.isZero())
+			{
+				int where = 1 << (i - 1);
+				scroll &= ~where;
+				UDMFWallScrollers.Push({ where, index, scrl.X, scrl.Y, 0 });
+			}
+		}
+		if (!scrolls[0].isZero() && scroll)
+		{
+			UDMFWallScrollers.Push({ scroll, index, scrolls[0].X, scrolls[0].Y, 0});
+		}
 	}
 
 	//===========================================================================
@@ -1829,11 +1870,11 @@ public:
 		// Cannot be initialized yet because they need the final sector array.
 		if (scroll_ceil_type != NAME_None)
 		{
-			UDMFScrollers.Push({ true, index, scroll_ceil_x, scroll_ceil_y, scroll_ceil_type });
+			UDMFSectorScrollers.Push({ true, index, scroll_ceil_x, scroll_ceil_y, scroll_ceil_type });
 		}
 		if (scroll_floor_type != NAME_None)
 		{
-			UDMFScrollers.Push({ false, index, scroll_floor_x, scroll_floor_y, scroll_floor_type });
+			UDMFSectorScrollers.Push({ false, index, scroll_floor_x, scroll_floor_y, scroll_floor_type });
 		}
 
 		
@@ -1937,7 +1978,7 @@ public:
 	//
 	//===========================================================================
 
-	void ProcessLineDefs()
+	void ProcessLineDefs(TArray<TArray<int>>& siderefs)
 	{
 		int sidecount = 0;
 		for(unsigned i = 0, skipped = 0; i < ParsedLines.Size();)
@@ -1972,6 +2013,7 @@ public:
 			}
 		}
 		unsigned numlines = ParsedLines.Size();
+		siderefs.Resize(ParsedSides.Size());
 		level.sides.Alloc(sidecount);
 		level.lines.Alloc(numlines);
 		int line, side;
@@ -1991,6 +2033,7 @@ public:
 					int mapside = int(intptr_t(lines[line].sidedef[sd]))-1;
 					if (mapside < sidecount)
 					{
+						siderefs[mapside].Push(side);
 						sides[side] = ParsedSides[mapside];
 						sides[side].linedef = &lines[line];
 						sides[side].sector = &level.sectors[intptr_t(sides[side].sector)];
@@ -2187,21 +2230,30 @@ public:
 		{
 			level.sectors[i].e = &level.sectors[0].e[i];
 		}
+
+		// Create the real linedefs and decompress the sidedefs. Must be done before
+		TArray<TArray<int>> siderefs;
+		ProcessLineDefs(siderefs);
+
 		// Now create the scrollers.
-		for (auto &scroll : UDMFScrollers)
+		for (auto &scroll : UDMFSectorScrollers)
 		{
 			if (scroll.scrolltype & SCROLL_Textures)
 			{
-				P_CreateScroller(scroll.ceiling ? EScroll::sc_ceiling : EScroll::sc_floor, -scroll.x, scroll.y, &level.sectors[scroll.index], 0);
+				P_CreateScroller(scroll.where == 1 ? EScroll::sc_ceiling : EScroll::sc_floor, -scroll.x, scroll.y, &level.sectors[scroll.index], nullptr, 0);
 			}
 			if (scroll.scrolltype & (SCROLL_StaticObjects | SCROLL_Players | SCROLL_Monsters))
 			{
-				P_CreateScroller(scroll.ceiling ? EScroll::sc_carry_ceiling : EScroll::sc_carry, scroll.x, scroll.y, &level.sectors[scroll.index], 0, scw_all, scroll.scrolltype);
+				P_CreateScroller(scroll.where == 1 ? EScroll::sc_carry_ceiling : EScroll::sc_carry, scroll.x, scroll.y, &level.sectors[scroll.index], nullptr, 0, scw_all, scroll.scrolltype);
 			}
 		}
-
-		// Create the real linedefs and decompress the sidedefs
-		ProcessLineDefs();
+		for (auto& scroll : UDMFWallScrollers)
+		{
+			for(auto sd : siderefs[scroll.index])
+			{
+				P_CreateScroller(EScroll::sc_side, scroll.x, scroll.y, nullptr, &level.sides[sd], 0);
+			}
+		}
 	}
 };
 

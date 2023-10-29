@@ -134,23 +134,23 @@ Note: All <bool> fields default to false unless mentioned otherwise.
 
    sidedef
    {
-      scalex_top = <float>;    // X scale for upper texture, Default = 1.0.
-      scaley_top = <float>;    // y scale for upper texture, Default = 1.0.
-      scalex_mid = <float>;    // X scale for mid texture, Default = 1.0.
-      scaley_mid = <float>;    // y scale for mid texture, Default = 1.0.
-      scalex_bottom = <float>; // X scale for lower texture, Default = 1.0.
-      scaley_bottom = <float>; // y scale for lower texture, Default = 1.0.
-      offsetx_top = <float>;    // X offset for upper texture, Default = 0.0.
-      offsety_top = <float>;    // y offset for upper texture, Default = 0.0.
-      offsetx_mid = <float>;    // X offset for mid texture, Default = 0.0.
-      offsety_mid = <float>;    // y offset for mid texture, Default = 0.0.
-      offsetx_bottom = <float>; // X offset for lower texture, Default = 0.0.
-      offsety_bottom = <float>; // y offset for lower texture, Default = 0.0.
-                                // When global texture offsets are used they will
-                                // be added on top of these values.
-      light = <integer>;        // This side's light level. Default is 0.
-      lightabsolute = <bool>;   // true = 'light' is an absolute value. Default is 
-                                // relative to the owning sector's light level.
+      scalex_top = <float>;            // X scale for upper texture, Default = 1.0.
+      scaley_top = <float>;            // Y scale for upper texture, Default = 1.0.
+      scalex_mid = <float>;            // X scale for mid texture, Default = 1.0.
+      scaley_mid = <float>;            // Y scale for mid texture, Default = 1.0.
+      scalex_bottom = <float>;         // X scale for lower texture, Default = 1.0.
+      scaley_bottom = <float>;         // Y scale for lower texture, Default = 1.0.
+      offsetx_top = <float>;           // X offset for upper texture, Default = 0.0.
+      offsety_top = <float>;           // Y offset for upper texture, Default = 0.0.
+      offsetx_mid = <float>;           // X offset for mid texture, Default = 0.0.
+      offsety_mid = <float>;           // Y offset for mid texture, Default = 0.0.
+      offsetx_bottom = <float>;        // X offset for lower texture, Default = 0.0.
+      offsety_bottom = <float>;        // Y offset for lower texture, Default = 0.0.
+                                       // When global texture offsets are used they will
+                                       // be added on top of these values.
+      light = <integer>;               // This side's light level. Default is 0.
+      lightabsolute = <bool>;          // true = 'light' is an absolute value. Default is 
+                                       // relative to the owning sector's light level.
       lightfog = <bool>;        // true = This side's relative lighting is used even in
                                 // foggy sectors. Default is to disable relative
                                 // lighting in foggy sectors.
@@ -159,6 +159,17 @@ Note: All <bool> fields default to false unless mentioned otherwise.
       clipmidtex = <bool>;      // Side's mid textures are clipped to floor and ceiling.
       wrapmidtex = <bool>;      // Side's mid textures are wrapped.
       nodecals = <bool>;        // Disables decals on the sidedef.
+
+      xscroll  = <float>;           // wall scrolling X speed in map units per tic.
+      yscroll  = <float>;           // wall scrolling Y speed in map units per tic.
+      xscrolltop  = <float>;        // upper wall scrolling X speed in map units per tic.
+      yscrolltop  = <float>;        // upper wall scrolling Y speed in map units per tic.
+      xscrollmid  = <float>;        // mid wall scrolling X speed in map units per tic.
+      yscrollmid  = <float>;        // mid wall scrolling Y speed in map units per tic.
+      xscrollbottom  = <float>;     // lower wall scrolling X speed in map units per tic.
+      yscrollbottom  = <float>;     // lower wall scrolling Y speed in map units per tic.
+
+
    }
 
    sector

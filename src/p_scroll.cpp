@@ -774,7 +774,7 @@ void SetScroller (int tag, EScroll type, double dx, double dy)
 	}
 }
 
-void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos, int scrollmode)
+void P_CreateScroller(EScroll type, double dx, double dy, sector_t *sect, side_t* side, int accel, EScrollPos scrollpos, int scrollmode)
 {
-	Create<DScroller>(type, dx, dy, nullptr, affectee, nullptr, accel, scrollpos, scrollmode);
+	Create<DScroller>(type, dx, dy, nullptr, sect, side, accel, scrollpos, scrollmode);
 }
