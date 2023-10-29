@@ -259,6 +259,11 @@ Note: All <bool> fields default to false unless mentioned otherwise.
 	  friction = <float>;             // sets the sector's friction factor. Must be between 0 and 1.
 	  movefactor = <float>            // sets the sector's movement acceleration factor. Must be > 0.
 
+      xthrust = <float>;              // applies thrust to actors - x-magnitude
+      ythrust = <float>;              // applies thrust to actors - y-magnitude
+      thrustgroup = <int>;            // specifies which actors get thrusted. Bitfield with (1 = static objects, 2 = player, 4 = monsters, 8 = projectiles, 16 = actors with +WINDTHRUST)
+      thrustlocation = <int>;         // specifies where in the sector actors get thrusted: (1 = on the ground, 2 = in the air, 4 = on the ceiling)
+
       * Note about dropactors
 
       The spec requires this to be false by default. Currently, however, ZDoom assumes this to be true
