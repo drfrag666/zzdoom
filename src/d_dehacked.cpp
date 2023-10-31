@@ -3279,7 +3279,7 @@ static bool DoDehPatch()
 		dversion = 3;
 	}
 
-	if (!LoadDehSupp ())
+	if (StateMap.Size() == 0 && !LoadDehSupp ()) // only load this once.
 	{
 		Printf ("Could not load DEH support data\n");
 		UnloadDehSupp ();
@@ -3301,7 +3301,6 @@ static bool DoDehPatch()
 		}
 	} while (cont);
 
-	UnloadDehSupp ();
 	delete[] PatchName;
 	delete[] PatchFile;
 	if (!batchrun) Printf ("Patch installed\n");
@@ -3313,46 +3312,37 @@ static inline bool CompareLabel (const char *want, const uint8_t *have)
 	return *(uint32_t *)want == *(uint32_t *)have;
 }
 
-static int DehUseCount;
-
 static void UnloadDehSupp ()
 {
-	if (--DehUseCount <= 0)
+	// Handle MBF params here, before the required arrays are cleared
+	for (unsigned int i=0; i < MBFParamStates.Size(); i++)
 	{
-		// Handle MBF params here, before the required arrays are cleared
-		for (unsigned int i=0; i < MBFParamStates.Size(); i++)
-		{
-			SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, &MBFParamStates[i]);
-		}
-		stateargs.Clear();
-		MBFParamStates.Clear();
-		MBFParamStates.ShrinkToFit();
-		MBFCodePointers.Clear();
-		MBFCodePointers.ShrinkToFit();
-		// OrgSprNames and StateMap are not freed here, because if you load a second
-		// dehacked patch through some means other than including it
-		// in the first patch, it won't see the state/sprite information
-		// that was altered by the first. So we need to keep the
-		// StateMap around until all patches have been applied.
-		DehUseCount = 0;
-		Actions.Reset();
-		OrgHeights.Reset();
-		CodePConv.Reset();
-		SoundMap.Reset();
-		InfoNames.Reset();
-		BitNames.Reset();
-		StyleNames.Reset();
-		AmmoNames.Reset();
-		UnchangedSpriteNames.Reset();
+		SetDehParams(MBFParamStates[i].state, MBFParamStates[i].pointer, &MBFParamStates[i]);
 		if (EnglishStrings != NULL)
 		{
 			delete EnglishStrings;
 			EnglishStrings = NULL;
 		}
 	}
+	stateargs.Clear();
+	MBFParamStates.Clear();
+	MBFParamStates.ShrinkToFit();
+	MBFCodePointers.Clear();
+	MBFCodePointers.ShrinkToFit();
+	OrgSprNames.Reset();
+	StateMap.Reset();
+	Actions.Reset();
+	OrgHeights.Reset();
+	CodePConv.Reset();
+	SoundMap.Reset();
+	InfoNames.Reset();
+	BitNames.Reset();
+	StyleNames.Reset();
+	AmmoNames.Reset();
+	UnchangedSpriteNames.Reset();
 }
 
-static bool LoadDehSupp ()
+bool LoadDehSupp ()
 {
 	try
 	{
@@ -3371,12 +3361,6 @@ static bool LoadDehSupp ()
 			return false;
 		}
 		bool gotnames = false;
-
-
-		if (++DehUseCount > 1)
-		{
-			return true;
-		}
 
 		if (EnglishStrings == NULL)
 		{
@@ -3533,6 +3517,7 @@ static bool LoadDehSupp ()
 					// This mapping is mainly for P_SetSafeFlash.
 					for (int i = 0; i < s.StateSpan; i++)
 					{
+						assert(FState::StaticFindStateOwner(s.State + i));
 						dehExtStates.Insert(dehcount, s.State + i);
 						s.State[i].DehIndex = dehcount;
 						dehcount++;
@@ -3762,9 +3747,7 @@ void FinishDehPatch ()
 			}
 		}
 	}
-	// Now that all Dehacked patches have been processed, it's okay to free StateMap.
-	StateMap.Reset();
-	OrgSprNames.Reset();
+	UnloadDehSupp();
 	TouchedActors.Reset();
 
 	// Now it gets nasty: We have to fiddle around with the weapons' ammo use info to make Doom's original
