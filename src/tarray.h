@@ -447,7 +447,7 @@ public:
 		Resize(i);
 	}
 
-	void push_back(T& elem)
+	void push_back(const T& elem)
 	{
 		Push(elem);
 	}
