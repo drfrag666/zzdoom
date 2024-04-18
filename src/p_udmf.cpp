@@ -2138,7 +2138,9 @@ public:
 			namespc = sc.String;
 			switch(namespc)
 			{
+			case NAME_Dsda:
 			case NAME_ZDoom:
+			case NAME_Eternity:
 				namespace_bits = Zd;
 				isTranslated = false;
 				break;

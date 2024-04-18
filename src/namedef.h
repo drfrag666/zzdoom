@@ -552,6 +552,8 @@ xx(Monsterpush)
 xx(ZDoom)
 xx(ZDoomTranslated)
 xx(Vavoom)
+xx(Eternity)
+xx(Dsda)
 
 xx(Xpanningfloor)
 xx(Ypanningfloor)
