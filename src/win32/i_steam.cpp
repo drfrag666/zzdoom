@@ -60,6 +60,7 @@
 #include <shlwapi.h>
 
 #include "hardware.h"
+#include "doomerrors.h"
 #include "version.h"
 #include "i_sound.h"
 #include "resource.h"
@@ -310,22 +311,29 @@ TArray<FString> I_GetSteamPath()
 			return result;
 	}
 
-	TArray<FString> paths = ParseSteamRegistry((steamPath + "/config/libraryfolders.vdf").GetChars());
-
-	for(FString &path : paths)
+	try
 	{
-		path.ReplaceChars('\\','/');
-		path+="/";
-	}
+		TArray<FString> paths = ParseSteamRegistry((steamPath + "/config/libraryfolders.vdf").GetChars());
 
-	paths.Push(steamPath + "/steamapps/common/");
-
-	for(unsigned int i = 0; i < countof(steam_dirs); ++i)
-	{
-		for(const FString &path : paths)
+		for (FString& path : paths)
 		{
-			result.Push(path + steam_dirs[i]);
+			path.ReplaceChars('\\', '/');
+			path += "/";
 		}
+
+		paths.Push(steamPath + "/steamapps/common/");
+
+		for (unsigned int i = 0; i < countof(steam_dirs); ++i)
+		{
+			for (const FString& path : paths)
+			{
+				result.Push(path + steam_dirs[i]);
+			}
+		}
+	}
+	catch (const CRecoverableError& err)
+	{
+		// don't abort on errors in here. Just return an empty path.
 	}
 
 	return result;
