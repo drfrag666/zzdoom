@@ -294,6 +294,22 @@ IWad
 
 IWad
 {
+	Name = "DOOM: KEX Edition"
+	Autoname = "doom.doom1.kex"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/ultdoom.txt"
+	Compatibility = "Shorttex"
+	MustContain = "E1M1","E2M1","E2M2","E2M3","E2M4","E2M5","E2M6","E2M7","E2M8","E2M9",
+		          "E3M1","E3M2","E3M3","E3M4","E3M5","E3M6","E3M7","E3M8","E3M9",
+		          "DPHOOF","BFGGA0","HEADA1","CYBRA1","SPIDA1D1", "E4M2",
+		          "DMENUPIC", "GAMECONF"
+	Load = "extras.wad"
+	BannerColors = "00 7c 00", "a8 a8 a8"
+}
+
+IWad
+{
 	Name = "DOOM: Unity Edition"
 	Autoname = "doom.doom1.unity"
 	Game = "Doom"
@@ -398,6 +414,19 @@ IWad
 
 IWad
 {
+	Name = "Final Doom: TNT - Evilution: KEX Edition"
+	Autoname = "doom.doom2.tnt.kex"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/tnt.txt"
+	Compatibility = "Shorttex", "Stairs"
+	MustContain = "MAP01", "REDTNT2", "GAMECONF"
+	BannerColors = "a8 00 00", "a8 a8 a8"
+	Load = "extras.wad"
+}
+
+IWad
+{
 	Name = "Final Doom: TNT - Evilution"
 	Autoname = "doom.doom2.tnt"
 	Game = "Doom"
@@ -418,6 +447,19 @@ IWad
 	Compatibility = "Shorttex"
 	MustContain = "MAP01", "CAMO1", "DMAPINFO"
 	BannerColors = "00 7c 00", "a8 a8 a8"
+}
+
+IWad
+{
+	Name = "Final Doom: Plutonia Experiment: KEX Edition"
+	Autoname = "doom.doom2.plutonia.kex"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/plutonia.txt"
+	Compatibility = "Shorttex"
+	MustContain = "MAP01", "CAMO1", "GAMECONF"
+	BannerColors = "a8 00 00", "a8 a8 a8"
+	Load = "extras.wad"
 }
 
 IWad
@@ -471,6 +513,19 @@ IWad
 	MustContain = "MAP01", "DMENUPIC", "M_ACPT", "M_CAN", "M_EXITO", "M_CHG"
 	BannerColors = "a8 00 00", "a8 a8 a8"
 	Load = "nerve.wad"
+}
+
+IWad
+{
+	Name = "DOOM 2: KEX Edition"
+	Autoname = "doom.doom2.kex"
+	Game = "Doom"
+	Config = "Doom"
+	Mapinfo = "mapinfo/doom2.txt"
+	Compatibility = "Shorttex"
+	MustContain = "MAP01", "DMENUPIC", "GAMECONF"
+	BannerColors = "00 7c 00", "a8 a8 a8"
+	Load = "extras.wad"
 }
 
 IWad
