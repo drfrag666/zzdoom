@@ -872,7 +872,7 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 	int float1 = buildit.GetConstantFloat(1);
 	int attenreg = buildit.GetConstantFloat(value2 ? ATTN_NONE : ATTN_NORM);
 
-	buildit.EmitParamInt(DehFindSound(value1 - 1, true));			// soundid
+	buildit.EmitParamInt(DehFindSound(value1 - 1, false));			// soundid
 	buildit.Emit(OP_PARAMI, CHAN_BODY);								// channel
 	buildit.Emit(OP_PARAM, 0, REGT_FLOAT | REGT_KONST, float1);		// volume
 	buildit.Emit(OP_PARAMI, false);									// looping
