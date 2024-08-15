@@ -253,6 +253,7 @@ enum ELevelFlags : unsigned int
 	LEVEL3_AVOIDMELEE			= 0x00020000,	// global flag needed for proper MBF support.
 	LEVEL3_NOJUMPDOWN			= 0x00040000,	// only for MBF21. Inverse of MBF's dog_jumping flag.
 	LEVEL3_HAS_CUSTOM_COLORMAP  = 0x00100000,	// custom colormap property from dsda-doom
+	LEVEL3_SECRET				= 0x00200000,	// level is a secret level
 };
 
 
@@ -380,6 +381,8 @@ struct level_info_t
 
 	FString		EnterPic;
 	FString		ExitPic;
+	FString		EnterAnim;
+	FString		ExitAnim;
 	FString 	InterMusic;
 	int			intermusicorder;
 	TMap <FName, std::pair<FString, int> > MapInterMusic;
@@ -514,6 +517,8 @@ cluster_info_t *FindClusterInfo (int cluster);
 level_info_t *FindLevelInfo (const char *mapname, bool allowdefault=true);
 level_info_t *FindLevelByNum (int num);
 level_info_t *CheckLevelRedirect (level_info_t *info);
+
+bool SecretLevelVisited();
 
 FString CalcMapName (int episode, int level);
 

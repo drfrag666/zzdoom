@@ -514,7 +514,10 @@ void FSerializer::Close()
 	}
 	if (mErrors > 0)
 	{
-		I_Error("%d errors parsing JSON", mErrors);
+		if (mLumpName.IsNotEmpty())
+			I_Error("%d errors parsing JSON lump %s", mErrors, mLumpName.GetChars());
+		else
+			I_Error("%d errors parsing JSON", mErrors);
 	}
 }
 
@@ -603,6 +606,28 @@ bool FSerializer::BeginObject(const char *name)
 		}
 	}
 	return true;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+bool FSerializer::IsKeyNull(const char* name)
+{
+	if (isReading())
+	{
+		auto val = r->FindKey(name);
+		if (val != nullptr)
+		{
+			if (val->IsNull())
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 //==========================================================================
@@ -915,6 +940,28 @@ FSerializer &FSerializer::AddString(const char *key, const char *charptr)
 		w->String(charptr);
 	}
 	return *this;
+}
+
+//==========================================================================
+//
+// Reads back a string without any processing.
+//
+//==========================================================================
+
+const char *FSerializer::GetString(const char *key)
+{
+	auto val = r->FindKey(key);
+	if (val != nullptr)
+	{
+		if (val->IsString())
+		{
+			return val->GetString();
+		}
+		else
+		{
+		}
+	}
+	return nullptr;
 }
 
 //==========================================================================

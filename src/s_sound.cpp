@@ -2393,6 +2393,24 @@ void S_SerializeSounds(FSerializer &arc)
 	GSnd->UpdateSounds();
 }
 
+bool MusicExists(const char* music_name)
+{
+	if (music_name == nullptr)
+		return false;
+
+	if (FileExists(music_name))
+		return true;
+	else
+	{
+		int lumpnum;
+		lumpnum = Wads.CheckNumForFullName (music_name, true, ns_music);
+		if (lumpnum == -1) lumpnum = Wads.CheckNumForName(music_name, ns_music);
+		if (lumpnum != -1 && Wads.LumpLength(lumpnum) != 0)
+			return true;
+	}
+	return false;
+}
+
 //==========================================================================
 //
 // S_ActivatePlayList

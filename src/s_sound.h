@@ -350,6 +350,9 @@ bool S_ChangeMusic (const char *music_name, int order=0, bool looping=true, bool
 // Start playing a cd track as music
 bool S_ChangeCDMusic (int track, unsigned int id=0, bool looping=true);
 
+// Check if <music_name> exists
+bool MusicExists(const char* music_name);
+
 void S_RestartMusic ();
 
 void S_MIDIDeviceChanged();

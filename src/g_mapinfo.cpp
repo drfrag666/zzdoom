@@ -164,6 +164,20 @@ bool CheckWarpTransMap (FString &mapname, bool substitute)
 //
 //==========================================================================
 
+bool SecretLevelVisited()
+{
+	for (unsigned int i = 0; i < wadlevelinfos.Size(); i++)
+		if ((wadlevelinfos[i].flags3 & LEVEL3_SECRET) && (wadlevelinfos[i].flags & LEVEL_VISITED))
+			return true;
+
+	return false;
+}
+
+//==========================================================================
+//
+//
+//==========================================================================
+
 static int FindWadClusterInfo (int cluster)
 {
 	for (unsigned int i = 0; i < wadclusterinfos.Size(); i++)
@@ -269,6 +283,8 @@ void level_info_t::Reset()
 	RedirectMapName = "";
 	EnterPic = "";
 	ExitPic = "";
+	EnterAnim = "";
+	ExitAnim = "";
 	InterMusic = "";
 	intermusicorder = 0;
 	SoundInfo = "";
@@ -1106,6 +1122,20 @@ DEFINE_MAP_OPTION(enterpic, true)
 	parse.ParseAssign();
 	parse.sc.MustGetString();
 	info->EnterPic = parse.sc.String;
+}
+
+DEFINE_MAP_OPTION(exitanim, true)
+{
+	parse.ParseAssign();
+	parse.sc.MustGetString();
+	info->ExitAnim = parse.sc.String;
+}
+
+DEFINE_MAP_OPTION(enteranim, true)
+{
+	parse.ParseAssign();
+	parse.sc.MustGetString();
+	info->EnterAnim = parse.sc.String;
 }
 
 DEFINE_MAP_OPTION(specialaction, true)
@@ -2237,6 +2267,7 @@ void G_ParseMapInfo (FString basemapinfo)
 {
 	int lump, lastlump = 0;
 	level_info_t gamedefaults;
+	TArray<FString> secretMaps;
 
 	ClearMapinfo();
 	atterm(ClearMapinfo);
@@ -2301,6 +2332,24 @@ void G_ParseMapInfo (FString basemapinfo)
 	if (AllSkills.Size() == 0)
 	{
 		I_FatalError ("You cannot use clearskills in a MAPINFO if you do not define any new skills after it.");
+	}
+
+	// Find any and all secret maps.
+	for (unsigned int i = 0; i < wadlevelinfos.Size(); i++)
+	{
+		if (wadlevelinfos[i].NextSecretMap.IsNotEmpty() && wadlevelinfos[i].NextSecretMap != wadlevelinfos[i].NextMap)
+		{
+			secretMaps.Push(wadlevelinfos[i].NextSecretMap);
+		}
+	}
+	// ...and then mark them all as secret maps.
+	for (unsigned int i = 0; i < secretMaps.Size(); i++)
+	{
+		auto* li = FindLevelInfo(secretMaps[i].GetChars(), false);
+		if (li)
+		{
+			li->flags3 |= LEVEL3_SECRET;
+		}
 	}
 }
 
