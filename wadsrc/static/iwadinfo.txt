@@ -597,11 +597,13 @@ Names
 {	
 	"doom_complete.pk3"
 	"doom2.wad"
+	"doom2xbox.wad"
 	"doom2unity.wad"
 	"doom2kex.wad"
 	"doom2f.wad"
 	"doomu.wad"
 	"doom.wad"
+	"doomxbox.wad"
 	"doomunity.wad"
 	"doomkex.wad"
 	"doom1.wad"
