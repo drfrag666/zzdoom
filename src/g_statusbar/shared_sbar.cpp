@@ -154,7 +154,12 @@ void ST_FormatMapName(FString &mapname, const char *mapnamecolor)
 	bool ishub = (cluster != NULL && (cluster->flags & CLUSTER_HUB));
 
 	mapname = "";
-	if (am_showmaplabel == 1 || (am_showmaplabel == 2 && !ishub))
+	// If a label is specified, use it uncontitionally here.
+	if (level.info->MapLabel.IsNotEmpty())
+	{
+		mapname << level.info->MapLabel << ": ";
+	}
+	else if (am_showmaplabel == 1 || (am_showmaplabel == 2 && !ishub))
 	{
 		mapname << level.MapName << ": ";
 	}

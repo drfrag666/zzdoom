@@ -349,6 +349,7 @@ struct level_info_t
 
 	FString		Music;
 	FString		LevelName;
+	FString		MapLabel;
 	FString		AuthorName;
 	int8_t		WallVertLight, WallHorizLight;
 	int			musicorder;

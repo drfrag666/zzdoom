@@ -499,6 +499,7 @@ struct LevelLocals native
 	native String NextSecretMap;
 	native String F1Pic;
 	native readonly int maptype;
+	native readonly String MapLabel;
 	native readonly String AuthorName;
 	native readonly String Music;
 	native readonly int musicorder;
