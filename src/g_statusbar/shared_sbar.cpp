@@ -157,7 +157,8 @@ void ST_FormatMapName(FString &mapname, const char *mapnamecolor)
 	// If a label is specified, use it uncontitionally here.
 	if (level.info->MapLabel.IsNotEmpty())
 	{
-		mapname << level.info->MapLabel << ": ";
+		if (level.info->MapLabel.Compare("*"))
+			mapname << level.info->MapLabel << ": ";
 	}
 	else if (am_showmaplabel == 1 || (am_showmaplabel == 2 && !ishub))
 	{
