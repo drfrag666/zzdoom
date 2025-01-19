@@ -2774,11 +2774,18 @@ void AM_drawKeys ()
 	mpoint_t p;
 	DAngle	 angle;
 
-	TThinkerIterator<AInventory> it(NAME_Key);
+	TThinkerIterator<AInventory> it(NAME_Inventory);
 	AInventory *key;
 
 	while ((key = it.Next()) != NULL)
 	{
+		auto cls = key->GetClass();
+		if (cls->IsDescendantOf(NAME_DehackedPickup))
+		{
+			cls = cls->ActorInfo()->Replacee;
+		}
+		if (!cls->IsDescendantOf(NAME_Key)) continue;
+
 		DVector3 pos = key->PosRelative(MapPortalGroup);
 		p.x = pos.X;
 		p.y = pos.Y;
