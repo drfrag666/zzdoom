@@ -194,6 +194,7 @@ class ID24IncineratorProjectile : Actor // Heatwave Ripper
 
 		Projectile;
 		+RIPPER;
+		RenderStyle "Add";
 
 		DeathSound "weapons/calamityblade/explode";
 	}
