@@ -76,6 +76,7 @@ class ID24IncineratorFlame : Actor // Incinerator Flame
 		Projectile;
 		+FORCERADIUSDMG;
 		RenderStyle "Add";
+		Decal "Scorch";
 	}
 
 	States
