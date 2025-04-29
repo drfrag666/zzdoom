@@ -147,6 +147,7 @@ static PClassActor* FindInfoName(int index, bool mustexist = false)
 			cls = static_cast<PClassActor*>(RUNTIME_CLASS(AActor)->CreateDerivedClass(name.GetChars(), (unsigned)sizeof(AActor)));
 			NewClassType(cls);	// This needs a VM type to work as intended.
 			cls->InitializeDefaults();
+			PClassActor::AllActorClasses.Push(cls);
 		}
 		if (cls)
 		{
@@ -3702,6 +3703,7 @@ void FinishDehPatch ()
 			// Retry until we find a free name. This is unlikely to happen but not impossible.
 			mysnprintf(typeNameBuilder, countof(typeNameBuilder), "DehackedPickup%d", nameindex++);
 			subclass = static_cast<PClassActor *>(dehtype->CreateDerivedClass(typeNameBuilder, dehtype->Size));
+			PClassActor::AllActorClasses.Push(subclass);
 		} 
 		while (subclass == nullptr);
 		NewClassType(subclass);	// This needs a VM type to work as intended.
