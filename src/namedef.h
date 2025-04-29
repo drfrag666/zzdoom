@@ -355,6 +355,11 @@ xx(TanH)
 xx(ATan2)
 xx(VectorAngle)
 xx(New)
+
+xx(Obituary)
+xx(HitObituary)
+xx(SelfObituary)
+
 xx(Alpha)
 xx(Angle)
 xx(Args)
