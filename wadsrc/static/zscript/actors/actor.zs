@@ -31,8 +31,8 @@ struct FCheckPosition
 
 struct LinkContext
 {
-	voidptr sector_list;	// really msecnode but that's not exported yet.
-	voidptr render_list;
+	readonly voidptr sector_list;	// really msecnode but that's not exported yet.
+	readonly voidptr render_list;
 }
 
 

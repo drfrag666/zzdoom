@@ -35,13 +35,13 @@
 class MessageBoxMenu : Menu
 {
 	BrokenLines mMessage;
-	voidptr Handler;
+	readonly voidptr Handler;
 	int mMessageMode;
 	int messageSelection;
 	int mMouseLeft, mMouseRight, mMouseY;
 	Name mAction;
 
-	native static void CallHandler(voidptr hnd);
+	private native static void CallHandler(voidptr hnd);
 
 
 	//=============================================================================
