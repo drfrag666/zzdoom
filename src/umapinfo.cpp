@@ -63,6 +63,7 @@ struct UMapEntry
 	char intermusic[9] = "";
 	int partime = 0;
 	int nointermission = 0;
+	int id24_levelnum = 0;	// default excludes the episode number unlike the actual levelnum
 };
 
 static TArray<UMapEntry> Maps;
@@ -498,6 +499,7 @@ void CommitUMapinfo(level_info_t *defaultinfo)
 		if (map.exitpic[0]) levelinfo->ExitPic = map.exitpic;
 		if (map.enteranim[0]) levelinfo->EnterAnim = map.enteranim;
 		if (map.exitanim[0]) levelinfo->ExitAnim = map.exitanim;
+		levelinfo->id24_levelnum = map.id24_levelnum;
 		/* UMAPINFO's intermusic is for the text screen, not the summary.
 		if (map.intermusic[0])
 		{
