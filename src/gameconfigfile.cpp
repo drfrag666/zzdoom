@@ -129,6 +129,7 @@ FGameConfigFile::FGameConfigFile ()
 		// Arch Linux likes them in /usr/share/doom
 		// Debian likes them in /usr/share/games/doom
 		// I assume other distributions don't do anything radically different
+		SetValueForKey ("Path", "/usr/share/games/zzdoom", true);
 		SetValueForKey ("Path", "/usr/local/share/doom", true);
 		SetValueForKey ("Path", "/usr/local/share/games/doom", true);
 		SetValueForKey ("Path", "/usr/share/doom", true);
@@ -150,6 +151,7 @@ FGameConfigFile::FGameConfigFile ()
 #else
 		SetValueForKey ("Path", "~/" GAME_DIR, true);
 		SetValueForKey ("Path", SHARE_DIR, true);
+		SetValueForKey ("Path", "/usr/share/games/zzdoom", true);
 		SetValueForKey ("Path", "/usr/local/share/doom", true);
 		SetValueForKey ("Path", "/usr/local/share/games/doom", true);
 		SetValueForKey ("Path", "/usr/share/doom", true);
