@@ -820,7 +820,6 @@ set (PCH_SOURCES
 	dobject.cpp
 	dobjgc.cpp
 	dobjtype.cpp
-	doomdef.cpp
 	doomstat.cpp
 	dsectoreffect.cpp
 	dthinker.cpp
