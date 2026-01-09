@@ -715,7 +715,7 @@ void R_DrawVisVoxel(vissprite_t *spr, int minslabz, int maxslabz, short *cliptop
 // R_ProjectSprite
 // Generates a vissprite for a thing if it might be visible.
 //
-void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor *fakeceiling, sector_t *current_sector)
+void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor *fakeceiling, sector_t *current_sector, bool flipagain)
 {
 	double 			tr_x;
 	double 			tr_y;
@@ -791,12 +791,27 @@ void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor
 			spriteframe_t *sprframe = &SpriteFrames[tex->Rotations];
 			DAngle ang = (pos - ViewPos).Angle();
 			angle_t rot;
-			if (sprframe->Texture[0] == sprframe->Texture[1])
+			if ((sprframe->Texture[0] == sprframe->Texture[1]) && flipagain)
+			{
+				if (thing->flags7 & MF7_SPRITEANGLE)
+					rot = (360.0 - ang + 45.0 / 2 * 9).BAMs() >> 28;
+				else
+					rot = (360.0 - ang - (thing->Angles.Yaw + thing->SpriteRotation) + 45.0 / 2 * 9).BAMs() >> 28;
+			}
+			else if (sprframe->Texture[0] == sprframe->Texture[1])
 			{
 				if (thing->flags7 & MF7_SPRITEANGLE)
 					rot = (thing->SpriteAngle + 45.0 / 2 * 9).BAMs() >> 28;
 				else
 					rot = (ang - (thing->Angles.Yaw + thing->SpriteRotation) + 45.0 / 2 * 9).BAMs() >> 28;
+			}
+			else if (flipagain)
+			{
+				if (thing->flags7 & MF7_SPRITEANGLE)
+					rot = (360.0 - ang + (45.0 / 2 * 9 - 180.0 / 16)).BAMs() >> 28;
+				else
+					rot = (360.0 - ang - (thing->Angles.Yaw + thing->SpriteRotation) + (45.0 / 2 * 9 - 180.0 / 16)).BAMs() >> 28;
+					
 			}
 			else
 			{
@@ -1276,7 +1291,7 @@ void R_AddSprites (sector_t *sec, int lightlevel, int fakeside)
 				if(rover->bottom.plane->ZatPoint(0., 0.) >= thing->Top()) fakeceiling = rover;
 			}
 		}	
-		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec);
+		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec, !!(thing->flags7 & MF7_SPRITEFLIP));
 		fakeceiling = NULL;
 		fakefloor = NULL;
 	}
