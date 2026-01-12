@@ -31,6 +31,7 @@
 #define WEAPONTOP				32.
 #define WEAPON_FUDGE_Y			0.375
 class AInventory;
+struct FTranslatedLineTarget;
 
 //
 // Overlay psprites are scaled shapes
@@ -87,7 +88,6 @@ private:
 	DPSprite () {}
 
 	void Serialize(FSerializer &arc);
-	void Tick();
 
 public:	// must be public to be able to generate the field export tables. Grrr...
 	TObjPtr<AActor*> Caller;
@@ -113,7 +113,6 @@ void P_BobWeapon (player_t *player, float *x, float *y, double ticfrac);
 DAngle P_BulletSlope (AActor *mo, FTranslatedLineTarget *pLineTarget = NULL, int aimflags = 0);
 AActor *P_AimTarget(AActor *mo);
 
-void DoReadyWeapon(AActor *self);
 void DoReadyWeaponToBob(AActor *self);
 void DoReadyWeaponToFire(AActor *self, bool primary = true, bool secondary = true);
 void DoReadyWeaponToSwitch(AActor *self, bool switchable = true);

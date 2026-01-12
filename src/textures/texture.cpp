@@ -56,7 +56,7 @@ struct TexCreateInfo
 	int usetype;
 };
 
-BYTE FTexture::GrayMap[256];
+uint8_t FTexture::GrayMap[256];
 
 void FTexture::InitGrayMap()
 {
@@ -222,7 +222,7 @@ void FTexture::HackHack (int newheight)
 {
 }
 
-FTexture::Span **FTexture::CreateSpans (const BYTE *pixels) const
+FTexture::Span **FTexture::CreateSpans (const uint8_t *pixels) const
 {
 	Span **spans, *span;
 
@@ -244,7 +244,7 @@ FTexture::Span **FTexture::CreateSpans (const BYTE *pixels) const
 		int numcols = Width;
 		int numrows = Height;
 		int numspans = numcols;	// One span to terminate each column
-		const BYTE *data_p;
+		const uint8_t *data_p;
 		bool newspan;
 		int x, y;
 
@@ -320,9 +320,9 @@ void FTexture::FreeSpans (Span **spans) const
 	M_Free (spans);
 }
 
-void FTexture::CopyToBlock (BYTE *dest, int dwidth, int dheight, int xpos, int ypos, int rotate, const BYTE *translation)
+void FTexture::CopyToBlock (uint8_t *dest, int dwidth, int dheight, int xpos, int ypos, int rotate, const uint8_t *translation)
 {
-	const BYTE *pixels = GetPixels();
+	const uint8_t *pixels = GetPixels();
 	int srcwidth = Width;
 	int srcheight = Height;
 	int step_x = Height;
@@ -340,7 +340,7 @@ void FTexture::CopyToBlock (BYTE *dest, int dwidth, int dheight, int xpos, int y
 				for (int y = 0; y < srcheight; y++, pos++)
 				{
 					// the optimizer is doing a good enough job here so there's no need to optimize this by hand
-					BYTE v = pixels[y * step_y + x * step_x]; 
+					uint8_t v = pixels[y * step_y + x * step_x]; 
 					if (v != 0) dest[pos] = v;
 				}
 			}
@@ -352,7 +352,7 @@ void FTexture::CopyToBlock (BYTE *dest, int dwidth, int dheight, int xpos, int y
 				int pos = x * dheight;
 				for (int y = 0; y < srcheight; y++, pos++)
 				{
-					BYTE v = pixels[y * step_y + x * step_x]; 
+					uint8_t v = pixels[y * step_y + x * step_x]; 
 					if (v != 0) dest[pos] = translation[v];
 				}
 			}
@@ -363,7 +363,7 @@ void FTexture::CopyToBlock (BYTE *dest, int dwidth, int dheight, int xpos, int y
 // Converts a texture between row-major and column-major format
 // by flipping it about the X=Y axis.
 
-void FTexture::FlipSquareBlock (BYTE *block, int x, int y)
+void FTexture::FlipSquareBlock (uint8_t *block, int x, int y)
 {
 	int i, j;
 
@@ -371,31 +371,31 @@ void FTexture::FlipSquareBlock (BYTE *block, int x, int y)
 
 	for (i = 0; i < x; ++i)
 	{
-		BYTE *corner = block + x*i + i;
+		uint8_t *corner = block + x*i + i;
 		int count = x - i;
 		if (count & 1)
 		{
 			count--;
-			swapvalues<BYTE> (corner[count], corner[count*x]);
+			swapvalues<uint8_t> (corner[count], corner[count*x]);
 		}
 		for (j = 0; j < count; j += 2)
 		{
-			swapvalues<BYTE> (corner[j], corner[j*x]);
-			swapvalues<BYTE> (corner[j+1], corner[(j+1)*x]);
+			swapvalues<uint8_t> (corner[j], corner[j*x]);
+			swapvalues<uint8_t> (corner[j+1], corner[(j+1)*x]);
 		}
 	}
 }
 
-void FTexture::FlipSquareBlockRemap (BYTE *block, int x, int y, const BYTE *remap)
+void FTexture::FlipSquareBlockRemap (uint8_t *block, int x, int y, const uint8_t *remap)
 {
 	int i, j;
-	BYTE t;
+	uint8_t t;
 
 	if (x != y) return;
 
 	for (i = 0; i < x; ++i)
 	{
-		BYTE *corner = block + x*i + i;
+		uint8_t *corner = block + x*i + i;
 		int count = x - i;
 		if (count & 1)
 		{
@@ -416,7 +416,7 @@ void FTexture::FlipSquareBlockRemap (BYTE *block, int x, int y, const BYTE *rema
 	}
 }
 
-void FTexture::FlipNonSquareBlock (BYTE *dst, const BYTE *src, int x, int y, int srcpitch)
+void FTexture::FlipNonSquareBlock (uint8_t *dst, const uint8_t *src, int x, int y, int srcpitch)
 {
 	int i, j;
 
@@ -429,7 +429,7 @@ void FTexture::FlipNonSquareBlock (BYTE *dst, const BYTE *src, int x, int y, int
 	}
 }
 
-void FTexture::FlipNonSquareBlockRemap (BYTE *dst, const BYTE *src, int x, int y, int srcpitch, const BYTE *remap)
+void FTexture::FlipNonSquareBlockRemap (uint8_t *dst, const uint8_t *src, int x, int y, int srcpitch, const uint8_t *remap)
 {
 	int i, j;
 
@@ -479,9 +479,9 @@ void FTexture::KillNative()
 // color data. Note that the buffer expects row-major data, since that's
 // generally more convenient for any non-Doom image formats, and it doesn't
 // need to be used by any of Doom's column drawing routines.
-void FTexture::FillBuffer(BYTE *buff, int pitch, int height, FTextureFormat fmt)
+void FTexture::FillBuffer(uint8_t *buff, int pitch, int height, FTextureFormat fmt)
 {
-	const BYTE *pix;
+	const uint8_t *pix;
 	int x, y, w, h, stride;
 
 	w = GetWidth();
@@ -497,7 +497,7 @@ void FTexture::FillBuffer(BYTE *buff, int pitch, int height, FTextureFormat fmt)
 		stride = pitch - w;
 		for (y = 0; y < h; ++y)
 		{
-			const BYTE *pix2 = pix;
+			const uint8_t *pix2 = pix;
 			for (x = 0; x < w; ++x)
 			{
 				*buff++ = *pix2;
@@ -581,7 +581,7 @@ void FTexture::SetScaledSize(int fitwidth, int fitheight)
 
 namespace
 {
-	PalEntry averageColor(const DWORD *data, int size, int maxout)
+	PalEntry averageColor(const uint32_t *data, int size, int maxout)
 	{
 		int				i;
 		unsigned int	r, g, b;
@@ -632,16 +632,54 @@ PalEntry FTexture::GetSkyCapColor(bool bottom)
 		const uint32_t *buffer = (const uint32_t *)bitmap.GetPixels();
 		if (buffer)
 		{
-			CeilingSkyColor = averageColor((DWORD *)buffer, w * MIN(30, h), 0);
+			CeilingSkyColor = averageColor((uint32_t *)buffer, w * MIN(30, h), 0);
 			if (h>30)
 			{
-				FloorSkyColor = averageColor(((DWORD *)buffer) + (h - 30)*w, w * 30, 0);
+				FloorSkyColor = averageColor(((uint32_t *)buffer) + (h - 30)*w, w * 30, 0);
 			}
 			else FloorSkyColor = CeilingSkyColor;
 		}
 	}
 	return bottom ? FloorSkyColor : CeilingSkyColor;
 }
+
+//====================================================================
+//
+// CheckRealHeight
+//
+// Checks the posts in a texture and returns the lowest row (plus one)
+// of the texture that is actually used.
+//
+//====================================================================
+
+int FTexture::CheckRealHeight()
+{
+	const FTexture::Span *span;
+	int maxy = 0, miny = GetHeight();
+
+	for (int i = 0; i < GetWidth(); ++i)
+	{
+		GetColumn(i, &span);
+		while (span->Length != 0)
+		{
+			if (span->TopOffset < miny)
+			{
+				miny = span->TopOffset;
+			}
+			if (span->TopOffset + span->Length > maxy)
+			{
+				maxy = span->TopOffset + span->Length;
+			}
+			span++;
+		}
+	}
+	// Scale maxy before returning it
+	maxy = int((maxy * 2) / Scale.Y);
+	maxy = (maxy >> 1) + (maxy & 1);
+	return maxy;
+}
+
+
 
 
 FDummyTexture::FDummyTexture ()
@@ -666,13 +704,13 @@ void FDummyTexture::SetSize (int width, int height)
 }
 
 // This must never be called
-const BYTE *FDummyTexture::GetColumn (unsigned int column, const Span **spans_out)
+const uint8_t *FDummyTexture::GetColumn (unsigned int column, const Span **spans_out)
 {
 	return NULL;
 }
 
 // And this also must never be called
-const BYTE *FDummyTexture::GetPixels ()
+const uint8_t *FDummyTexture::GetPixels ()
 {
 	return NULL;
 }

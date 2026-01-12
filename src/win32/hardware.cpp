@@ -35,7 +35,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#define USE_WINDOWS_DWORD
 #include "hardware.h"
 #include "win32iface.h"
 #include "i_video.h"
@@ -70,7 +69,6 @@ void I_ShutdownGraphics ()
 	{
 		DFrameBuffer *s = screen;
 		screen = NULL;
-		s->ObjectFlags |= OF_YesReallyDelete;
 		delete s;
 	}
 	if (Video)

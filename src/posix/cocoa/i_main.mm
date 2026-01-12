@@ -32,6 +32,7 @@
  */
 
 #include "i_common.h"
+#include "s_sound.h"
 
 #include <sys/sysctl.h>
 #include <unistd.h>
@@ -126,6 +127,7 @@ void popterm()
 void Mac_I_FatalError(const char* const message)
 {
 	I_SetMainWindowVisible(false);
+	S_StopMusic(true);
 
 	FConsoleWindow::GetInstance().ShowFatalError(message);
 }
@@ -180,7 +182,7 @@ static void I_DetectOS()
 }
 
 
-DArgs* Args; // command line arguments
+FArgs* Args; // command line arguments
 
 
 // Newer versions of GCC than 4.2 have a bug with C++ exceptions in Objective-C++ code.
@@ -189,7 +191,7 @@ DArgs* Args; // command line arguments
 void OriginalMainExcept(int argc, char** argv);
 void OriginalMainTry(int argc, char** argv)
 {
-	Args = new DArgs(argc, argv);
+	Args = new FArgs(argc, argv);
 
 	/*
 	 killough 1/98:

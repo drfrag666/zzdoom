@@ -31,6 +31,7 @@
 #include "statnums.h"
 #include "serializer.h"
 #include "doomstat.h"
+#include "vm.h"
 
 IMPLEMENT_CLASS(DSectorEffect, false, false)
 
@@ -72,15 +73,14 @@ void DSectorEffect::Serialize(FSerializer &arc)
 	arc("sector", m_Sector);
 }
 
-IMPLEMENT_CLASS(DMover, false, true)
+DEFINE_FIELD(DSectorEffect, m_Sector)
+
+
+IMPLEMENT_CLASS(DMover, true, true)
 
 IMPLEMENT_POINTERS_START(DMover)
 	IMPLEMENT_POINTER(interpolation)
 IMPLEMENT_POINTERS_END
-
-DMover::DMover ()
-{
-}
 
 DMover::DMover (sector_t *sector)
 	: DSectorEffect (sector)
@@ -109,11 +109,8 @@ void DMover::StopInterpolation(bool force)
 	}
 }
 
-IMPLEMENT_CLASS(DMovingFloor, false, false)
+IMPLEMENT_CLASS(DMovingFloor, true, false)
 
-DMovingFloor::DMovingFloor ()
-{
-}
 
 DMovingFloor::DMovingFloor (sector_t *sector)
 	: DMover (sector)
@@ -122,11 +119,8 @@ DMovingFloor::DMovingFloor (sector_t *sector)
 	interpolation = sector->SetInterpolation(sector_t::FloorMove, true);
 }
 
-IMPLEMENT_CLASS(DMovingCeiling, false, false)
+IMPLEMENT_CLASS(DMovingCeiling, true, false)
 
-DMovingCeiling::DMovingCeiling ()
-{
-}
 
 DMovingCeiling::DMovingCeiling (sector_t *sector, bool interpolate)
 	: DMover (sector)

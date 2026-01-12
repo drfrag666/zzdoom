@@ -124,12 +124,13 @@ void DIntermissionScreen::Init(FIntermissionAction *desc, bool first)
 	if (desc->mPalette.IsNotEmpty() && (lumpnum = Wads.CheckNumForFullName(desc->mPalette, true)) > 0)
 	{
 		PalEntry *palette;
+		uint8_t palbuffer[768];
 		const uint8_t *orgpal;
 		FMemLump lump;
 		int i;
 
-		lump = Wads.ReadLump (lumpnum);
-		orgpal = (uint8_t *)lump.GetMem();
+		ReadPalette(lumpnum, palbuffer);
+		orgpal = (uint8_t *)palbuffer;
 		palette = screen->GetPalette ();
 		for (i = 256; i > 0; i--, orgpal += 3)
 		{
@@ -902,7 +903,7 @@ void F_StartIntermission(FIntermissionDescriptor *desc, bool deleteme, uint8_t s
 	if (state == FSTATE_InLevel) wipegamestate = GS_FINALE;	// don't wipe when within a level.
 	viewactive = false;
 	automapactive = false;
-	DIntermissionController::CurrentIntermission = new DIntermissionController(desc, deleteme, state);
+	DIntermissionController::CurrentIntermission = Create<DIntermissionController>(desc, deleteme, state);
 
 	// If the intermission finishes straight away then cancel the wipe.
 	if (!DIntermissionController::CurrentIntermission->NextPage())

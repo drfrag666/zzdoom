@@ -84,7 +84,8 @@ int I_PickIWad_Gtk (WadStuff *wads, int numwads, bool showwin, int defaultiwad);
 int I_PickIWad_Cocoa (WadStuff *wads, int numwads, bool showwin, int defaultiwad);
 #endif
 
-DWORD LanguageIDs[4];
+double PerfToSec, PerfToMillisec;
+uint32_t LanguageIDs[4];
 	
 int (*I_GetTime) (bool saveMS);
 int (*I_WaitForTic) (int);
@@ -113,7 +114,12 @@ void I_WaitVBL (int count)
 {
     // I_WaitVBL is never used to actually synchronize to the
     // vertical blank. Instead, it's used for delay purposes.
-    usleep (1000000 * count / 70);
+    struct timespec delay, rem;
+    delay.tv_sec = count / 70;
+    /* Avoid overflow. Microsec res should be good enough. */
+    delay.tv_nsec = (count%70)*1000000/70 * 1000;
+    while(nanosleep(&delay, &rem) == -1 && errno == EINTR)
+        delay = rem;
 }
 
 //
@@ -123,7 +129,7 @@ void SetLanguageIDs ()
 {
 	size_t langlen = strlen(language);
 
-	DWORD lang = (langlen < 2 || langlen > 3) ?
+	uint32_t lang = (langlen < 2 || langlen > 3) ?
 		MAKE_ID('e','n','u','\0') :
 		MAKE_ID(language[0],language[1],language[2],'\0');
 

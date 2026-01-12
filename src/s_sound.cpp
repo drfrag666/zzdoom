@@ -54,7 +54,7 @@
 #include "d_player.h"
 #include "r_state.h"
 #include "g_levellocals.h"
-#include "virtual.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -75,14 +75,6 @@
 #define S_STEREO_SWING			0.75
 
 // TYPES -------------------------------------------------------------------
-
-struct MusPlayingInfo
-{
-	FString name;
-	MusInfo *handle;
-	int   baseorder;
-	bool  loop;
-};
 
 enum
 {
@@ -118,7 +110,7 @@ static void S_SetListener(SoundListener &listener, AActor *listenactor);
 
 static bool		SoundPaused;		// whether sound is paused
 static bool		MusicPaused;		// whether music is paused
-static MusPlayingInfo mus_playing;	// music currently being played
+MusPlayingInfo mus_playing;	// music currently being played
 static FString	 LastSong;			// last music that was played
 static FPlayList *PlayList;
 static int		RestartEvictionsAt;	// do not restart evicted channels before this level.time
@@ -135,7 +127,10 @@ uint8_t *S_SoundCurve;
 int S_SoundCurveSize;
 
 FBoolCVar noisedebug ("noise", false, 0);	// [RH] Print sound debugging info?
-CVAR (Int, snd_channels, 32, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)	// number of channels available
+CUSTOM_CVAR (Int, snd_channels, 128, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)	// number of channels available
+{
+	if (self < 64) self = 64;
+}
 CVAR (Bool, snd_flipstereo, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 // CODE --------------------------------------------------------------------
@@ -484,7 +479,7 @@ void S_PrecacheLevel ()
 			{
 				// Without the type cast this picks the 'void *' assignment...
 				VMValue params[1] = { actor };
-				GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+				VMCall(func, params, 1, nullptr, 0);
 			}
 			else
 			{
@@ -562,15 +557,14 @@ void S_CacheSound (sfxinfo_t *sfx)
 
 void S_UnloadSound (sfxinfo_t *sfx)
 {
+	if (sfx->data3d.isValid() && sfx->data != sfx->data3d)
+		GSnd->UnloadSound(sfx->data3d);
 	if (sfx->data.isValid())
-	{
-        if(sfx->data3d.isValid() && sfx->data != sfx->data3d)
-            GSnd->UnloadSound(sfx->data3d);
 		GSnd->UnloadSound(sfx->data);
-		sfx->data.Clear();
-        sfx->data3d.Clear();
+	if (sfx->data.isValid() || sfx->data3d.isValid())
 		DPrintf(DMSG_NOTIFY, "Unloaded sound \"%s\" (%td)\n", sfx->name.GetChars(), sfx - &S_sfx[0]);
-	}
+	sfx->data.Clear();
+	sfx->data3d.Clear();
 }
 
 //==========================================================================
@@ -2114,8 +2108,8 @@ static void S_SetListener(SoundListener &listener, AActor *listenactor)
 		listener.velocity.Zero();
 		listener.position = listenactor->SoundPos();
 		listener.underwater = listenactor->waterlevel == 3;
-		assert(Zones.Size() > listenactor->Sector->ZoneNumber);
-		listener.Environment = Zones[listenactor->Sector->ZoneNumber].Environment;
+		assert(level.Zones.Size() > listenactor->Sector->ZoneNumber);
+		listener.Environment = level.Zones[listenactor->Sector->ZoneNumber].Environment;
 		listener.valid = true;
 	}
 	else
@@ -2361,7 +2355,7 @@ void S_SerializeSounds(FSerializer &arc)
 			for (unsigned int i = chans.Size(); i-- != 0; )
 			{
 				// Replace start time with sample position.
-				QWORD start = chans[i]->StartTime.AsOne;
+				uint64_t start = chans[i]->StartTime.AsOne;
 				chans[i]->StartTime.AsOne = GSnd ? GSnd->GetPosition(chans[i]) : 0;
 				arc(nullptr, *chans[i]);
 				chans[i]->StartTime.AsOne = start;

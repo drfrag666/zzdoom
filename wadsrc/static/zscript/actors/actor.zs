@@ -45,6 +45,8 @@ class Actor : Thinker native
 	const TELEFRAG_DAMAGE = 1000000;
 	const MinVel = 1./65536;
 	const LARGE_MASS = 10000000;	// not INT_MAX on purpose
+	const ORIG_FRICTION = (0xE800/65536.);	// original value
+	const ORIG_FRICTION_FACTOR = (2048/65536.);	// original value
 
 
 	// flags are not defined here, the native fields for those get synthesized from the internal tables.
@@ -130,6 +132,7 @@ class Actor : Thinker native
 	native name DamageType;
 	native name DamageTypeReceived;
 	native uint8 FloatBobPhase;
+	native double FloatBobStrength;
 	native int RipperLevel;
 	native int RipLevelMin;
 	native int RipLevelMax;
@@ -232,6 +235,57 @@ class Actor : Thinker native
 	Property GibHealth: GibHealth;
 	Property DeathHeight: DeathHeight;
 	Property BurnHeight: BurnHeight;
+	property Health: health;
+	property WoundHealth: WoundHealth;
+	property ReactionTime: reactiontime;
+	property PainThreshold: PainThreshold;
+	property DamageMultiply: DamageMultiply;
+	property ProjectileKickback: ProjectileKickback;
+	property Speed: speed;
+	property FloatSpeed: FloatSpeed;
+	property Radius: radius;
+	property RenderRadius: RenderRadius;
+	property Height: height;
+	property ProjectilePassHeight: ProjectilePassHeight;
+	property Mass: mass;
+	property XScale: ScaleX;
+	property YScale: ScaleY;
+	property SeeSound: SeeSound;
+	property AttackSound: AttackSound;
+	property BounceSound: BounceSound;
+	property WallBounceSound: WallBounceSound;
+	property PainSound: PainSound;
+	property DeathSound: DeathSound;
+	property ActiveSound: ActiveSound;
+	property CrushPainSound: CrushPainSound;
+	property Alpha: Alpha;
+	property MaxTargetRange: MaxTargetRange;
+	property MeleeThreshold: MeleeThreshold;
+	property MeleeRange: MeleeRange;
+	property PushFactor: PushFactor;
+	property BounceCount: BounceCount;
+	property WeaveIndexXY: WeaveIndexXY;
+	property WeaveIndexZ: WeaveIndexZ;
+	property MinMissileChance: MinMissileChance;
+	property MaxStepHeight: MaxStepHeight;
+	property MaxDropoffHeight: MaxDropoffHeight;
+	property PoisonDamageType: PoisonDamageType;
+	property RadiusDamageFactor: RadiusDamageFactor;
+	property SelfDamageFactor: SelfDamageFactor;
+	property StealthAlpha: StealthAlpha;
+	property CameraHeight: CameraHeight;
+	property VSpeed: velz;
+	property SpriteRotation: SpriteRotation;
+	property VisibleAngles: VisibleStartAngle, VisibleEndAngle;
+	property VisiblePitch: VisibleStartPitch, VisibleEndPitch;
+	property Species: Species;
+	property Accuracy: accuracy;
+	property Stamina: stamina;
+	property TelefogSourceType: TelefogSourceType;
+	property TelefogDestType: TelefogDestType;
+	property Ripperlevel: RipperLevel;
+	property RipLevelMin: RipLevelMin;
+	property RipLevelMax: RipLevelMax;
 	
 	// need some definition work first
 	//FRenderStyle RenderStyle;
@@ -273,6 +327,7 @@ class Actor : Thinker native
 		BounceCount -1;
 		FloatSpeed 4;
 		FloatBobPhase -1;	// randomly initialize by default
+		FloatBobStrength 1.0;
 		Gravity 1;
 		Friction 1;
 		DamageFactor 1.0;		// damage multiplier as target of damage.
@@ -439,7 +494,12 @@ class Actor : Thinker native
 		return Obituary;
 	}
 	
-
+	virtual int OnDrain(Actor victim, int damage, Name dmgtype)
+	{
+		return damage;
+	}
+	
+	native virtual bool OkayToSwitchTarget(Actor other);
 	native static class<Actor> GetReplacement(class<Actor> cls);
 	native static class<Actor> GetReplacee(class<Actor> cls);
 	native static int GetSpriteIndex(name sprt);
@@ -451,6 +511,8 @@ class Actor : Thinker native
 	native static int FindUniqueTid(int start = 0, int limit = 0);
 	native void SetShade(color col);
 	native clearscope int GetRenderStyle() const;
+	native clearscope bool CheckKeys(int locknum, bool remote, bool quiet = false);
+	native clearscope Inventory FirstInv() const;
 		
 	native clearscope string GetTag(string defstr = "") const;
 	native void SetTag(string defstr = "");
@@ -459,7 +521,7 @@ class Actor : Thinker native
 	native bool GiveBody (int num, int max=0);
 	native bool HitFloor();
 	native clearscope bool isTeammate(Actor other) const;
-	native int PlayerNumber();
+	native clearscope int PlayerNumber() const;
 	native void SetFriendPlayer(PlayerInfo player);
 	native void SoundAlert(Actor target, bool splash = false, double maxdist = 0);
 	native void DaggerAlert(Actor target);
@@ -483,6 +545,7 @@ class Actor : Thinker native
 	native void SetXYZ(vector3 newpos);
 	native Actor GetPointer(int aaptr);
 	native double BulletSlope(out FTranslatedLineTarget pLineTarget = null, int aimflags = 0);
+	native void CheckFakeFloorTriggers (double oldz, bool oldz_has_viewheight = false);
 	
 	native bool CheckMissileSpawn(double maxdist);
 	native bool CheckPosition(Vector2 pos, bool actorsonly = false, FCheckPosition tm = null);
@@ -525,7 +588,7 @@ class Actor : Thinker native
 	native virtual int DamageMobj(Actor inflictor, Actor source, int damage, Name mod, int flags = 0, double angle = 0);
 	native void PoisonMobj (Actor inflictor, Actor source, int damage, int duration, int period, Name type);
 	native double AimLineAttack(double angle, double distance, out FTranslatedLineTarget pLineTarget = null, double vrange = 0., int flags = 0, Actor target = null, Actor friender = null);
-	native Actor, int LineAttack(double angle, double distance, double pitch, int damage, Name damageType, class<Actor> pufftype, int flags = 0, out FTranslatedLineTarget victim = null);
+	native Actor, int LineAttack(double angle, double distance, double pitch, int damage, Name damageType, class<Actor> pufftype, int flags = 0, out FTranslatedLineTarget victim = null, double offsetz = 0.);
 	native bool CheckSight(Actor target, int flags = 0);
 	native bool IsVisible(Actor other, bool allaround, LookExParams params = null);
 	native bool HitFriend();
@@ -598,6 +661,7 @@ class Actor : Thinker native
 	native void RemoveInventory(Inventory inv);
 	native void ClearInventory();
 	native bool GiveInventory(class<Inventory> type, int amount, bool givecheat = false);
+	native bool SetInventory(class<Inventory> itemclass, int amount, bool beyondMax = false);
 	native bool TakeInventory(class<Inventory> itemclass, int amount, bool fromdecorate = false, bool notakeinfinite = false);
 	native clearscope Inventory FindInventory(class<Inventory> itemtype, bool subclass = false) const;
 	native Inventory GiveInventoryType(class<Inventory> itemtype);
@@ -618,6 +682,7 @@ class Actor : Thinker native
 	native clearscope int GetSpawnHealth() const;
 	native double GetCrouchFactor(int ptr = AAPTR_PLAYER1);
 	native double GetCVar(string cvar);
+	native double GetCVarString(string cvar);
 	native int GetPlayerInput(int inputnum, int ptr = AAPTR_DEFAULT);
 	native int CountProximity(class<Actor> classname, double distance, int flags = 0, int ptr = AAPTR_DEFAULT);
 	native double GetSpriteAngle(int ptr = AAPTR_DEFAULT);
@@ -1033,7 +1098,7 @@ class Actor : Thinker native
 	native bool A_SetVisibleRotation(double anglestart = 0, double angleend = 0, double pitchstart = 0, double pitchend = 0, int flags = 0, int ptr = AAPTR_DEFAULT);
 	native void A_SetTranslation(name transname);
 	native bool A_SetSize(double newradius, double newheight = -1, bool testpos = false);
-	native void A_SprayDecal(String name);
+	native void A_SprayDecal(String name, double dist = 172);
 	native void A_SetMugshotState(String name);
 
 	native void A_RearrangePointers(int newtarget, int newmaster = AAPTR_DEFAULT, int newtracer = AAPTR_DEFAULT, int flags=0);

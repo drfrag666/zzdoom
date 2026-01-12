@@ -44,6 +44,7 @@
 #include "m_fixed.h"
 #include "gstrings.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 TArray<FSkillInfo> AllSkills;
 int DefaultSkill = -1;
@@ -484,7 +485,7 @@ const char * G_SkillName()
 	const char *name = AllSkills[gameskill].MenuName;
 
 	player_t *player = &players[consoleplayer];
-	const char *playerclass = player->mo->GetClass()->DisplayName;
+	const char *playerclass = player->mo->GetInfo()->DisplayName;
 
 	if (playerclass != NULL)
 	{
@@ -496,6 +497,11 @@ const char * G_SkillName()
 	return name;
 }
 
+DEFINE_ACTION_FUNCTION(DObject, G_SkillName)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_STRING(G_SkillName());
+}
 
 //==========================================================================
 //

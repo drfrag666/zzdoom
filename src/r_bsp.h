@@ -78,9 +78,9 @@ struct drawseg_t
 	float		siz1, siz2;		// 1/z for left, right of parent seg on screen
 	float		cx, cy, cdx, cdy;
 	float		yscale;
-	BYTE 		silhouette;		// 0=none, 1=bottom, 2=top, 3=both
-	BYTE		bFogBoundary;
-	BYTE		bFakeBoundary;		// for fake walls
+	uint8_t 		silhouette;		// 0=none, 1=bottom, 2=top, 3=both
+	uint8_t		bFogBoundary;
+	uint8_t		bFakeBoundary;		// for fake walls
 	int			shade;
 // Pointers to lists for sprite clipping,
 // all three adjusted so [x1] is first value.
@@ -110,7 +110,7 @@ extern TArray<size_t>	InterestingDrawsegs;	// drawsegs that have something drawn
 extern size_t			FirstInterestingDrawseg;
 
 extern int			WindowLeft, WindowRight;
-extern WORD			MirrorFlags;
+extern uint16_t			MirrorFlags;
 
 typedef void (*drawfunc_t) (int start, int stop);
 

@@ -475,7 +475,7 @@ void P_SpawnScrollers(void)
 			FSectorTagIterator itr(l->args[0]);
 			while ((s = itr.Next()) >= 0)
 			{
-				new DScroller(EScroll::sc_ceiling, -dx, dy, control, s, accel);
+				Create<DScroller>(EScroll::sc_ceiling, -dx, dy, control, s, accel);
 			}
 			for (unsigned j = 0; j < copyscrollers.Size(); j++)
 			{
@@ -483,7 +483,7 @@ void P_SpawnScrollers(void)
 
 				if (line->args[0] == l->args[0] && (line->args[1] & 1))
 				{
-					new DScroller(EScroll::sc_ceiling, -dx, dy, control, line->frontsector->Index(), accel);
+					Create<DScroller>(EScroll::sc_ceiling, -dx, dy, control, line->frontsector->Index(), accel);
 				}
 			}
 			break;
@@ -495,7 +495,7 @@ void P_SpawnScrollers(void)
 				FSectorTagIterator itr(l->args[0]);
 				while ((s = itr.Next()) >= 0)
 				{
-					new DScroller (EScroll::sc_floor, -dx, dy, control, s, accel);
+					Create<DScroller> (EScroll::sc_floor, -dx, dy, control, s, accel);
 				}
 				for(unsigned j = 0;j < copyscrollers.Size(); j++)
 				{
@@ -503,7 +503,7 @@ void P_SpawnScrollers(void)
 
 					if (line->args[0] == l->args[0] && (line->args[1] & 2))
 					{
-						new DScroller(EScroll::sc_floor, -dx, dy, control, line->frontsector->Index(), accel);
+						Create<DScroller>(EScroll::sc_floor, -dx, dy, control, line->frontsector->Index(), accel);
 					}
 				}
 			}
@@ -513,7 +513,7 @@ void P_SpawnScrollers(void)
 				FSectorTagIterator itr(l->args[0]);
 				while ((s = itr.Next()) >= 0)
 				{
-					new DScroller (EScroll::sc_carry, dx, dy, control, s, accel);
+					Create<DScroller> (EScroll::sc_carry, dx, dy, control, s, accel);
 				}
 				for(unsigned j = 0;j < copyscrollers.Size(); j++)
 				{
@@ -521,7 +521,7 @@ void P_SpawnScrollers(void)
 
 					if (line->args[0] == l->args[0] && (line->args[1] & 4))
 					{
-						new DScroller (EScroll::sc_carry, dx, dy, control, line->frontsector->Index(), accel);
+						Create<DScroller> (EScroll::sc_carry, dx, dy, control, line->frontsector->Index(), accel);
 					}
 				}
 			}
@@ -535,7 +535,7 @@ void P_SpawnScrollers(void)
 			while ((s = itr.Next()) >= 0)
 			{
 				if (s != (int)i)
-					new DScroller(dx, dy, &level.lines[s], control, accel);
+					Create<DScroller>(dx, dy, &level.lines[s], control, accel);
 			}
 			break;
 		}
@@ -543,35 +543,35 @@ void P_SpawnScrollers(void)
 		case Scroll_Texture_Offsets:
 			// killough 3/2/98: scroll according to sidedef offsets
 			s = level.lines[i].sidedef[0]->Index();
-			new DScroller (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
+			Create<DScroller> (EScroll::sc_side, -level.sides[s].GetTextureXOffset(side_t::mid),
 				level.sides[s].GetTextureYOffset(side_t::mid), -1, s, accel, SCROLLTYPE(l->args[0]));
 			break;
 
 		case Scroll_Texture_Left:
 			l->special = special;	// Restore the special, for compat_useblocking's benefit.
 			s = level.lines[i].sidedef[0]->Index();
-			new DScroller (EScroll::sc_side, l->args[0] / 64., 0,
+			Create<DScroller> (EScroll::sc_side, l->args[0] / 64., 0,
 						   -1, s, accel, SCROLLTYPE(l->args[1]));
 			break;
 
 		case Scroll_Texture_Right:
 			l->special = special;
 			s = level.lines[i].sidedef[0]->Index();
-			new DScroller (EScroll::sc_side, -l->args[0] / 64., 0,
+			Create<DScroller> (EScroll::sc_side, -l->args[0] / 64., 0,
 						   -1, s, accel, SCROLLTYPE(l->args[1]));
 			break;
 
 		case Scroll_Texture_Up:
 			l->special = special;
 			s = level.lines[i].sidedef[0]->Index();
-			new DScroller (EScroll::sc_side, 0, l->args[0] / 64.,
+			Create<DScroller> (EScroll::sc_side, 0, l->args[0] / 64.,
 						   -1, s, accel, SCROLLTYPE(l->args[1]));
 			break;
 
 		case Scroll_Texture_Down:
 			l->special = special;
 			s = level.lines[i].sidedef[0]->Index();
-			new DScroller (EScroll::sc_side, 0, -l->args[0] / 64.,
+			Create<DScroller> (EScroll::sc_side, 0, -l->args[0] / 64.,
 						   -1, s, accel, SCROLLTYPE(l->args[1]));
 			break;
 
@@ -580,7 +580,7 @@ void P_SpawnScrollers(void)
 			if (l->args[0] == 0) {
 				dx = (l->args[1] - l->args[2]) / 64.;
 				dy = (l->args[4] - l->args[3]) / 64.;
-				new DScroller (EScroll::sc_side, dx, dy, -1, s, accel);
+				Create<DScroller> (EScroll::sc_side, dx, dy, -1, s, accel);
 			}
 			break;
 
@@ -661,7 +661,7 @@ void SetWallScroller (int id, int sidechoice, double dx, double dy, EScrollPos W
 				}
 				if (i == numcollected)
 				{
-					new DScroller (EScroll::sc_side, dx, dy, -1, sidenum, 0, Where);
+					Create<DScroller> (EScroll::sc_side, dx, dy, -1, sidenum, 0, Where);
 				}
 			}
 		}
@@ -701,11 +701,11 @@ void SetScroller (int tag, EScroll type, double dx, double dy)
 	FSectorTagIterator itr(tag);
 	while ((i = itr.Next()) >= 0)
 	{
-		new DScroller (type, dx, dy, -1, i, 0);
+		Create<DScroller> (type, dx, dy, -1, i, 0);
 	}
 }
 
 void P_CreateScroller(EScroll type, double dx, double dy, int control, int affectee, int accel, EScrollPos scrollpos)
 {
-	new DScroller(type, dx, dy, control, affectee, accel, scrollpos);
+	Create<DScroller>(type, dx, dy, control, affectee, accel, scrollpos);
 }

@@ -53,17 +53,17 @@ namespace swrenderer
 struct WallSampler
 {
 	WallSampler() { }
-	WallSampler(int y1, float swal, double yrepeat, fixed_t xoffset, FTexture *texture, const BYTE*(*getcol)(FTexture *texture, int x));
+	WallSampler(int y1, float swal, double yrepeat, fixed_t xoffset, FTexture *texture, const uint8_t*(*getcol)(FTexture *texture, int x));
 
 	uint32_t uv_pos;
 	uint32_t uv_step;
 	uint32_t uv_max;
 
-	const BYTE *source;
+	const uint8_t *source;
 	uint32_t height;
 };
 
-WallSampler::WallSampler(int y1, float swal, double yrepeat, fixed_t xoffset, FTexture *texture, const BYTE*(*getcol)(FTexture *texture, int x))
+WallSampler::WallSampler(int y1, float swal, double yrepeat, fixed_t xoffset, FTexture *texture, const uint8_t*(*getcol)(FTexture *texture, int x))
 {
 	height = texture->GetHeight();
 
@@ -211,7 +211,7 @@ typedef void(*DrawColumnFuncPtr)();
 
 static void ProcessWallWorker(
 	int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat,
-	const BYTE *(*getcol)(FTexture *tex, int x), DrawColumnFuncPtr draw1column, DrawColumnFuncPtr draw4columns)
+	const uint8_t *(*getcol)(FTexture *tex, int x), DrawColumnFuncPtr draw1column, DrawColumnFuncPtr draw4columns)
 {
 	if (rw_pic->UseType == FTexture::TEX_Null)
 		return;
@@ -361,12 +361,12 @@ static void ProcessWallWorker(
 	NetUpdate();
 }
 
-static void ProcessNormalWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const BYTE *(*getcol)(FTexture *tex, int x) = R_GetColumn)
+static void ProcessNormalWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const uint8_t *(*getcol)(FTexture *tex, int x) = R_GetColumn)
 {
 	ProcessWallWorker(x1, x2, uwal, dwal, swal, lwal, yrepeat, getcol, R_DrawWallCol1, R_DrawWallCol4);
 }
 
-static void ProcessMaskedWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const BYTE *(*getcol)(FTexture *tex, int x) = R_GetColumn)
+static void ProcessMaskedWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const uint8_t *(*getcol)(FTexture *tex, int x) = R_GetColumn)
 {
 	if (!rw_pic->bMasked) // Textures that aren't masked can use the faster ProcessNormalWall.
 	{
@@ -378,7 +378,7 @@ static void ProcessMaskedWall(int x1, int x2, short *uwal, short *dwal, float *s
 	}
 }
 
-static void ProcessTranslucentWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const BYTE *(*getcol)(FTexture *tex, int x) = R_GetColumn)
+static void ProcessTranslucentWall(int x1, int x2, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const uint8_t *(*getcol)(FTexture *tex, int x) = R_GetColumn)
 {
 	void (*drawcol1)();
 	void (*drawcol4)();
@@ -424,7 +424,7 @@ static void ProcessStripedWall(int x1, int x2, short *uwal, short *dwal, float *
 		}
 
 		lightlist_t *lit = &frontsector->e->XFloor.lightlist[i];
-		basecolormap = lit->extra_colormap;
+		basecolormap = GetColorTable(lit->extra_colormap);
 		wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(fogginess,
 			*lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
  	}
@@ -572,7 +572,7 @@ void R_DrawWallSegment(FTexture *rw_pic, int x1, int x2, short *walltop, short *
 	}
 }
 
-void R_DrawSkySegment(visplane_t *pl, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const BYTE *(*getcol)(FTexture *tex, int x))
+void R_DrawSkySegment(visplane_t *pl, short *uwal, short *dwal, float *swal, fixed_t *lwal, double yrepeat, const uint8_t *(*getcol)(FTexture *tex, int x))
 {
 	ProcessNormalWall(pl->left, pl->right, uwal, dwal, swal, lwal, yrepeat, getcol);
 }

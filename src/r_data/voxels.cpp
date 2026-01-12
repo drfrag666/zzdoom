@@ -62,6 +62,7 @@
 #include "r_data/colormaps.h"
 #include "r_data/sprites.h"
 #include "voxels.h"
+#include "info.h"
 
 void VOX_AddVoxel(int sprnum, int frame, FVoxelDef *def);
 
@@ -91,10 +92,10 @@ struct VoxelOptions
 //
 //==========================================================================
 
-static BYTE *GetVoxelRemap(const BYTE *pal)
+static uint8_t *GetVoxelRemap(const uint8_t *pal)
 {
-	static BYTE remap[256];
-	static BYTE oldpal[768];
+	static uint8_t remap[256];
+	static uint8_t oldpal[768];
 	static bool firsttime = true;
 
 	if (firsttime || memcmp(oldpal, pal, 768) != 0)
@@ -105,7 +106,7 @@ static BYTE *GetVoxelRemap(const BYTE *pal)
 		{
 			// The voxel palette uses VGA colors, so we have to expand it
 			// from 6 to 8 bits per component.
-			remap[i] = BestColor((uint32 *)GPalette.BaseColors,
+			remap[i] = BestColor((uint32_t *)GPalette.BaseColors,
 				(oldpal[i*3 + 0] << 2) | (oldpal[i*3 + 0] >> 4),
 				(oldpal[i*3 + 1] << 2) | (oldpal[i*3 + 1] >> 4),
 				(oldpal[i*3 + 2] << 2) | (oldpal[i*3 + 2] >> 4));
@@ -142,8 +143,8 @@ static bool CopyVoxelSlabs(kvxslab_t *dest, const kvxslab_t *src, int size)
 			dest->col[j] = src->col[j];
 		}
 		slabzleng += 3;
-		src = (kvxslab_t *)((BYTE *)src + slabzleng);
-		dest = (kvxslab_t *)((BYTE *)dest + slabzleng);
+		src = (kvxslab_t *)((uint8_t *)src + slabzleng);
+		dest = (kvxslab_t *)((uint8_t *)dest + slabzleng);
 		size -= slabzleng;
 	}
 	return true;
@@ -157,7 +158,7 @@ static bool CopyVoxelSlabs(kvxslab_t *dest, const kvxslab_t *src, int size)
 //
 //==========================================================================
 
-static void RemapVoxelSlabs(kvxslab_t *dest, int size, const BYTE *remap)
+static void RemapVoxelSlabs(kvxslab_t *dest, int size, const uint8_t *remap)
 {
 	while (size >= 3)
 	{
@@ -168,7 +169,7 @@ static void RemapVoxelSlabs(kvxslab_t *dest, int size, const BYTE *remap)
 			dest->col[j] = remap[dest->col[j]];
 		}
 		slabzleng += 3;
-		dest = (kvxslab_t *)((BYTE *)dest + slabzleng);
+		dest = (kvxslab_t *)((uint8_t *)dest + slabzleng);
 		size -= slabzleng;
 	}
 }
@@ -188,12 +189,12 @@ FVoxel *R_LoadKVX(int lumpnum)
 {
 	const kvxslab_t *slabs[MAXVOXMIPS];
 	FVoxel *voxel = new FVoxel;
-	const BYTE *rawmip;
+	const uint8_t *rawmip;
 	int mip, maxmipsize;
 	int i, j, n;
 
 	FMemLump lump = Wads.ReadLump(lumpnum);	// FMemLump adds an extra 0 byte to the end.
-	BYTE *rawvoxel = (BYTE *)lump.GetMem();
+	uint8_t *rawvoxel = (uint8_t *)lump.GetMem();
 	int voxelsize = (int)(lump.GetSize()-1);
 
 	// Oh, KVX, why couldn't you have a proper header? We'll just go through
@@ -234,7 +235,7 @@ FVoxel *R_LoadKVX(int lumpnum)
 			// Allocate slab data space.
 			mipl->OffsetX = new int[(numbytes - 24 + 3) / 4];
 			mipl->OffsetXY = (short *)(mipl->OffsetX + mipl->SizeX + 1);
-			mipl->SlabData = (BYTE *)(mipl->OffsetXY + mipl->SizeX * (mipl->SizeY + 1));
+			mipl->SlabData = (uint8_t *)(mipl->OffsetXY + mipl->SizeX * (mipl->SizeY + 1));
 
 			// Load x offsets.
 			for (i = 0, n = mipl->SizeX; i <= n; ++i)
@@ -318,7 +319,7 @@ FVoxel *R_LoadKVX(int lumpnum)
 	}
 
 	voxel->LumpNum = lumpnum;
-	voxel->Palette = new BYTE[768];
+	voxel->Palette = new uint8_t[768];
 	memcpy(voxel->Palette, rawvoxel + voxelsize - 768, 768);
 
 	return voxel;
@@ -411,7 +412,7 @@ void FVoxel::Remap()
 {
 	if (Palette != NULL)
 	{
-		BYTE *remap = GetVoxelRemap(Palette);
+		uint8_t *remap = GetVoxelRemap(Palette);
 		for (int i = 0; i < NumMips; ++i)
 		{
 			RemapVoxelSlabs((kvxslab_t *)Mips[i].SlabData, Mips[i].OffsetX[Mips[i].SizeX], remap);
@@ -445,7 +446,7 @@ void FVoxel::RemovePalette()
 //
 //==========================================================================
 
-static bool VOX_ReadSpriteNames(FScanner &sc, TArray<DWORD> &vsprites)
+static bool VOX_ReadSpriteNames(FScanner &sc, TArray<uint32_t> &vsprites)
 {
 	vsprites.Clear();
 	while (sc.GetString())
@@ -607,7 +608,7 @@ void R_InitVoxels()
 	while ((lump = Wads.FindLump("VOXELDEF", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
-		TArray<DWORD> vsprites;
+		TArray<uint32_t> vsprites;
 
 		while (VOX_ReadSpriteNames(sc, vsprites))
 		{

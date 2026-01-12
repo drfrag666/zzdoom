@@ -47,6 +47,7 @@
 #include "doomstat.h"
 #include "templates.h"
 #include "gstrings.h"
+#include "vm.h"
 
 int ListGetInt(VMVa_List &tags);
 
@@ -80,7 +81,9 @@ void DCanvas::DrawChar (FFont *font, int normalcolor, double x, double y, int ch
 		{
 			return;
 		}
-		parms.remap = font->GetColorTranslation((EColorRange)normalcolor);
+		PalEntry color = 0xffffffff;
+		parms.remap = font->GetColorTranslation((EColorRange)normalcolor, &color);
+		parms.color = PalEntry((color.a * parms.color.a) / 255, (color.r * parms.color.r) / 255, (color.g * parms.color.g) / 255, (color.b * parms.color.b) / 255);
 		DrawTextureParms(pic, parms);
 	}
 }
@@ -102,7 +105,9 @@ void DCanvas::DrawChar(FFont *font, int normalcolor, double x, double y, int cha
 		uint32_t tag = ListGetInt(args);
 		bool res = ParseDrawTextureTags(pic, x, y, tag, args, &parms, false);
 		if (!res) return;
-		parms.remap = font->GetColorTranslation((EColorRange)normalcolor);
+		PalEntry color = 0xffffffff;
+		parms.remap = font->GetColorTranslation((EColorRange)normalcolor, &color);
+		parms.color = PalEntry((color.a * parms.color.a) / 255, (color.r * parms.color.r) / 255, (color.g * parms.color.g) / 255, (color.b * parms.color.b) / 255);
 		DrawTextureParms(pic, parms);
 	}
 }
@@ -116,6 +121,7 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawChar)
 	PARAM_FLOAT(y);
 	PARAM_INT(chr);
 
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	VMVa_List args = { param + 5, 0, numparam - 5 };
 	screen->DrawChar(font, cr, x, y, chr, args);
 	return 0;
@@ -150,7 +156,10 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 		normalcolor = CR_UNTRANSLATED;
 	boldcolor = normalcolor ? normalcolor - 1 : NumTextColors - 1;
 
-	range = font->GetColorTranslation((EColorRange)normalcolor);
+	PalEntry colorparm = parms.color;
+	PalEntry color = 0xffffffff;
+	range = font->GetColorTranslation((EColorRange)normalcolor, &color);
+	parms.color = PalEntry(colorparm.a, (color.r * colorparm.r) / 255, (color.g * colorparm.g) / 255, (color.b * colorparm.b) / 255);
 
 	kerning = font->GetDefaultKerning();
 
@@ -170,7 +179,8 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 			EColorRange newcolor = V_ParseFontColor(ch, normalcolor, boldcolor);
 			if (newcolor != CR_UNDEFINED)
 			{
-				range = font->GetColorTranslation(newcolor);
+				range = font->GetColorTranslation(newcolor, &color);
+				parms.color = PalEntry(colorparm.a, (color.r * colorparm.r) / 255, (color.g * colorparm.g) / 255, (color.b * colorparm.b) / 255);
 			}
 			continue;
 		}
@@ -241,6 +251,7 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawText)
 	PARAM_FLOAT(y);
 	PARAM_STRING(chr);
 
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	VMVa_List args = { param + 5, 0, numparam - 5 };
 	const char *txt = chr[0] == '$' ? GStrings(&chr[1]) : chr.GetChars();
 	screen->DrawText(font, cr, x, y, txt, args);
@@ -443,5 +454,5 @@ DEFINE_ACTION_FUNCTION(FFont, BreakLines)
 
 	unsigned int count;
 	FBrokenLines *broken = V_BreakLines(self, maxwidth, text, true, &count);
-	ACTION_RETURN_OBJECT(new DBrokenLines(broken, count));
+	ACTION_RETURN_OBJECT(Create<DBrokenLines>(broken, count));
 }

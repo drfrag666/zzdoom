@@ -7,6 +7,10 @@ class PowerupGiver : Inventory
 	Name Mode;			// Meaning depends on powerup - used for Invulnerability and Invisibility
 	double Strength;	// Meaning depends on powerup - currently used only by Invisibility
 	
+	property prefix: Powerup;
+	property Strength: Strength;
+	property Mode: Mode;
+	
 	Default
 	{
 		Inventory.DefMaxAmount;
@@ -67,6 +71,9 @@ class Powerup : Inventory
 	int Colormap;
 	const SPECIALCOLORMAP_MASK =  0x00b60000;
 
+	property Strength: Strength;
+	property Mode: Mode;
+	
 	// Note, that while this is an inventory flag, it only has meaning on an active powerup.
 	override bool GetNoTeleportFreeze() 
 	{ 
@@ -262,21 +269,15 @@ class Powerup : Inventory
 
 	//===========================================================================
 	//
-	// APowerup :: DrawPowerup
+	// AInventory :: GetPowerupIcon
+	//
+	// Returns the icon that should be drawn for an active powerup.
 	//
 	//===========================================================================
 
-	override bool DrawPowerup (int x, int y)
+	virtual clearscope version("2.5") TextureID GetPowerupIcon() const
 	{
-		if (!Icon.isValid())
-		{
-			return false;
-		}
-		if (!isBlinking())
-		{
-			screen.DrawHUDTexture(Icon, x, y);
-		}
-		return true;
+		return Icon;
 	}
 
 	//===========================================================================
@@ -285,7 +286,7 @@ class Powerup : Inventory
 	//
 	//===========================================================================
 
-	virtual bool isBlinking() const
+	virtual clearscope bool isBlinking() const
 	{
 		return (EffectTics <= BLINKTHRESHOLD && (EffectTics & 8) && !bNoScreenBlink);
 	}
@@ -938,7 +939,7 @@ class PowerFlight : Powerup
 		+INVENTORY.HUBPOWER
 	}
 
-	ui bool HitCenterFrame;
+	clearscope bool HitCenterFrame;
 
 	//===========================================================================
 	//
@@ -1008,53 +1009,49 @@ class PowerFlight : Powerup
 	//
 	//===========================================================================
 
-	override bool DrawPowerup (int x, int y)
+	override TextureID GetPowerupIcon ()
 	{
 		// If this item got a valid icon use that instead of the default spinning wings.
 		if (Icon.isValid())
 		{
-			return Super.DrawPowerup(x, y);
+			return Icon;
 		}
 
-		if (EffectTics > BLINKTHRESHOLD || !(EffectTics & 16))
-		{
-			TextureID picnum = TexMan.CheckForTexture ("SPFLY0", TexMan.Type_MiscPatch);
-			int frame = (level.maptime/3) & 15;
+		TextureID picnum = TexMan.CheckForTexture ("SPFLY0", TexMan.Type_MiscPatch);
+		int frame = (level.maptime/3) & 15;
 
-			if (!picnum.isValid())
+		if (!picnum.isValid())
+		{
+			return picnum;
+		}
+		if (Owner.bNoGravity)
+		{
+			if (HitCenterFrame && (frame != 15 && frame != 0))
 			{
-				return false;
-			}
-			if (Owner.bNoGravity)
-			{
-				if (HitCenterFrame && (frame != 15 && frame != 0))
-				{
-					screen.DrawHUDTexture (picnum + 15, x, y);
-				}
-				else
-				{
-					screen.DrawHUDTexture (picnum + frame, x, y);
-					HitCenterFrame = false;
-				}
+				return picnum + 15;
 			}
 			else
 			{
-				if (!HitCenterFrame && (frame != 15 && frame != 0))
-				{
-					screen.DrawHUDTexture (picnum + frame, x, y);
-					HitCenterFrame = false;
-				}
-				else
-				{
-					screen.DrawHUDTexture (picnum+15, x, y);
-					HitCenterFrame = true;
-				}
+				HitCenterFrame = false;
+				return picnum + frame;
 			}
 		}
-		return true;
+		else
+		{
+			if (!HitCenterFrame && (frame != 15 && frame != 0))
+			{
+				HitCenterFrame = false;
+				return picnum + frame;
+			}
+			else
+			{
+				HitCenterFrame = true;
+				return picnum+15;
+			}
+		}
 	}
 
-	
+
 }
 
 //===========================================================================
@@ -1465,26 +1462,6 @@ class PowerBuddha : Powerup
 	{
 		Powerup.Duration -60;
 	}
-
-	override void InitEffect ()
-	{
-		Super.InitEffect();
-
-		if (Owner== null || Owner.player == null)
-			return;
-
-		Owner.player.cheats |= CF_BUDDHA;
-	}
-
-	override void EndEffect ()
-	{
-		Super.EndEffect();
-
-		if (Owner== null || Owner.player == null)
-			return;
-
-		Owner.player.cheats &= ~CF_BUDDHA;
-	}
 }
 
 //===========================================================================
@@ -1878,6 +1855,10 @@ class PowerInfiniteAmmo : Powerup
 
 class PowerReflection : Powerup
 {
+	// if 1, reflects the damage type as well.
+	bool ReflectType;
+	property ReflectType : ReflectType;
+	
 	Default
 	{
 		Powerup.Duration -60;

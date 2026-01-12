@@ -38,7 +38,7 @@
 #include <sys/stat.h>
 #include <sys/sysctl.h>
 
-#include "d_ticcmd.h"
+#include "d_protocol.h"
 #include "doomdef.h"
 #include "doomerrors.h"
 #include "doomstat.h"
@@ -53,7 +53,7 @@
 
 EXTERN_CVAR(String, language)
 
-DWORD LanguageIDs[4];
+uint32_t LanguageIDs[4];
 
 
 int (*I_GetTime)(bool saveMS);
@@ -77,7 +77,12 @@ void I_WaitVBL(const int count)
 {
     // I_WaitVBL is never used to actually synchronize to the
     // vertical blank. Instead, it's used for delay purposes.
-    usleep(1000000 * count / 70);
+    struct timespec delay, rem;
+    delay.tv_sec = count / 70;
+    /* Avoid overflow. Microsec res should be good enough. */
+    delay.tv_nsec = (count%70)*1000000/70 * 1000;
+    while(nanosleep(&delay, &rem) == -1 && errno == EINTR)
+        delay = rem;
 }
 
 
@@ -88,7 +93,7 @@ void SetLanguageIDs()
 {
 	size_t langlen = strlen(language);
 
-	DWORD lang = (langlen < 2 || langlen > 3)
+	uint32_t lang = (langlen < 2 || langlen > 3)
 		? MAKE_ID('e', 'n', 'u', '\0')
 		: MAKE_ID(language[0], language[1], language[2], '\0');
 

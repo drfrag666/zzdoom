@@ -57,6 +57,7 @@
 #include "templates.h"
 #include "cmdlib.h"
 #include "serializer.h"
+#include "vm.h"
 
 static FRandom pr_pickteam ("PickRandomTeam");
 
@@ -158,7 +159,7 @@ int D_PlayerClassToInt (const char *classname)
 		{
 			auto type = PlayerClasses[i].Type;
 
-			if (type->DisplayName.IsNotEmpty() && stricmp(type->DisplayName, classname) == 0)
+			if (type->GetDisplayName().IsNotEmpty() && stricmp(type->GetDisplayName(), classname) == 0)
 			{
 				return i;
 			}
@@ -175,7 +176,7 @@ void D_GetPlayerColor (int player, float *h, float *s, float *v, FPlayerColorSet
 {
 	userinfo_t *info = &players[player].userinfo;
 	FPlayerColorSet *colorset = NULL;
-	uint32 color;
+	uint32_t color;
 	int team;
 
 	if (players[player].mo != NULL)
@@ -215,6 +216,18 @@ void D_GetPlayerColor (int player, float *h, float *s, float *v, FPlayerColorSet
 	{
 		*set = colorset;
 	}
+}
+
+DEFINE_ACTION_FUNCTION(_PlayerInfo, GetDisplayColor)
+{
+	float h, s, v, r, g, b;
+	PARAM_SELF_STRUCT_PROLOGUE(player_t);
+	D_GetPlayerColor(int(self-players), &h, &s, &v, NULL);
+	HSVtoRGB(&r, &g, &b, h, s, v);
+	int c = MAKERGB(clamp(int(r*255.f), 0, 255),
+		clamp(int(g*255.f), 0, 255),
+		clamp(int(b*255.f), 0, 255));
+	ACTION_RETURN_INT(c);
 }
 
 // Find out which teams are present. If there is only one,
@@ -485,7 +498,7 @@ int userinfo_t::ColorSetChanged(int setnum)
 	return setnum;
 }
 
-uint32 userinfo_t::ColorChanged(const char *colorname)
+uint32_t userinfo_t::ColorChanged(const char *colorname)
 {
 	FColorCVar *color = static_cast<FColorCVar *>((*this)[NAME_Color]);
 	assert(color != NULL);
@@ -496,7 +509,7 @@ uint32 userinfo_t::ColorChanged(const char *colorname)
 	return *color;
 }
 
-uint32 userinfo_t::ColorChanged(uint32 colorval)
+uint32_t userinfo_t::ColorChanged(uint32_t colorval)
 {
 	FColorCVar *color = static_cast<FColorCVar *>((*this)[NAME_Color]);
 	assert(color != NULL);
@@ -725,7 +738,7 @@ void D_WriteUserInfoStrings (int pnum, uint8_t **stream, bool compact)
 
 		case NAME_PlayerClass:
 			*stream += sprintf(*((char **)stream), "\\%s", info->GetPlayerClassNum() == -1 ? "Random" :
-				D_EscapeUserInfo(info->GetPlayerClassType()->DisplayName.GetChars()).GetChars());
+				D_EscapeUserInfo(info->GetPlayerClassType()->GetDisplayName().GetChars()).GetChars());
 			break;
 
 		case NAME_Skin:
@@ -903,7 +916,7 @@ void WriteUserInfo(FSerializer &arc, userinfo_t &info)
 
 			case NAME_PlayerClass:
 				i = info.GetPlayerClassNum();
-				string = (i == -1 ? "Random" : PlayerClasses[i].Type->DisplayName.GetChars());
+				string = (i == -1 ? "Random" : PlayerClasses[i].Type->GetDisplayName().GetChars());
 				break;
 
 			default:
@@ -989,7 +1002,7 @@ CCMD (playerinfo)
 		Printf("%20s: %s (%d)\n", "Skin", Skins[ui->GetSkin()].Name.GetChars(), ui->GetSkin());
 		Printf("%20s: %s (%d)\n", "Gender", GenderNames[ui->GetGender()], ui->GetGender());
 		Printf("%20s: %s (%d)\n", "PlayerClass",
-			ui->GetPlayerClassNum() == -1 ? "Random" : ui->GetPlayerClassType()->DisplayName.GetChars(),
+			ui->GetPlayerClassNum() == -1 ? "Random" : ui->GetPlayerClassType()->GetDisplayName().GetChars(),
 			ui->GetPlayerClassNum());
 
 		// Print generic info

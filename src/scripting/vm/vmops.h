@@ -45,8 +45,6 @@ xx(LS,		ls,		RSRPKI,		LS_R,	4, REGT_INT),	// load string
 xx(LS_R,	ls,		RSRPRI,		NOP,	0, 0),
 xx(LO,		lo,		RPRPKI,		LO_R,	4, REGT_INT),	// load object
 xx(LO_R,	lo,		RPRPRI,		NOP,	0, 0),
-xx(LOS,		los,	RPRPKI,		LOS_R,	4, REGT_INT),	// load object (stack version without read barrier)
-xx(LOS_R,	lo,		RPRPRI,		NOP,	0, 0),
 xx(LP,		lp,		RPRPKI,		LP_R,	4, REGT_INT),	// load pointer
 xx(LP_R,	lp,		RPRPRI,		NOP,	0, 0),
 xx(LV2,		lv2,	RVRPKI,		LV2_R,	4, REGT_INT),	// load vector2
@@ -114,12 +112,12 @@ xx(RET,		ret,	I8BCP,		NOP,	0, 0),		// Copy value from register encoded in BC to 
 xx(RETI,	reti,	I8I16,		NOP,	0, 0),		// Copy immediate from BC to return value A, possibly returning
 xx(NEW,		new,	RPRPI8,		NOP,	0, 0),
 xx(NEW_K,	new,	RPKP,		NOP,	0, 0),
-xx(TRY,		try,	I24,		NOP,	0, 0),		// When an exception is thrown, start searching for a handler at pc + ABC
-xx(UNTRY,	untry,	I8,			NOP,	0, 0),		// Pop A entries off the exception stack
+//xx(TRY,		try,	I24,		NOP,	0, 0),		// When an exception is thrown, start searching for a handler at pc + ABC
+//xx(UNTRY,	untry,	I8,			NOP,	0, 0),		// Pop A entries off the exception stack
 xx(THROW,	throw,	THROW,		NOP,	0, 0),		// A == 0: Throw exception object pB
 												// A == 1: Throw exception object pkB
 												// A >= 2: Throw VM exception of type BC
-xx(CATCH,	catch,	CATCH,		NOP,	0, 0),		// A == 0: continue search on next try
+//xx(CATCH,	catch,	CATCH,		NOP,	0, 0),		// A == 0: continue search on next try
 												// A == 1: continue execution at instruction immediately following CATCH (catches any exception)
 												// A == 2: (pB == <type of exception thrown>) then pc++ ; next instruction must JMP to another CATCH
 												// A == 3: (pkB == <type of exception thrown>) then pc++ ; next instruction must JMP to another CATCH
@@ -176,11 +174,6 @@ xx(MAX_RK,		max,	RIRIKI,		MAX_RR,	4, REGT_INT),
 xx(ABS,			abs,	RIRI,		NOP,	0, 0),			// dA = abs(dB)
 xx(NEG,			neg,	RIRI,		NOP,	0, 0),			// dA = -dB
 xx(NOT,			not,	RIRI,		NOP,	0, 0),			// dA = ~dB
-xx(SEXT,		sext,	RIRII8,		NOP,	0, 0),		// dA = dB, sign extended by shifting left then right by C
-xx(ZAP_R,		zap,	RIRIRI,		NOP,	0, 0),		// dA = dB, with bytes zeroed where bits in C/dC are one
-xx(ZAP_I,		zap,	RIRII8,		NOP,	0, 0),
-xx(ZAPNOT_R,	zapnot,	RIRIRI,		NOP,	0, 0),		// dA = dB, with bytes zeroed where bits in C/dC are zero
-xx(ZAPNOT_I,	zapnot,	RIRII8,		NOP,	0, 0),
 xx(EQ_R,		beq,	CIRR,		NOP,	0, 0),			// if ((dB == dkC) != A) then pc++
 xx(EQ_K,		beq,	CIRK,		EQ_R,	4, REGT_INT),
 xx(LT_RR,		blt,	CIRR,		NOP,	0, 0),			// if ((dkB < dkC) != A) then pc++

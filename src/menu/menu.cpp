@@ -49,13 +49,13 @@
 #include "hu_stuff.h"
 #include "gi.h"
 #include "v_palette.h"
-#include "i_input.h"
+#include "g_input.h"
 #include "gameconfigfile.h"
 #include "gstrings.h"
 #include "r_utility.h"
 #include "menu/menu.h"
 #include "textures/textures.h"
-#include "virtual.h"
+#include "vm.h"
 #include "events.h"
 
 //
@@ -182,7 +182,7 @@ bool DMenu::CallResponder(event_t *ev)
 			VMValue params[] = { (DObject*)this, &e };
 			int retval;
 			VMReturn ret(&retval);
-			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+			VMCall(func, params, 2, &ret, 1);
 			return !!retval;
 		}
 	}
@@ -194,7 +194,7 @@ bool DMenu::CallResponder(event_t *ev)
 			VMValue params[] = { (DObject*)this, &e };
 			int retval;
 			VMReturn ret(&retval);
-			GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+			VMCall(func, params, 2, &ret, 1);
 			return !!retval;
 		}
 	}
@@ -214,7 +214,7 @@ bool DMenu::CallMenuEvent(int mkey, bool fromcontroller)
 		VMValue params[] = { (DObject*)this, mkey, fromcontroller };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, 3, &ret, 1, nullptr);
+		VMCall(func, params, 3, &ret, 1);
 		return !!retval;
 	}
 	else return false;
@@ -243,6 +243,12 @@ void DMenu::Close ()
 	if (CurrentMenu != nullptr)
 	{
 		GC::WriteBarrier(CurrentMenu);
+		IFVIRTUALPTR(CurrentMenu, DMenu, OnReturn)
+		{
+			VMValue params[] = { CurrentMenu };
+			VMCall(func, params, 1, nullptr, 0);
+		}
+
 	}
 	else
 	{
@@ -268,7 +274,7 @@ void DMenu::CallTicker()
 	IFVIRTUAL(DMenu, Ticker)
 	{
 		VMValue params[] = { (DObject*)this };
-		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+		VMCall(func, params, 1, nullptr, 0);
 	}
 }
 
@@ -278,7 +284,8 @@ void DMenu::CallDrawer()
 	IFVIRTUAL(DMenu, Drawer)
 	{
 		VMValue params[] = { (DObject*)this };
-		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+		VMCall(func, params, 1, nullptr, 0);
+		screen->ClearClipRect();	// make sure the scripts don't leave a valid clipping rect behind.
 	}
 }
 
@@ -289,7 +296,7 @@ bool DMenu::TranslateKeyboardEvents()
 		VMValue params[] = { (DObject*)this };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, countof(params), &ret, 1, nullptr);
+		VMCall(func, params, countof(params), &ret, 1);
 		return !!retval;
 	}
 	return true;
@@ -465,7 +472,7 @@ void M_SetMenu(FName menu, int param)
 				IFVIRTUALPTRNAME(newmenu, "ListMenu", Init)
 				{
 					VMValue params[3] = { newmenu, CurrentMenu, ld };
-					GlobalVMStack.Call(func, params, 3, nullptr, 0);
+					VMCall(func, params, 3, nullptr, 0);
 				}
 				M_ActivateMenu(newmenu);
 			}
@@ -481,7 +488,7 @@ void M_SetMenu(FName menu, int param)
 			IFVIRTUALPTRNAME(newmenu, "OptionMenu", Init)
 			{
 				VMValue params[3] = { newmenu, CurrentMenu, ld };
-				GlobalVMStack.Call(func, params, 3, nullptr, 0);
+				VMCall(func, params, 3, nullptr, 0);
 			}
 			M_ActivateMenu(newmenu);
 		}
@@ -499,7 +506,7 @@ void M_SetMenu(FName menu, int param)
 				IFVIRTUALPTRNAME(newmenu, "GenericMenu", Init)
 				{
 					VMValue params[3] = { newmenu, CurrentMenu };
-					GlobalVMStack.Call(func, params, 2, nullptr, 0);
+					VMCall(func, params, 2, nullptr, 0);
 				}
 				M_ActivateMenu(newmenu);
 				return;
@@ -1056,13 +1063,15 @@ CCMD(undocolorpic)
 		IFVIRTUALPTR(CurrentMenu, DMenu, ResetColor)
 		{
 			VMValue params[] = { (DObject*)CurrentMenu };
-			GlobalVMStack.Call(func, params, countof(params), nullptr, 0, nullptr);
+			VMCall(func, params, countof(params), nullptr, 0);
 		}
 	}
 }
 
 
-
+DEFINE_GLOBAL(menuactive)
+DEFINE_GLOBAL(BackbuttonTime)
+DEFINE_GLOBAL(BackbuttonAlpha)
 
 DEFINE_FIELD(DMenu, mParentMenu)
 DEFINE_FIELD(DMenu, mMouseCapture);
@@ -1121,9 +1130,10 @@ DMenuItemBase * CreateOptionMenuItemStaticText(const char *name, bool v)
 {
 	auto c = PClass::FindClass("OptionMenuItemStaticText");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, FString(name), v };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("Init", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString namestr = name;
+	VMValue params[] = { p, &namestr, v };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("Init", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1131,9 +1141,10 @@ DMenuItemBase * CreateOptionMenuItemJoyConfigMenu(const char *label, IJoystickCo
 {
 	auto c = PClass::FindClass("OptionMenuItemJoyConfigMenu");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, FString(label), joy };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("Init", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString namestr = label;
+	VMValue params[] = { p, &namestr, joy };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("Init", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1141,9 +1152,10 @@ DMenuItemBase * CreateOptionMenuItemSubmenu(const char *label, FName cmd, int ce
 {
 	auto c = PClass::FindClass("OptionMenuItemSubmenu");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, FString(label), cmd.GetIndex(), center };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("Init", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString namestr = label;
+	VMValue params[] = { p, &namestr, cmd.GetIndex(), center };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("Init", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1151,9 +1163,21 @@ DMenuItemBase * CreateOptionMenuItemControl(const char *label, FName cmd, FKeyBi
 {
 	auto c = PClass::FindClass("OptionMenuItemControlBase");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, FString(label), cmd.GetIndex(), bindings };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("Init", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString namestr = label;
+	VMValue params[] = { p, &namestr, cmd.GetIndex(), bindings };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("Init", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	return (DMenuItemBase*)p;
+}
+
+DMenuItemBase * CreateOptionMenuItemCommand(const char *label, FName cmd, bool centered)
+{
+	auto c = PClass::FindClass("OptionMenuItemCommand");
+	auto p = c->CreateNew();
+	FString namestr = label;
+	VMValue params[] = { p, &namestr, cmd.GetIndex(), centered };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("Init", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1161,9 +1185,10 @@ DMenuItemBase * CreateListMenuItemPatch(double x, double y, int height, int hotk
 {
 	auto c = PClass::FindClass("ListMenuItemPatchItem");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, x, y, height, tex.GetIndex(), FString(char(hotkey)), command.GetIndex(), param };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("InitDirect", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString keystr = FString(char(hotkey));
+	VMValue params[] = { p, x, y, height, tex.GetIndex(), &keystr, command.GetIndex(), param };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("InitDirect", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1171,9 +1196,11 @@ DMenuItemBase * CreateListMenuItemText(double x, double y, int height, int hotke
 {
 	auto c = PClass::FindClass("ListMenuItemTextItem");
 	auto p = c->CreateNew();
-	VMValue params[] = { p, x, y, height, FString(char(hotkey)), text, font, int(color1.d), int(color2.d), command.GetIndex(), param };
-	auto f = dyn_cast<PFunction>(c->Symbols.FindSymbol("InitDirect", false));
-	GlobalVMStack.Call(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
+	FString keystr = FString(char(hotkey));
+	FString textstr = text;
+	VMValue params[] = { p, x, y, height, &keystr, &textstr, font, int(color1.d), int(color2.d), command.GetIndex(), param };
+	auto f = dyn_cast<PFunction>(c->FindSymbol("InitDirect", false));
+	VMCall(f->Variants[0].Implementation, params, countof(params), nullptr, 0);
 	return (DMenuItemBase*)p;
 }
 
@@ -1184,7 +1211,7 @@ bool DMenuItemBase::Activate()
 		VMValue params[] = { (DObject*)this };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, countof(params), &ret, 1, nullptr);
+		VMCall(func, params, countof(params), &ret, 1);
 		return !!retval;
 	}
 	return false;
@@ -1194,10 +1221,11 @@ bool DMenuItemBase::SetString(int i, const char *s)
 {
 	IFVIRTUAL(DMenuItemBase, SetString)
 	{
-		VMValue params[] = { (DObject*)this, i, FString(s) };
+		FString namestr = s;
+		VMValue params[] = { (DObject*)this, i, &namestr };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, countof(params), &ret, 1, nullptr);
+		VMCall(func, params, countof(params), &ret, 1);
 		return !!retval;
 	}
 	return false;
@@ -1211,7 +1239,7 @@ bool DMenuItemBase::GetString(int i, char *s, int len)
 		int retval;
 		FString retstr;
 		VMReturn ret[2]; ret[0].IntAt(&retval); ret[1].StringAt(&retstr);
-		GlobalVMStack.Call(func, params, countof(params), ret, 2, nullptr);
+		VMCall(func, params, countof(params), ret, 2);
 		strncpy(s, retstr, len);
 		return !!retval;
 	}
@@ -1226,7 +1254,7 @@ bool DMenuItemBase::SetValue(int i, int value)
 		VMValue params[] = { (DObject*)this, i, value };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, countof(params), &ret, 1, nullptr);
+		VMCall(func, params, countof(params), &ret, 1);
 		return !!retval;
 	}
 	return false;
@@ -1239,7 +1267,7 @@ bool DMenuItemBase::GetValue(int i, int *pvalue)
 		VMValue params[] = { (DObject*)this, i };
 		int retval[2];
 		VMReturn ret[2]; ret[0].IntAt(&retval[0]); ret[1].IntAt(&retval[1]);
-		GlobalVMStack.Call(func, params, countof(params), ret, 2, nullptr);
+		VMCall(func, params, countof(params), ret, 2);
 		*pvalue = retval[1];
 		return !!retval[0];
 	}

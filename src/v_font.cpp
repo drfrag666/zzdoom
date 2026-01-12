@@ -95,6 +95,7 @@ The FON2 header is followed by variable length data:
 #include "colormatcher.h"
 #include "v_palette.h"
 #include "v_text.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -318,7 +319,7 @@ FFont *V_GetFont(const char *name)
 		
 		if (lump != -1)
 		{
-			uint32 head;
+			uint32_t head;
 			{
 				FWadLump lumpy = Wads.OpenLumpNum (lump);
 				lumpy.Read (&head, 4);
@@ -757,9 +758,18 @@ void FFont::BuildTranslations (const double *luminosity, const uint8_t *identity
 //
 //==========================================================================
 
-FRemapTable *FFont::GetColorTranslation (EColorRange range) const
+FRemapTable *FFont::GetColorTranslation (EColorRange range, PalEntry *color) const
 {
-	if (ActiveColors == 0 || noTranslate)
+	if (noTranslate)
+	{
+		PalEntry retcolor = PalEntry(255, 255, 255, 255);
+		if (range >= 0 && range < NumTextColors && range != CR_UNTRANSLATED)
+		{
+			retcolor = TranslationColors[range];
+		}
+		if (color != nullptr) *color = retcolor;
+	}
+	if (ActiveColors == 0)
 		return NULL;
 	else if (range >= NumTextColors)
 		range = CR_UNTRANSLATED;
@@ -2583,7 +2593,7 @@ EColorRange V_FindFontColor (FName name)
 
 DEFINE_ACTION_FUNCTION(FFont, FindFontColor)
 {
-	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_PROLOGUE;
 	PARAM_NAME(code);
 	ACTION_RETURN_INT((int)V_FindFontColor(code));
 }

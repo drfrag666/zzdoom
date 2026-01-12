@@ -59,7 +59,9 @@
 #include "p_local.h"
 #include "g_levellocals.h"
 #include "p_maputl.h"
+#include "sbar.h"
 #include "math/cmath.h"
+#include "vm.h"
 
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
@@ -105,33 +107,31 @@ DCanvas			*RenderTarget;		// [RH] canvas to render to
 
 int 			viewwindowx;
 int 			viewwindowy;
+int				viewwidth;
+int 			viewheight;
 
 DVector3		ViewPos;
 DAngle			ViewAngle;
 DAngle			ViewPitch;
 DAngle			ViewRoll;
 DVector3		ViewPath[2];
+double	 		ViewCos, ViewTanCos;
+double	 		ViewSin, ViewTanSin;
 
-extern "C" 
-{
-		int 	viewwidth;
-		int 	viewheight;
-		int		centerx;
-		int		centery;
-		int		centerxwide;
-}
+
+int		centerx;
+int		centery;
+int		centerxwide;
 
 int				otic;
 
 sector_t		*viewsector;
 
-double	 		ViewCos, ViewTanCos;
-double	 		ViewSin, ViewTanSin;
 
 AActor			*camera;	// [RH] camera to draw from. doesn't have to be a player
 
 double			r_TicFracF;			// same as floating point
-uint32_t			r_FrameTime;		// [RH] Time this frame started drawing (in ms)
+uint32_t		r_FrameTime;		// [RH] Time this frame started drawing (in ms)
 bool			r_NoInterpolate;
 bool			r_showviewer;
 
@@ -154,6 +154,7 @@ FCanvasTextureInfo *FCanvasTextureInfo::List;
 DVector3a view;
 DAngle viewpitch;
 
+DEFINE_GLOBAL(LocalViewPitch);
 
 // CODE --------------------------------------------------------------------
 static void R_Shutdown ();
@@ -272,13 +273,13 @@ void R_ExecuteSetViewSize ()
 	setsizeneeded = false;
 	V_SetBorderNeedRefresh();
 
-	R_SetWindow (setblocks, SCREENWIDTH, SCREENHEIGHT, gST_Y);
+	R_SetWindow (setblocks, SCREENWIDTH, SCREENHEIGHT, StatusBar->GetTopOfStatusbar());
 
 	// Handle resize, e.g. smaller view windows with border and/or status bar.
 	viewwindowx = (screen->GetWidth() - viewwidth) >> 1;
 
 	// Same with base row offset.
-	viewwindowy = (viewwidth == screen->GetWidth()) ? 0 : (gST_Y - viewheight) >> 1;
+	viewwindowy = (viewwidth == screen->GetWidth()) ? 0 : (StatusBar->GetTopOfStatusbar() - viewheight) >> 1;
 }
 
 //==========================================================================
@@ -311,10 +312,10 @@ subsector_t *R_PointInSubsector (fixed_t x, fixed_t y)
 	int side;
 
 	// single subsector is a special case
-	if (numnodes == 0)
-		return subsectors;
+	if (level.nodes.Size() == 0)
+		return &level.subsectors[0];
 				
-	node = nodes + numnodes - 1;
+	node = level.HeadNode();
 
 	do
 	{
@@ -990,6 +991,18 @@ void FCanvasTextureInfo::Add (AActor *viewpoint, FTextureID picnum, int fov)
 	List = probe;
 }
 
+// [ZZ] expose this to ZScript
+DEFINE_ACTION_FUNCTION(_TexMan, SetCameraToTexture)
+{
+	PARAM_PROLOGUE;
+	PARAM_OBJECT(viewpoint, AActor);
+	PARAM_STRING(texturename); // [ZZ] there is no point in having this as FTextureID because it's easier to refer to a cameratexture by name and it isn't executed too often to cache it.
+	PARAM_INT(fov);
+	FTextureID textureid = TexMan.CheckForTexture(texturename, FTexture::TEX_Wall, FTextureManager::TEXMAN_Overridable);
+	FCanvasTextureInfo::Add(viewpoint, textureid, fov);
+	return 0;
+}
+
 //==========================================================================
 //
 // FCanvasTextureInfo :: UpdateAll
@@ -1071,7 +1084,7 @@ void FCanvasTextureInfo::Serialize(FSerializer &arc)
 	{
 		if (arc.BeginArray("canvastextures"))
 		{
-			AActor *viewpoint;
+			AActor *viewpoint = nullptr;
 			int fov;
 			FTextureID picnum;
 			while (arc.BeginObject(nullptr))

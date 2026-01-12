@@ -11,8 +11,8 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 #include "vmops.h"
 	};
 #endif
-	const VMOP *exception_frames[MAX_TRY_DEPTH];
-	int try_depth = 0;
+	//const VMOP *exception_frames[MAX_TRY_DEPTH];
+	//int try_depth = 0;
 	VMFrame *f = stack->TopFrame();
 	VMScriptFunction *sfunc;
 	const VMRegisters reg(f);
@@ -20,7 +20,6 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 	const double *konstf;
 	const FString *konsts;
 	const FVoidObj *konsta;
-	const VM_ATAG *konstatag;
 
 	if (f->Func != NULL && !(f->Func->VarFlags & VARF_Native))
 	{
@@ -29,7 +28,6 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 		konstf = sfunc->KonstF;
 		konsts = sfunc->KonstS;
 		konsta = sfunc->KonstA;
-		konstatag = sfunc->KonstATags();
 	}
 	else
 	{
@@ -38,7 +36,6 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 		konstf = NULL;
 		konsts = NULL;
 		konsta = NULL;
-		konstatag = NULL;
 	}
 
 	void *ptr;
@@ -46,7 +43,7 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 	const double *fbp, *fcp;
 	int a, b, c;
 
-begin:
+//begin:
 	try
 	{
 #if !COMPGOTO
@@ -81,7 +78,6 @@ begin:
 	OP(LKP):
 		ASSERTA(a); ASSERTKA(BC);
 		reg.a[a] = konsta[BC].v;
-		reg.atag[a] = konstatag[BC];
 		NEXTOP;
 
 	OP(LK_R) :
@@ -100,26 +96,38 @@ begin:
 		ASSERTA(a); ASSERTD(B);
 		b = reg.d[B] + C;
 		reg.a[a] = konsta[b].v;
-		reg.atag[a] = konstatag[b];
 		NEXTOP;
 
 	OP(LFP):
 		ASSERTA(a); assert(sfunc != NULL); assert(sfunc->ExtraSpace > 0);
 		reg.a[a] = f->GetExtra();
-		reg.atag[a] = ATAG_GENERIC;	// using ATAG_FRAMEPOINTER will cause endless asserts.
 		NEXTOP;
 
 	OP(CLSS):
-		ASSERTA(a); ASSERTO(B);
-		reg.a[a] = ((DObject*)reg.a[B])->GetClass();	// I wish this could be done without a special opcode but there's really no good way to guarantee initialization of the Class pointer...
-		reg.atag[a] = ATAG_OBJECT;
+	{
+		ASSERTA(a); ASSERTA(B);
+		DObject *o = (DObject*)reg.a[B];
+		if (o == nullptr)
+		{
+			ThrowAbortException(X_READ_NIL, nullptr);
+			return 0;
+		}
+		reg.a[a] = o->GetClass();
 		NEXTOP;
+	}
 
 	OP(META):
-		ASSERTA(a); ASSERTO(B);
-		reg.a[a] = ((DObject*)reg.a[B])->GetClass()->Meta;	// I wish this could be done without a special opcode but there's really no good way to guarantee initialization of the Class pointer...
-		reg.atag[a] = ATAG_OBJECT;
+	{
+		ASSERTA(a); ASSERTA(B);
+		DObject *o = (DObject*)reg.a[B];
+		if (o == nullptr)
+		{
+			ThrowAbortException(X_READ_NIL, nullptr);
+			return 0;
+		}
+		reg.a[a] = o->GetClass()->Meta;
 		NEXTOP;
+	}
 
 	OP(LB):
 		ASSERTD(a); ASSERTA(B); ASSERTKD(C);
@@ -217,37 +225,21 @@ begin:
 		ASSERTA(a); ASSERTA(B); ASSERTKD(C);
 		GETADDR(PB,KC,X_READ_NIL);
 		reg.a[a] = GC::ReadBarrier(*(DObject **)ptr);
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(LO_R):
 		ASSERTA(a); ASSERTA(B); ASSERTD(C);
 		GETADDR(PB,RC,X_READ_NIL);
 		reg.a[a] = GC::ReadBarrier(*(DObject **)ptr);
-		reg.atag[a] = ATAG_OBJECT;
-		NEXTOP;
-	OP(LOS):
-		ASSERTA(a); ASSERTA(B); ASSERTKD(C);
-		GETADDR(PB,KC,X_READ_NIL);
-		reg.a[a] = *(DObject **)ptr;
-		reg.atag[a] = ATAG_OBJECT;
-		NEXTOP;
-	OP(LOS_R):
-		ASSERTA(a); ASSERTA(B); ASSERTD(C);
-		GETADDR(PB,RC,X_READ_NIL);
-		reg.a[a] = *(DObject **)ptr;
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(LP):
 		ASSERTA(a); ASSERTA(B); ASSERTKD(C);
 		GETADDR(PB,KC,X_READ_NIL);
 		reg.a[a] = *(void **)ptr;
-		reg.atag[a] = ATAG_GENERIC;
 		NEXTOP;
 	OP(LP_R):
 		ASSERTA(a); ASSERTA(B); ASSERTD(C);
 		GETADDR(PB,RC,X_READ_NIL);
 		reg.a[a] = *(void **)ptr;
-		reg.atag[a] = ATAG_GENERIC;
 		NEXTOP;
 	OP(LV2):
 		ASSERTF(a+1); ASSERTA(B); ASSERTKD(C);
@@ -442,7 +434,6 @@ begin:
 		ASSERTA(a); ASSERTA(B);
 		b = B;
 		reg.a[a] = reg.a[b];
-		reg.atag[a] = reg.atag[b];
 		NEXTOP;
 	}
 	OP(MOVEV2):
@@ -466,25 +457,21 @@ begin:
 		ASSERTA(a); ASSERTA(B);	ASSERTA(C);
 		b = B;
 		reg.a[a] = (reg.a[b] && ((DObject*)(reg.a[b]))->IsKindOf((PClass*)(reg.a[C]))) ? reg.a[b] : nullptr;
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(DYNCAST_K) :
 		ASSERTA(a); ASSERTA(B);	ASSERTKA(C);
 		b = B;
 		reg.a[a] = (reg.a[b] && ((DObject*)(reg.a[b]))->IsKindOf((PClass*)(konsta[C].o))) ? reg.a[b] : nullptr;
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(DYNCASTC_R) :
 		ASSERTA(a); ASSERTA(B);	ASSERTA(C);
 		b = B;
 		reg.a[a] = (reg.a[b] && ((PClass*)(reg.a[b]))->IsDescendantOf((PClass*)(reg.a[C]))) ? reg.a[b] : nullptr;
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(DYNCASTC_K) :
 		ASSERTA(a); ASSERTA(B);	ASSERTKA(C);
 		b = B;
 		reg.a[a] = (reg.a[b] && ((PClass*)(reg.a[b]))->IsDescendantOf((PClass*)(konsta[C].o))) ? reg.a[b] : nullptr;
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	OP(CAST):
 		if (C == CAST_I2F)
@@ -575,7 +562,7 @@ begin:
 					break;
 				case REGT_INT | REGT_ADDROF:
 					assert(C < f->NumRegD);
-					::new(param) VMValue(&reg.d[C], ATAG_GENERIC);
+					::new(param) VMValue(&reg.d[C]);
 					break;
 				case REGT_INT | REGT_KONST:
 					assert(C < sfunc->NumKonstD);
@@ -583,27 +570,27 @@ begin:
 					break;
 				case REGT_STRING:
 					assert(C < f->NumRegS);
-					::new(param) VMValue(reg.s[C]);
+					::new(param) VMValue(&reg.s[C]);
 					break;
 				case REGT_STRING | REGT_ADDROF:
 					assert(C < f->NumRegS);
-					::new(param) VMValue(&reg.s[C], ATAG_GENERIC);
+					::new(param) VMValue((void*)&reg.s[C]);	// Note that this may not use the FString* version of the constructor!
 					break;
 				case REGT_STRING | REGT_KONST:
 					assert(C < sfunc->NumKonstS);
-					::new(param) VMValue(konsts[C]);
+					::new(param) VMValue(&konsts[C]);
 					break;
 				case REGT_POINTER:
 					assert(C < f->NumRegA);
-					::new(param) VMValue(reg.a[C], reg.atag[C]);
+					::new(param) VMValue(reg.a[C]);
 					break;
 				case REGT_POINTER | REGT_ADDROF:
 					assert(C < f->NumRegA);
-					::new(param) VMValue(&reg.a[C], ATAG_GENERIC);
+					::new(param) VMValue(&reg.a[C]);
 					break;
 				case REGT_POINTER | REGT_KONST:
 					assert(C < sfunc->NumKonstA);
-					::new(param) VMValue(konsta[C].v, konstatag[C]);
+					::new(param) VMValue(konsta[C].v);
 					break;
 				case REGT_FLOAT:
 					assert(C < f->NumRegF);
@@ -626,7 +613,7 @@ begin:
 					break;
 				case REGT_FLOAT | REGT_ADDROF:
 					assert(C < f->NumRegF);
-					::new(param) VMValue(&reg.f[C], ATAG_GENERIC);
+					::new(param) VMValue(&reg.f[C]);
 					break;
 				case REGT_FLOAT | REGT_KONST:
 					assert(C < sfunc->NumKonstF);
@@ -668,7 +655,6 @@ begin:
 
 	OP(CALL_K):
 		ASSERTKA(a);
-		assert(konstatag[a] == ATAG_OBJECT);
 		ptr = konsta[a].o;
 		goto Do_CALL;
 	OP(CALL):
@@ -718,16 +704,12 @@ begin:
 				stack->PopFrame();
 			}
 			assert(numret == C && "Number of parameters returned differs from what was expected by the caller");
-			for (b = B; b != 0; --b)
-			{
-				reg.param[--f->NumParam].~VMValue();
-			}
+			f->NumParam -= B;
 			pc += C;			// Skip RESULTs
 		}
 		NEXTOP;
 	OP(TAIL_K):
 		ASSERTKA(a);
-		assert(konstatag[a] == ATAG_OBJECT);
 		ptr = konsta[a].o;
 		goto Do_TAILCALL;
 	OP(TAIL):
@@ -825,24 +807,27 @@ begin:
 		if (cls->ConstructNative == nullptr)
 		{
 			ThrowAbortException(X_OTHER, "Class %s requires native construction", cls->TypeName.GetChars());
+			return 0;
 		}
-		if (cls->ObjectFlags & OF_Abstract)
+		if (cls->bAbstract)
 		{
 			ThrowAbortException(X_OTHER, "Cannot instantiate abstract class %s", cls->TypeName.GetChars());
+			return 0;
 		}
 		// Creating actors here must be outright prohibited,
-		if (cls->IsDescendantOf(RUNTIME_CLASS(AActor)))
+		if (cls->IsDescendantOf(NAME_Actor))
 		{
 			ThrowAbortException(X_OTHER, "Cannot create actors with 'new'");
+			return 0;
 		}
 		// [ZZ] validate readonly and between scope construction
 		c = C;
 		if (c) FScopeBarrier::ValidateNew(cls, c - 1);
 		reg.a[a] = cls->CreateNew();
-		reg.atag[a] = ATAG_OBJECT;
 		NEXTOP;
 	}
 
+#if 0
 	OP(TRY):
 		assert(try_depth < MAX_TRY_DEPTH);
 		if (try_depth >= MAX_TRY_DEPTH)
@@ -856,7 +841,9 @@ begin:
 		assert(a <= try_depth);
 		try_depth -= a;
 		NEXTOP;
+#endif
 	OP(THROW):
+#if 0
 		if (a == 0)
 		{
 			ASSERTA(B);
@@ -865,24 +852,28 @@ begin:
 		else if (a == 1)
 		{
 			ASSERTKA(B);
-			assert(konstatag[B] == ATAG_OBJECT);
+			assert(AssertObject(konsta[B].o));
 			ThrowVMException((VMException *)konsta[B].o);
 		}
 		else
+#endif
 		{
 			ThrowAbortException(EVMAbortException(BC), nullptr);
 		}
 		NEXTOP;
+#if 0
 	OP(CATCH):
 		// This instruction is handled by our own catch handler and should
 		// not be executed by the normal VM code.
 		assert(0);
 		NEXTOP;
+#endif
 
 	OP(BOUND):
 		if (reg.d[a] >= BC)
 		{
 			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", BC, reg.d[a]);
+			return 0;
 		}
 		else if (reg.d[a] < 0)
 		{
@@ -896,6 +887,7 @@ begin:
 		if (reg.d[a] >= konstd[BC])
 		{
 			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", konstd[BC], reg.d[a]);
+			return 0;
 		}
 		else if (reg.d[a] < 0)
 		{
@@ -909,6 +901,7 @@ begin:
 		if (reg.d[a] >= reg.d[B])
 		{
 			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", reg.d[B], reg.d[a]);
+			return 0;
 		}
 		else if (reg.d[a] < 0)
 		{
@@ -1061,6 +1054,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = reg.d[B] / reg.d[C];
 		NEXTOP;
@@ -1069,6 +1063,7 @@ begin:
 		if (konstd[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = reg.d[B] / konstd[C];
 		NEXTOP;
@@ -1077,6 +1072,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = konstd[B] / reg.d[C];
 		NEXTOP;
@@ -1086,6 +1082,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)reg.d[B] / (unsigned)reg.d[C]);
 		NEXTOP;
@@ -1094,6 +1091,7 @@ begin:
 		if (konstd[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)reg.d[B] / (unsigned)konstd[C]);
 		NEXTOP;
@@ -1102,6 +1100,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)konstd[B] / (unsigned)reg.d[C]);
 		NEXTOP;
@@ -1111,6 +1110,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = reg.d[B] % reg.d[C];
 		NEXTOP;
@@ -1119,6 +1119,7 @@ begin:
 		if (konstd[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = reg.d[B] % konstd[C];
 		NEXTOP;
@@ -1127,6 +1128,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = konstd[B] % reg.d[C];
 		NEXTOP;
@@ -1136,6 +1138,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)reg.d[B] % (unsigned)reg.d[C]);
 		NEXTOP;
@@ -1144,6 +1147,7 @@ begin:
 		if (konstd[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)reg.d[B] % (unsigned)konstd[C]);
 		NEXTOP;
@@ -1152,6 +1156,7 @@ begin:
 		if (reg.d[C] == 0)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.d[a] = int((unsigned)konstd[B] % (unsigned)reg.d[C]);
 		NEXTOP;
@@ -1213,28 +1218,6 @@ begin:
 	OP(NOT):
 		ASSERTD(a); ASSERTD(B);
 		reg.d[a] = ~reg.d[B];
-		NEXTOP;
-
-	OP(SEXT):
-		ASSERTD(a); ASSERTD(B);
-		reg.d[a] = (VM_SWORD)(reg.d[B] << C) >> C;
-		NEXTOP;
-
-	OP(ZAP_R):
-		ASSERTD(a); ASSERTD(B); ASSERTD(C);
-		reg.d[a] = reg.d[B] & ZapTable[(reg.d[C] & 15) ^ 15];
-		NEXTOP;
-	OP(ZAP_I):
-		ASSERTD(a); ASSERTD(B);
-		reg.d[a] = reg.d[B] & ZapTable[(C & 15) ^ 15];
-		NEXTOP;
-	OP(ZAPNOT_R):
-		ASSERTD(a); ASSERTD(B); ASSERTD(C);
-		reg.d[a] = reg.d[B] & ZapTable[reg.d[C] & 15];
-		NEXTOP;
-	OP(ZAPNOT_I):
-		ASSERTD(a); ASSERTD(B);
-		reg.d[a] = reg.d[B] & ZapTable[C & 15];
 		NEXTOP;
 
 	OP(EQ_R):
@@ -1330,6 +1313,7 @@ begin:
 		if (reg.f[C] == 0.)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.f[a] = reg.f[B] / reg.f[C];
 		NEXTOP;
@@ -1338,6 +1322,7 @@ begin:
 		if (konstf[C] == 0.)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.f[a] = reg.f[B] / konstf[C];
 		NEXTOP;
@@ -1346,6 +1331,7 @@ begin:
 		if (reg.f[C] == 0.)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.f[a] = konstf[B] / reg.f[C];
 		NEXTOP;
@@ -1357,6 +1343,7 @@ begin:
 		if (fc == 0.)
 		{
 			ThrowAbortException(X_DIVISION_BY_ZERO, nullptr);
+			return 0;
 		}
 		reg.f[a] = luai_nummod(fb, fc);
 		NEXTOP;
@@ -1687,7 +1674,6 @@ begin:
 			c = 0;
 		}
 		reg.a[a] = (VM_UBYTE *)reg.a[B] + c;
-		reg.atag[a] = c == 0 ? reg.atag[B] : (int)ATAG_GENERIC;
 		NEXTOP;
 	OP(ADDA_RK):
 		ASSERTA(a); ASSERTA(B); ASSERTKD(C);
@@ -1712,6 +1698,7 @@ begin:
 		NEXTOP;
 	}
 	}
+#if 0
 	catch(VMException *exception)
 	{
 		// Try to find a handler for the exception.
@@ -1738,7 +1725,6 @@ begin:
 				{
 					assert(pc->a == 3);
 					ASSERTKA(b);
-					assert(konstatag[b] == ATAG_OBJECT);
 					type = (PClass *)konsta[b].o;
 				}
 				ASSERTA(pc->c);
@@ -1747,7 +1733,6 @@ begin:
 					// Found a handler. Store the exception in pC, skip the JMP,
 					// and begin executing its code.
 					reg.a[pc->c] = exception;
-					reg.atag[pc->c] = ATAG_OBJECT;
 					pc += 2;
 					goto begin;
 				}
@@ -1760,7 +1745,6 @@ begin:
 				// Catch any type of VMException. This terminates the chain.
 				ASSERTA(pc->c);
 				reg.a[pc->c] = exception;
-				reg.atag[pc->c] = ATAG_OBJECT;
 				pc += 1;
 				goto begin;
 			}
@@ -1769,6 +1753,7 @@ begin:
 		// Nothing caught it. Rethrow and let somebody else deal with it.
 		throw;
 	}
+#endif
 	catch (CVMAbortException &err)
 	{
 		err.MaybePrintMessage();
@@ -1860,16 +1845,7 @@ static void DoCast(const VMRegisters &reg, const VMFrame *f, int a, int b, int c
 	{
 		ASSERTS(a); ASSERTA(b);
 		if (reg.a[b] == nullptr) reg.s[a] = "null";
-		else if (reg.atag[b] == ATAG_OBJECT)
-		{
-			auto op = static_cast<DObject*>(reg.a[b]);
-			if (op->IsKindOf(RUNTIME_CLASS(PClass))) reg.s[a].Format("Class<%s>", static_cast<PClass*>(op)->TypeName.GetChars());
-			else reg.s[a].Format("Object<%p>", ((DObject*)reg.a[b])->GetClass()->TypeName.GetChars());
-		}
-		else
-		{
-			reg.s[a].Format("%s<%p>", "Pointer", reg.a[b]);
-		}
+		else reg.s[a].Format("%p", reg.a[b]);
 		break; 
 	}
 
@@ -1951,7 +1927,6 @@ static void FillReturns(const VMRegisters &reg, VMFrame *frame, VMReturn *return
 	for (i = 0, ret = returns; i < numret; ++i, ++ret, ++retval)
 	{
 		assert(retval->op == OP_RESULT);				// opcode
-		ret->TagOfs = 0;
 		ret->RegType = type = retval->b;
 		regnum = retval->c;
 		assert(!(type & REGT_KONST));
@@ -1979,7 +1954,6 @@ static void FillReturns(const VMRegisters &reg, VMFrame *frame, VMReturn *return
 			assert(type == REGT_POINTER);
 			assert(regnum < frame->NumRegA);
 			ret->Location = &reg.a[regnum];
-			ret->TagOfs = (VM_SHALF)(&frame->GetRegATag()[regnum] - (VM_ATAG *)ret->Location);
 		}
 	}
 }
@@ -2062,12 +2036,12 @@ static void SetReturn(const VMRegisters &reg, VMFrame *frame, VMReturn *ret, VM_
 		if (regtype & REGT_KONST)
 		{
 			assert(regnum < func->NumKonstA);
-			ret->SetPointer(func->KonstA[regnum].v, func->KonstATags()[regnum]);
+			ret->SetPointer(func->KonstA[regnum].v);
 		}
 		else
 		{
 			assert(regnum < frame->NumRegA);
-			ret->SetPointer(reg.a[regnum], reg.atag[regnum]);
+			ret->SetPointer(reg.a[regnum]);
 		}
 		break;
 	}

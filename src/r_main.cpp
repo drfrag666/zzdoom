@@ -59,6 +59,7 @@
 #include "r_data/colormaps.h"
 #include "p_maputl.h"
 #include "r_thread.h"
+#include "g_levellocals.h"
 #include "events.h"
 
 CVAR (String, r_viewsize, "", CVAR_NOSET)
@@ -584,9 +585,9 @@ void R_HighlightPortal (PortalDrawseg* pds)
 	// [ZZ] NO OVERFLOW CHECKS HERE
 	//      I believe it won't break. if it does, blame me. :(
 
-	BYTE color = (BYTE)BestColor((DWORD *)GPalette.BaseColors, 255, 0, 0, 0, 255);
+	uint8_t color = (uint8_t)BestColor((uint32_t *)GPalette.BaseColors, 255, 0, 0, 0, 255);
 
-	BYTE* pixels = RenderTarget->GetBuffer();
+	uint8_t* pixels = RenderTarget->GetBuffer();
 	// top edge
 	for (int x = pds->x1; x < pds->x2; x++)
 	{
@@ -621,7 +622,7 @@ void R_EnterPortal (PortalDrawseg* pds, int depth)
 	// [ZZ] check depth. fill portal with black if it's exceeding the visual recursion limit, and continue like nothing happened.
 	if (depth >= r_portal_recursions)
 	{
-		BYTE color = (BYTE)BestColor((DWORD *)GPalette.BaseColors, 0, 0, 0, 0, 255);
+		uint8_t color = (uint8_t)BestColor((uint32_t *)GPalette.BaseColors, 0, 0, 0, 0, 255);
 		int spacing = RenderTarget->GetPitch();
 		for (int x = pds->x1; x < pds->x2; x++)
 		{
@@ -631,7 +632,7 @@ void R_EnterPortal (PortalDrawseg* pds, int depth)
 			int Ytop = pds->ceilingclip[x-pds->x1];
 			int Ybottom = pds->floorclip[x-pds->x1];
 
-			BYTE *dest = RenderTarget->GetBuffer() + x + Ytop * spacing;
+			uint8_t *dest = RenderTarget->GetBuffer() + x + Ytop * spacing;
 
 			for (int y = Ytop; y <= Ybottom; y++)
 			{
@@ -748,7 +749,7 @@ void R_EnterPortal (PortalDrawseg* pds, int depth)
 	memcpy (floorclip + pds->x1, &pds->floorclip[0], pds->len*sizeof(*floorclip));
 
 	InSubsector = NULL;
-	R_RenderBSPNode (nodes + numnodes - 1);
+	R_RenderBSPNode (level.HeadNode());
 	R_3D_ResetClip(); // reset clips (floor/ceiling)
 	if (!savedvisibility && camera) camera->renderflags &= ~RF_INVISIBLE;
 
@@ -802,10 +803,10 @@ void R_EnterPortal (PortalDrawseg* pds, int depth)
 
 void R_SetupBuffer ()
 {
-	static BYTE *lastbuff = NULL;
+	static uint8_t *lastbuff = NULL;
 
 	int pitch = RenderTarget->GetPitch();
-	BYTE *lineptr = RenderTarget->GetBuffer() + viewwindowy*pitch + viewwindowx;
+	uint8_t *lineptr = RenderTarget->GetBuffer() + viewwindowy*pitch + viewwindowx;
 
 	if (dc_pitch != pitch || lineptr != lastbuff)
 	{
@@ -891,7 +892,7 @@ void R_RenderActorView (AActor *actor, bool dontmaplines)
 	// Link the polyobjects right before drawing the scene to reduce the amounts of calls to this function
 	PO_LinkToSubsectors();
 	InSubsector = NULL;
-	R_RenderBSPNode (nodes + numnodes - 1);	// The head node is the last node output.
+	R_RenderBSPNode (level.HeadNode());	// The head node is the last node output.
 	R_3D_ResetClip(); // reset clips (floor/ceiling)
 	camera->renderflags = savedflags;
 	WallCycles.Unclock();

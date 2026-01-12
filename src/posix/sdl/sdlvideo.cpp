@@ -26,7 +26,7 @@
 
 class SDLFB : public DFrameBuffer
 {
-	DECLARE_CLASS(SDLFB, DFrameBuffer)
+	typedef DFrameBuffer Super;
 public:
 	SDLFB (int width, int height, bool fullscreen, SDL_Window *oldwin);
 	~SDLFB ();
@@ -50,11 +50,11 @@ public:
 	friend class SDLVideo;
 
 	virtual void SetVSync (bool vsync);
-	virtual void ScaleCoordsFromWindow(SWORD &x, SWORD &y);
+	virtual void ScaleCoordsFromWindow(int16_t &x, int16_t &y);
 
 private:
 	PalEntry SourcePalette[256];
-	BYTE GammaTable[3][256];
+	uint8_t GammaTable[3][256];
 	PalEntry Flash;
 	int FlashAmount;
 	float Gamma;
@@ -78,8 +78,6 @@ private:
 
 	SDLFB () {}
 };
-
-IMPLEMENT_CLASS(SDLFB, false, false)
 
 struct MiniModeInfo
 {
@@ -202,31 +200,6 @@ static cycle_t BlitCycles;
 static cycle_t SDLFlipCycles;
 
 // CODE --------------------------------------------------------------------
-
-void ScaleWithAspect (int &w, int &h, int Width, int Height)
-{
-	int resRatio = CheckRatio (Width, Height);
-	int screenRatio;
-	CheckRatio (w, h, &screenRatio);
-	if (resRatio == screenRatio)
-		return;
-
-	double yratio;
-	switch(resRatio)
-	{
-		case 0: yratio = 4./3.; break;
-		case 1: yratio = 16./9.; break;
-		case 2: yratio = 16./10.; break;
-		case 3: yratio = 17./10.; break;
-		case 4: yratio = 5./4.; break;
-		default: return;
-	}
-	double y = w/yratio;
-	if (y > h)
-		w = h*yratio;
-	else
-		h = y;
-}
 
 SDLVideo::SDLVideo (int parm)
 {

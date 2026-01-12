@@ -49,6 +49,9 @@
 #include "serializer.h"
 #include "p_maputl.h"
 #include "p_spec.h"
+#include "textures.h"
+#include "actor.h"
+#include "actorinlines.h"
 
 #include "gi.h"
 
@@ -100,7 +103,7 @@ static bool P_StartButton (side_t *side, int Where, FSwitchDef *Switch, const DV
 		}
 	}
 
-	new DActiveButton (side, Where, Switch, pos, useagain);
+	Create<DActiveButton> (side, Where, Switch, pos, useagain);
 	return true;
 }
 

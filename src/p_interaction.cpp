@@ -58,9 +58,10 @@
 #include "d_net.h"
 #include "d_netinf.h"
 #include "a_morph.h"
-#include "virtual.h"
+#include "vm.h"
 #include "g_levellocals.h"
 #include "events.h"
+#include "actorinlines.h"
 
 static FRandom pr_botrespawn ("BotRespawn");
 static FRandom pr_killmobj ("ActorDie");
@@ -250,7 +251,7 @@ void ClientObituary (AActor *self, AActor *inflictor, AActor *attacker, int dmgf
 			{
 				VMValue params[] = { attacker, self, inflictor, mod.GetIndex(), !!(dmgflags & DMG_PLAYERATTACK) };
 				VMReturn rett(&ret);
-				GlobalVMStack.Call(func, params, countof(params), &rett, 1);
+				VMCall(func, params, countof(params), &rett, 1);
 				if (ret.IsNotEmpty()) message = ret;
 			}
 		}
@@ -328,7 +329,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 		IFVIRTUALPTR(item, AInventory, OwnerDied)
 		{
 			VMValue params[1] = { item };
-			GlobalVMStack.Call(func, params, 1, nullptr, 0);
+			VMCall(func, params, 1, nullptr, 0);
 		}
 		item = next;
 	}
@@ -369,7 +370,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 	{
 		VMValue params[] = { (DObject*)this };
 		VMReturn ret(&Height);
-		GlobalVMStack.Call(func, params, 1, &ret, 1);
+		VMCall(func, params, 1, &ret, 1);
 	}
 
 	// [RH] If the thing has a special, execute and remove it
@@ -410,7 +411,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 					SexMessage (GStrings("SPREEKILLSELF"), buff,
 						player->userinfo.GetGender(), player->userinfo.GetName(),
 						player->userinfo.GetName());
-					StatusBar->AttachMessage (new DHUDMessageFadeOut (SmallFont, buff,
+					StatusBar->AttachMessage (Create<DHUDMessageFadeOut>(SmallFont, buff,
 							1.5f, 0.2f, 0, 0, CR_WHITE, 3.f, 0.5f), MAKE_ID('K','S','P','R'));
 				}
 			}
@@ -467,7 +468,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 						{
 							SexMessage (GStrings("SPREEOVER"), buff, player->userinfo.GetGender(),
 								player->userinfo.GetName(), source->player->userinfo.GetName());
-							StatusBar->AttachMessage (new DHUDMessageFadeOut (SmallFont, buff,
+							StatusBar->AttachMessage (Create<DHUDMessageFadeOut> (SmallFont, buff,
 								1.5f, 0.2f, 0, 0, CR_WHITE, 3.f, 0.5f), MAKE_ID('K','S','P','R'));
 						}
 					}
@@ -477,7 +478,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 						{
 							SexMessage (spreemsg, buff, player->userinfo.GetGender(),
 								player->userinfo.GetName(), source->player->userinfo.GetName());
-							StatusBar->AttachMessage (new DHUDMessageFadeOut (SmallFont, buff,
+							StatusBar->AttachMessage (Create<DHUDMessageFadeOut> (SmallFont, buff,
 								1.5f, 0.2f, 0, 0, CR_WHITE, 3.f, 0.5f), MAKE_ID('K','S','P','R'));
 						}
 					}
@@ -527,7 +528,7 @@ void AActor::Die (AActor *source, AActor *inflictor, int dmgflags)
 							{
 								SexMessage (multimsg, buff, player->userinfo.GetGender(),
 									player->userinfo.GetName(), source->player->userinfo.GetName());
-								StatusBar->AttachMessage (new DHUDMessageFadeOut (SmallFont, buff,
+								StatusBar->AttachMessage (Create<DHUDMessageFadeOut> (SmallFont, buff,
 									1.5f, 0.8f, 0, 0, CR_RED, 3.f, 0.5f), MAKE_ID('M','K','I','L'));
 							}
 						}
@@ -737,7 +738,7 @@ void AActor::CallDie(AActor *source, AActor *inflictor, int dmgflags)
 	IFVIRTUAL(AActor, Die)
 	{
 		VMValue params[4] = { (DObject*)this, source, inflictor, dmgflags };
-		GlobalVMStack.Call(func, params, 4, nullptr, 0, nullptr);
+		VMCall(func, params, 4, nullptr, 0);
 	}
 	else return Die(source, inflictor, dmgflags);
 }
@@ -920,7 +921,6 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 	int temp;
 	int painchance = 0;
 	FState * woundstate = NULL;
-	PainChanceList * pc = NULL;
 	bool justhit = false;
 	bool plrDontThrust = false;
 	bool invulpain = false;
@@ -1137,20 +1137,27 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 
 	{
 		int reflectdamage = 0;
+		bool reflecttype = false;
 		for (auto p = target->player->mo->Inventory; p != nullptr; p = p->Inventory)
 		{
 			// This picks the reflection item with the maximum efficiency for the given damage type.
 			if (p->IsKindOf(NAME_PowerReflection))
 			{
-				int mydamage = p->ApplyDamageFactor(mod, damage);
-				if (mydamage > reflectdamage) reflectdamage = mydamage;
+				double alwaysreflect = p->FloatVar(NAME_Strength);
+				int alwaysdamage = clamp(int(damage * alwaysreflect), 0, damage);
+				int mydamage = alwaysdamage + p->ApplyDamageFactor(mod, damage - alwaysdamage);
+				if (mydamage > reflectdamage)
+				{
+					reflectdamage = mydamage;
+					reflecttype = p->BoolVar(NAME_ReflectType);
+				}
 			}
 		}
 
 		if (reflectdamage > 0)
 		{
 			// use the reflect item's damage factors to get the final value here.
-			P_DamageMobj(source, nullptr, target, reflectdamage, NAME_Reflection );
+			P_DamageMobj(source, nullptr, target, reflectdamage, reflecttype? mod : NAME_Reflection );
 
 			// Reset means of death flag.
 			MeansOfDeath = mod;
@@ -1364,7 +1371,9 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 			// but telefragging should still do enough damage to kill the player)
 			// Ignore players that are already dead.
 			// [MC]Buddha2 absorbs telefrag damage, and anything else thrown their way.
-			if (!(flags & DMG_FORCED) && (((player->cheats & CF_BUDDHA2) || (((player->cheats & CF_BUDDHA) || (player->mo->flags7 & MF7_BUDDHA)) && !telefragDamage)) && (player->playerstate != PST_DEAD)))
+			if (!(flags & DMG_FORCED) && (((player->cheats & CF_BUDDHA2) || (((player->cheats & CF_BUDDHA) ||
+				(player->mo->FindInventory (PClass::FindActor(NAME_PowerBuddha),true) != nullptr) ||
+				(player->mo->flags7 & MF7_BUDDHA)) && !telefragDamage)) && (player->playerstate != PST_DEAD)))
 			{
 				// If this is a voodoo doll we need to handle the real player as well.
 				player->mo->health = target->health = player->health = 1;
@@ -1429,9 +1438,19 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 				}
 			}
 
-			if ( P_GiveBody( source, int(draindamage * damage)))
+			if (draindamage > 0)
 			{
-				S_Sound(source, CHAN_ITEM, "*drainhealth", 1, ATTN_NORM );
+				int draindmg = int(draindamage * damage);
+				IFVIRTUALPTR(source, AActor, OnDrain)
+				{
+					VMValue params[] = { source, target, draindmg, mod.GetIndex() };
+					VMReturn ret(&draindmg);
+					VMCall(func, params, countof(params), &ret, 1);
+				}
+				if (P_GiveBody(source, draindmg))
+				{
+					S_Sound(source, CHAN_ITEM, "*drainhealth", 1, ATTN_NORM);
+				}
 			}
 		}
 	}
@@ -1504,14 +1523,13 @@ fakepain: //Needed so we can skip the rest of the above, but still obey the orig
 	if (!(target->flags5 & MF5_NOPAIN) && (inflictor == NULL || !(inflictor->flags5 & MF5_PAINLESS)) &&
 		(target->player != NULL || !G_SkillProperty(SKILLP_NoPain)) && !(target->flags & MF_SKULLFLY))
 	{
-		pc = target->GetClass()->PainChances;
 		painchance = target->PainChance;
-		if (pc != NULL)
+		for (auto & pc : target->GetInfo()->PainChances)
 		{
-			int *ppc = pc->CheckKey(mod);
-			if (ppc != NULL)
+			if (pc.first == mod)
 			{
-				painchance = *ppc;
+				painchance = pc.second;
+				break;
 			}
 		}
 
@@ -1565,7 +1583,7 @@ dopain:
 				target->SetState (target->SeeState);
 			}
 		}
-		else if (source != target->target && target->OkayToSwitchTarget (source))
+		else if (source != target->target && target->CallOkayToSwitchTarget (source))
 		{
 			// Target actor is not intent on another actor,
 			// so make him chase after source
@@ -1624,7 +1642,7 @@ int P_DamageMobj(AActor *target, AActor *inflictor, AActor *source, int damage, 
 		VMReturn ret;
 		int retval;
 		ret.IntAt(&retval);
-		GlobalVMStack.Call(func, params, 7, &ret, 1, nullptr);
+		VMCall(func, params, 7, &ret, 1);
 		return retval;
 	}
 	else
@@ -1696,8 +1714,13 @@ DEFINE_ACTION_FUNCTION(AActor, PoisonMobj)
 	return 0;
 }
 
+//==========================================================================
+//
+// OkayToSwitchTarget
+//
+//==========================================================================
 
-bool AActor::OkayToSwitchTarget (AActor *other)
+bool AActor::OkayToSwitchTarget(AActor *other)
 {
 	if (other == this)
 		return false;		// [RH] Don't hate self (can happen when shooting barrels)
@@ -1756,6 +1779,27 @@ bool AActor::OkayToSwitchTarget (AActor *other)
 
 	return true;
 }
+
+DEFINE_ACTION_FUNCTION(AActor, OkayToSwitchTarget)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_OBJECT(other, AActor);
+	ACTION_RETURN_BOOL(self->OkayToSwitchTarget(other));
+}
+
+bool AActor::CallOkayToSwitchTarget(AActor *other)
+{
+	IFVIRTUAL(AActor, OkayToSwitchTarget)
+	{
+		VMValue params[] = { (DObject*)this, other };
+		int retv;
+		VMReturn ret(&retv);
+		VMCall(func, params, 2, &ret, 1);
+		return !!retv;
+	}
+	return OkayToSwitchTarget(other);
+}
+
 
 //==========================================================================
 //
@@ -1865,7 +1909,9 @@ void P_PoisonDamage (player_t *player, AActor *source, int damage, bool playPain
 	target->health -= damage;
 	if (target->health <= 0)
 	{ // Death
-		if ((((player->cheats & CF_BUDDHA) || (player->mo->flags7 & MF7_BUDDHA)) && damage < TELEFRAG_DAMAGE) || (player->cheats & CF_BUDDHA2))
+		if ((((player->cheats & CF_BUDDHA) || (player->cheats & CF_BUDDHA2) ||
+			(player->mo->flags7 & MF7_BUDDHA)) && damage < TELEFRAG_DAMAGE) ||
+			(player->mo->FindInventory (PClass::FindActor(NAME_PowerBuddha),true) != nullptr))
 		{ // [SP] Save the player... 
 			player->health = target->health = 1;
 		}

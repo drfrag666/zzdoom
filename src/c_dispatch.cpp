@@ -55,6 +55,7 @@
 #include "d_main.h"
 #include "serializer.h"
 #include "menu/menu.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -657,7 +658,7 @@ void C_DoCommand (const char *cmd, int keynum)
 			}
 			else
 			{
-				new DStoredCommand (com, beg);
+				Create<DStoredCommand> (com, beg);
 			}
 		}
 	}
@@ -754,7 +755,7 @@ void AddCommandString (char *cmd, int keynum)
 						  // Note that deferred commands lose track of which key
 						  // (if any) they were pressed from.
 							*brkpt = ';';
-							new DWaitingCommand (brkpt, tics, UnsafeExecutionContext);
+							Create<DWaitingCommand> (brkpt, tics, UnsafeExecutionContext);
 						}
 						return;
 					}

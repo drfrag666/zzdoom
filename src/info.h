@@ -180,6 +180,7 @@ public:
 	bool CallAction(AActor *self, AActor *stateowner, FStateParamInfo *stateinfo, FState **stateret);
 	static PClassActor *StaticFindStateOwner (const FState *state);
 	static PClassActor *StaticFindStateOwner (const FState *state, PClassActor *info);
+	static FString StaticGetStateName(const FState *state);
 	static FRandom pr_statetics;
 };
 
@@ -203,11 +204,11 @@ struct FStateLabels
 
 #include "gametype.h"
 
-struct DmgFactors : public TMap<FName, double>
+struct DmgFactors : public TArray<std::pair<FName, double>>
 {
 	int Apply(FName type, int damage);
 };
-typedef TMap<FName, int> PainChanceList;
+typedef TArray<std::pair<FName, int>> PainChanceList;
 
 struct DamageTypeDefinition
 {
@@ -239,26 +240,100 @@ private:
 
 struct FDropItem;
 
+struct FActorInfo
+{
+	PClassActor *Replacement = nullptr;
+	PClassActor *Replacee = nullptr;
+	FState *OwnedStates = nullptr;
+	int NumOwnedStates = 0;
+	uint8_t GameFilter = GAME_Any;
+	uint16_t SpawnID = 0;
+	uint16_t ConversationID = 0;
+	int16_t DoomEdNum = -1;
+
+	FStateLabels *StateList = nullptr;
+	DmgFactors DamageFactors;
+	PainChanceList PainChances;
+
+	TArray<PClassActor *> VisibleToPlayerClass;
+
+	FDropItem *DropItems;
+	FIntCVar *distancecheck;
+
+	// This is from PClassPlayerPawn
+	FString DisplayName;
+
+	uint8_t DefaultStateUsage = 0; // state flag defaults for blocks without a qualifier.
+
+	FActorInfo() {}
+	FActorInfo(const FActorInfo & other)
+	{
+		// only copy the fields that get inherited
+		DefaultStateUsage = other.DefaultStateUsage;
+		DamageFactors = other.DamageFactors;
+		PainChances = other.PainChances;
+		VisibleToPlayerClass = other.VisibleToPlayerClass;
+		DropItems = other.DropItems;
+		distancecheck = other.distancecheck;
+		DisplayName = other.DisplayName;
+	}
+
+	~FActorInfo()
+	{
+		if (StateList != NULL)
+		{
+			StateList->Destroy();
+			M_Free(StateList);
+		}
+	}
+};
+
+// This is now merely a wrapper that adds actor-specific functionality to PClass.
+// No objects of this type will be created ever - its only use is to static_casr
+// PClass to it.
 class PClassActor : public PClass
 {
-	DECLARE_CLASS(PClassActor, PClass);
 protected:
 public:
 	static void StaticInit ();
 	static void StaticSetActorNums ();
-	virtual void DeriveData(PClass *newclass);
 
-	PClassActor();
-	~PClassActor();
-
-	virtual size_t PointerSubstitution(DObject *oldclass, DObject *newclass);
 	void BuildDefaults();
 	void ApplyDefaults(uint8_t *defaults);
 	void RegisterIDs();
 	void SetDamageFactor(FName type, double factor);
 	void SetPainChance(FName type, int chance);
 	bool SetReplacement(FName replaceName);
-	void SetDropItems(FDropItem *drops);
+
+	FActorInfo *ActorInfo() const
+	{
+		return (FActorInfo*)Meta;
+	}
+
+	void SetDropItems(FDropItem *drops)
+	{
+		ActorInfo()->DropItems = drops;
+	}
+
+	const FString &GetDisplayName() const
+	{
+		return ActorInfo()->DisplayName;
+	}
+
+	FState *GetStates() const
+	{
+		return ActorInfo()->OwnedStates;
+	}
+
+	unsigned GetStateCount() const
+	{
+		return ActorInfo()->NumOwnedStates;
+	}
+
+	FStateLabels *GetStateLabels() const
+	{
+		return ActorInfo()->StateList;
+	}
 
 	FState *FindState(int numnames, FName *names, bool exact=false) const;
 	FState *FindStateByString(const char *name, bool exact=false);
@@ -269,52 +344,23 @@ public:
 
 	bool OwnsState(const FState *state)
 	{
-		return state >= OwnedStates && state < OwnedStates + NumOwnedStates;
+		auto i = ActorInfo();
+		return state >= i->OwnedStates && state < i->OwnedStates + i->NumOwnedStates;
 	}
 
 	PClassActor *GetReplacement(bool lookskill=true);
 	PClassActor *GetReplacee(bool lookskill=true);
 
-	FState *OwnedStates;
-	PClassActor *Replacement;
-	PClassActor *Replacee;
-	int NumOwnedStates;
-	uint8_t GameFilter;
-	uint8_t DefaultStateUsage; // state flag defaults for blocks without a qualifier.
-	uint16_t SpawnID;
-	uint16_t ConversationID;
-	int16_t DoomEdNum;
-	FStateLabels *StateList;
-	DmgFactors *DamageFactors;
-	PainChanceList *PainChances;
-
-	TArray<PClassActor *> VisibleToPlayerClass;
-
-	FDropItem *DropItems;
-	FString SourceLumpName;
-	FIntCVar *distancecheck;
-
-	// These are only valid for inventory items.
-	TArray<PClassActor *> RestrictedToPlayerClass;
-	TArray<PClassActor *> ForbiddenToPlayerClass;
-
-	// This is from PClassPlayerPawn
-	FString DisplayName;
-
 	// For those times when being able to scan every kind of actor is convenient
 	static TArray<PClassActor *> AllActorClasses;
 };
-
-inline PClassActor *PClass::FindActor(FName name)
-{
-	 return dyn_cast<PClassActor>(FindClass(name));
-}
 
 struct FDoomEdEntry
 {
 	PClassActor *Type;
 	short Special;
 	signed char ArgsDefined;
+	bool NoSkillFlags;
 	int Args[5];
 };
 

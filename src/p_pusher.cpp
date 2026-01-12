@@ -33,6 +33,7 @@
 #include "p_local.h"
 #include "d_player.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 
 CVAR(Bool, var_pushers, true, CVAR_SERVERINFO);
 
@@ -375,7 +376,7 @@ void P_SpawnPushers ()
 		{
 			FSectorTagIterator itr(l->args[0]);
 			while ((s = itr.Next()) >= 0)
-				new DPusher(DPusher::p_wind, l->args[3] ? l : NULL, l->args[1], l->args[2], NULL, s);
+				Create<DPusher>(DPusher::p_wind, l->args[3] ? l : nullptr, l->args[1], l->args[2], nullptr, s);
 			l->special = 0;
 			break;
 		}
@@ -384,7 +385,7 @@ void P_SpawnPushers ()
 		{
 			FSectorTagIterator itr(l->args[0]);
 			while ((s = itr.Next()) >= 0)
-				new DPusher(DPusher::p_current, l->args[3] ? l : NULL, l->args[1], l->args[2], NULL, s);
+				Create<DPusher>(DPusher::p_current, l->args[3] ? l : nullptr, l->args[1], l->args[2], nullptr, s);
 			l->special = 0;
 			break;
 		}
@@ -398,7 +399,7 @@ void P_SpawnPushers ()
 					if (thing) {	// No MT_P* means no effect
 						// [RH] Allow narrowing it down by tid
 						if (!l->args[1] || l->args[1] == thing->tid)
-							new DPusher (DPusher::p_push, l->args[3] ? l : NULL, l->args[2],
+							Create<DPusher> (DPusher::p_push, l->args[3] ? l : NULL, l->args[2],
 										 0, thing, s);
 					}
 				}
@@ -411,7 +412,7 @@ void P_SpawnPushers ()
 					if (thing->GetClass()->TypeName == NAME_PointPusher ||
 						thing->GetClass()->TypeName == NAME_PointPuller)
 					{
-						new DPusher (DPusher::p_push, l->args[3] ? l : NULL, l->args[2], 0, thing, thing->Sector->Index());
+						Create<DPusher> (DPusher::p_push, l->args[3] ? l : NULL, l->args[2], 0, thing, thing->Sector->Index());
 					}
 				}
 			}
@@ -456,7 +457,7 @@ void AdjustPusher (int tag, int magnitude, int angle, bool wind)
 		}
 		if (i == numcollected)
 		{
-			new DPusher (type, NULL, magnitude, angle, NULL, secnum);
+			Create<DPusher> (type, nullptr, magnitude, angle, nullptr, secnum);
 		}
 	}
 }

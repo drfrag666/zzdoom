@@ -100,7 +100,7 @@ struct maplinedef_t
 	uint16_t	v1;
 	uint16_t	v2;
 	uint16_t	flags;
-	int16_t		special;
+	uint16_t	special;
 	int16_t		tag;
 	uint16_t	sidenum[2];	// sidenum[1] will be -1 if one sided
 
@@ -435,12 +435,6 @@ struct FPlayerStart
 	  type(pnum)
 	{ }
 };
-// Player spawn spots for deathmatch.
-extern TArray<FPlayerStart> deathmatchstarts;
-
-// Player spawn spots.
-extern FPlayerStart playerstarts[MAXPLAYERS];
-extern TArray<FPlayerStart> AllPlayerStarts;
 
 
 #endif					// __DOOMDATA__

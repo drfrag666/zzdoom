@@ -48,8 +48,9 @@
 #include "r_utility.h"
 #include "a_morph.h"
 #include "g_levellocals.h"
-#include "virtual.h"
+#include "vm.h"
 #include "events.h"
+#include "p_acs.h"
 
 // [RH] Actually handle the cheat. The cheat code in st_stuff.c now just
 // writes some bytes to the network data stream, and the network code
@@ -108,7 +109,6 @@ void cht_DoCheat (player_t *player, int cheat)
 			msg = GStrings("STSTR_DQDON");
 		else
 			msg = GStrings("STSTR_DQDOFF");
-		ST_SetNeedRefresh();
 		break;
 
 	case CHT_BUDDHA:
@@ -125,7 +125,6 @@ void cht_DoCheat (player_t *player, int cheat)
 			msg = GStrings("STSTR_DQD2ON");
 		else
 			msg = GStrings("STSTR_DQD2OFF");
-		ST_SetNeedRefresh();
 		break;
 
 	case CHT_BUDDHA2:
@@ -342,35 +341,7 @@ void cht_DoCheat (player_t *player, int cheat)
 			}
 			else
 			{
-				player->mo->Revive();
-				player->playerstate = PST_LIVE;
-				player->health = player->mo->health = player->mo->GetDefault()->health;
-				player->viewheight = ((APlayerPawn *)player->mo->GetDefault())->ViewHeight;
-				player->mo->renderflags &= ~RF_INVISIBLE;
-				player->mo->Height = player->mo->GetDefault()->Height;
-				player->mo->radius = player->mo->GetDefault()->radius;
-				player->mo->special1 = 0;	// required for the Hexen fighter's fist attack. 
-											// This gets set by AActor::Die as flag for the wimpy death and must be reset here.
-				player->mo->SetState (player->mo->SpawnState);
-				if (!(player->mo->flags2 & MF2_DONTTRANSLATE))
-				{
-					player->mo->Translation = TRANSLATION(TRANSLATION_Players, uint8_t(player-players));
-				}
-				if (player->ReadyWeapon != nullptr)
-				{
-					P_SetPsprite(player, PSP_WEAPON, player->ReadyWeapon->GetUpState());
-				}
-
-				if (player->morphTics)
-				{
-					P_UndoPlayerMorph(player, player);
-				}
-
-				// player is now alive.
-				// fire E_PlayerRespawned and start the ACS SCRIPT_Respawn.
-				E_PlayerRespawned(int(player - players));
-				//
-				FBehavior::StaticStartTypedScripts(SCRIPT_Respawn, player->mo, true);
+				player->Resurrect();
 
 			}
 		}
@@ -510,7 +481,7 @@ void cht_DoCheat (player_t *player, int cheat)
 				VMReturn ret;
 				int oldpieces = 1;
 				ret.IntAt(&oldpieces);
-				GlobalVMStack.Call(gsp, params, 1, &ret, 1, nullptr);
+				VMCall(gsp, params, 1, &ret, 1);
 				item = player->mo->FindInventory(NAME_Sigil);
 
 				if (item != NULL)
@@ -603,14 +574,39 @@ const char *cht_Morph (player_t *player, PClassActor *morphclass, bool quickundo
 	return "";
 }
 
+void cht_SetInv(player_t *player, const char *string, int amount, bool beyond)
+{
+	if (!stricmp(string, "health"))
+	{
+		if (amount <= 0)
+		{
+			cht_Suicide(player);
+			return;
+		}
+		if (!beyond) amount = MIN(amount, player->mo->GetMaxHealth(true));
+		player->health = player->mo->health = amount;
+	}
+	else
+	{
+		auto item = PClass::FindActor(string);
+		if (item != nullptr && item->IsDescendantOf(RUNTIME_CLASS(AInventory)))
+		{
+			player->mo->SetInventory(item, amount, beyond);
+			return;
+		}
+		Printf("Unknown item \"%s\"\n", string);
+	}
+}
+
 void cht_Give (player_t *player, const char *name, int amount)
 {
 	if (player->mo == nullptr)	return;
 
 	IFVIRTUALPTR(player->mo, APlayerPawn, CheatGive)
 	{
-		VMValue params[3] = { player->mo, FString(name), amount };
-		GlobalVMStack.Call(func, params, 3, nullptr, 0);
+		FString namestr = name;
+		VMValue params[3] = { player->mo, &namestr, amount };
+		VMCall(func, params, 3, nullptr, 0);
 	}
 }
 
@@ -620,8 +616,9 @@ void cht_Take (player_t *player, const char *name, int amount)
 
 	IFVIRTUALPTR(player->mo, APlayerPawn, CheatTake)
 	{
-		VMValue params[3] = { player->mo, FString(name), amount };
-		GlobalVMStack.Call(func, params, 3, nullptr, 0);
+		FString namestr = name;
+		VMValue params[3] = { player->mo, &namestr, amount };
+		VMCall(func, params, 3, nullptr, 0);
 	}
 }
 
@@ -671,7 +668,7 @@ void cht_Suicide (player_t *plyr)
 	// the initial tick.
 	if (plyr->mo != NULL)
 	{
-		DSuicider *suicide = new DSuicider;
+		DSuicider *suicide = Create<DSuicider>();
 		suicide->Pawn = plyr->mo;
 		GC::WriteBarrier(suicide, suicide->Pawn);
 	}

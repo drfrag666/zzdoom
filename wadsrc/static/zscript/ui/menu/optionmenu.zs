@@ -32,7 +32,7 @@
 **
 */
 
-struct FOptionMenuSettings version("2.4")
+struct FOptionMenuSettings native version("2.4")
 {
 	int mTitleColor;
 	int mFontColor;
@@ -107,6 +107,12 @@ class OptionMenu : Menu
 		DontDim = desc.mDontDim;
 		if (mDesc != NULL && mDesc.mSelectedItem == -1) mDesc.mSelectedItem = FirstSelectable();
 		mDesc.CalcIndent();
+
+		// notify all items that the menu was just created.
+		for(int i=0;i<mDesc.mItems.Size(); i++)
+		{
+			mDesc.mItems[i].OnMenuCreated();
+		}
 	}
 
 	

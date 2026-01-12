@@ -104,9 +104,9 @@ void FSoftwareRenderer::PrecacheTexture(FTexture *tex, int cache)
 	}
 }
 
-void FSoftwareRenderer::Precache(BYTE *texhitlist, TMap<PClassActor*, bool> &actorhitlist)
+void FSoftwareRenderer::Precache(uint8_t *texhitlist, TMap<PClassActor*, bool> &actorhitlist)
 {
-	BYTE *spritelist = new BYTE[sprites.Size()];
+	uint8_t *spritelist = new uint8_t[sprites.Size()];
 	TMap<PClassActor*, bool>::Iterator it(actorhitlist);
 	TMap<PClassActor*, bool>::Pair *pair;
 
@@ -116,9 +116,9 @@ void FSoftwareRenderer::Precache(BYTE *texhitlist, TMap<PClassActor*, bool> &act
 	{
 		PClassActor *cls = pair->Key;
 
-		for (int i = 0; i < cls->NumOwnedStates; i++)
+		for (unsigned i = 0; i < cls->GetStateCount(); i++)
 		{
-			spritelist[cls->OwnedStates[i].sprite] = true;
+			spritelist[cls->GetStates()[i].sprite] = true;
 		}
 	}
 
@@ -194,14 +194,11 @@ void FSoftwareRenderer::WriteSavePic (player_t *player, FileWriter *file, int wi
 	PalEntry palette[256];
 
 	// Take a snapshot of the player's view
-	pic->ObjectFlags |= OF_Fixed;
 	pic->Lock ();
 	R_RenderViewToCanvas (player->mo, pic, 0, 0, width, height);
 	screen->GetFlashedPalette (palette);
 	M_CreatePNG (file, pic->GetBuffer(), palette, SS_PAL, width, height, pic->GetPitch());
 	pic->Unlock ();
-	pic->Destroy();
-	pic->ObjectFlags |= OF_YesReallyDelete;
 	delete pic;
 }
 
@@ -319,7 +316,7 @@ void FSoftwareRenderer::CopyStackedViewParameters()
 
 void FSoftwareRenderer::RenderTextureView (FCanvasTexture *tex, AActor *viewpoint, int fov)
 {
-	BYTE *Pixels = const_cast<BYTE*>(tex->GetPixels());
+	uint8_t *Pixels = const_cast<uint8_t*>(tex->GetPixels());
 	DSimpleCanvas *Canvas = tex->GetCanvas();
 
 	// curse Doom's overuse of global variables in the renderer.

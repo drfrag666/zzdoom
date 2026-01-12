@@ -2207,6 +2207,12 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 		cht_Take (&players[player], s, ReadLong (stream));
 		break;
 
+	case DEM_SETINV:
+		s = ReadString(stream);
+		i = ReadLong(stream);
+		cht_SetInv(&players[player], s, i, !!ReadByte(stream));
+		break;
+
 	case DEM_WARPCHEAT:
 		{
 			int x, y, z;
@@ -2587,7 +2593,7 @@ void Net_DoCommand (int type, uint8_t **stream, int player)
 		s = ReadString(stream);
 		int removecount = 0;
 		PClassActor *cls = PClass::FindActor(s);
-		if (cls != NULL && cls->IsKindOf(RUNTIME_CLASS(PClassActor)))
+		if (cls != NULL && cls->IsDescendantOf(RUNTIME_CLASS(AActor)))
 		{
 			removecount = RemoveClass(cls);
 			const PClass *cls_rep = cls->GetReplacement();
@@ -2732,6 +2738,10 @@ void Net_SkipCommand (int type, uint8_t **stream)
 		case DEM_GIVECHEAT:
 		case DEM_TAKECHEAT:
 			skip = strlen ((char *)(*stream)) + 5;
+			break;
+
+		case DEM_SETINV:
+			skip = strlen((char *)(*stream)) + 6;
 			break;
 
 		case DEM_NETEVENT:

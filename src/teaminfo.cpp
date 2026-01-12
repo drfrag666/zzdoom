@@ -41,6 +41,7 @@
 #include "v_font.h"
 #include "v_video.h"
 #include "w_wad.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -335,4 +336,5 @@ CCMD (teamlist)
 }
 
 
+DEFINE_GLOBAL(Teams)
 DEFINE_FIELD_NAMED(FTeam, m_Name, mName)

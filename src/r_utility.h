@@ -12,37 +12,79 @@ class FSerializer;
 // There a 0-31, i.e. 32 LUT in the COLORMAP lump.
 #define NUMCOLORMAPS			32
 
+class	DCanvas;
 extern DCanvas			*RenderTarget;
+
+struct FRenderViewpoint
+{
+	player_t		*player;		// For which player is this viewpoint being renderered? (can be null for camera textures)
+	DVector3		Pos;			// Camera position
+	DVector3		ActorPos;		// Camera actor's position
+	DRotator		Angles;			// Camera angles
+	DVector3		Path;			// View path for portal calculations
+	double			Cos;			// cos(Angles.Yaw)
+	double			Sin;			// sin(Angles.Yaw)
+	double			TanCos;			// FocalTangent * cos(Angles.Yaw)
+	double			TanSin;			// FocalTangent * sin(Angles.Yaw)
+
+	AActor			*camera;		// camera actor
+	sector_t		*sector;		// [RH] keep track of sector viewing from
+	DAngle			FieldOfView;	// current field of view
+
+	double			TicFrac;		// fraction of tic for interpolation
+	uint32_t		FrameTime;		// current frame's time in tics.
+	
+	int				extralight;		// extralight to be added to this viewpoint
+	bool			showviewer;		// show the camera actor?
+};
 
 extern DVector3			ViewPos;
 extern DAngle			ViewAngle;
 extern DAngle			ViewPitch;
 extern DAngle			ViewRoll;
 extern DVector3			ViewPath[2];
-
-extern "C" int			centerx, centerxwide;
-extern "C" int			centery;
-
-extern int				setblocks;
-
+extern double			ViewCos;
+extern double			ViewSin;
 extern double			ViewTanCos;
 extern double			ViewTanSin;
-extern double			FocalTangent;
+extern AActor*			camera;		// [RH] camera instead of viewplayer
+extern sector_t*		viewsector;	// [RH] keep track of sector viewing from
+extern DAngle			FieldOfView;
+extern double			r_TicFracF;
+extern uint32_t			r_FrameTime;
+extern int				extralight;
+extern bool r_showviewer;
 
+//-----------------------------------
+struct FViewWindow
+{
+	double FocalTangent;
+	int centerx;
+	int centerxwide;
+	int centery;
+	float WidescreenRatio;
+};
+
+extern int			centerx, centerxwide;
+extern int			centery;
+extern double		FocalTangent;
+extern float		WidescreenRatio;
+
+//-----------------------------------
+
+
+extern int				setblocks;
 extern bool				r_NoInterpolate;
 extern int				validcount;
 
 extern angle_t			LocalViewAngle;			// [RH] Added to consoleplayer's angle
 extern int				LocalViewPitch;			// [RH] Used directly instead of consoleplayer's pitch
 extern bool				LocalKeyboardTurner;	// [RH] The local player used the keyboard to turn, so interpolate
-extern float			WidescreenRatio;
 
-extern double			r_TicFracF;
-extern uint32_t			r_FrameTime;
-extern int				extralight;
 extern unsigned int		R_OldBlend;
 
 const double			r_Yaspect = 200.0;		// Why did I make this a variable? It's never set anywhere.
+
 
 //==========================================================================
 //
@@ -103,6 +145,7 @@ void R_SetWindow (int windowSize, int fullWidth, int fullHeight, int stHeight, b
 extern void R_FreePastViewers ();
 extern void R_ClearPastViewer (AActor *actor);
 
+class FCanvasTexture;
 // This list keeps track of the cameras that draw into canvas textures.
 struct FCanvasTextureInfo
 {

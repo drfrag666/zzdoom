@@ -19,9 +19,10 @@
 #include "d_player.h"
 #include "p_spec.h"
 #include "serializer.h"
-#include "virtual.h"
+#include "vm.h"
 #include "c_functions.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 EXTERN_CVAR(Bool, sv_unlimited_pickup)
 
@@ -237,7 +238,7 @@ double AInventory::GetSpeedFactor()
 			VMValue params[1] = { (DObject*)self };
 			double retval;
 			VMReturn ret(&retval);
-			GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+			VMCall(func, params, 1, &ret, 1);
 			factor *= retval;
 		}
 		self = self->Inventory;
@@ -261,7 +262,7 @@ bool AInventory::GetNoTeleportFreeze ()
 			VMValue params[1] = { (DObject*)self };
 			int retval;
 			VMReturn ret(&retval);
-			GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+			VMCall(func, params, 1, &ret, 1);
 			if (retval) return true;
 		}
 		self = self->Inventory;
@@ -282,7 +283,7 @@ bool AInventory::CallUse(bool pickup)
 		VMValue params[2] = { (DObject*)this, pickup };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, 2, &ret, 1, nullptr);
+		VMCall(func, params, 2, &ret, 1);
 		return !!retval;
 	}
 	return false;
@@ -347,7 +348,7 @@ void AInventory::DepleteOrDestroy ()
 	IFVIRTUAL(AInventory, DepleteOrDestroy)
 	{
 		VMValue params[1] = { (DObject*)this };
-		GlobalVMStack.Call(func, params, 1, nullptr, 0, nullptr);
+		VMCall(func, params, 1, nullptr, 0);
 	}
 }
 
@@ -367,7 +368,7 @@ PalEntry AInventory::CallGetBlend()
 		VMValue params[1] = { (DObject*)this };
 		int retval;
 		VMReturn ret(&retval);
-		GlobalVMStack.Call(func, params, 1, &ret, 1, nullptr);
+		VMCall(func, params, 1, &ret, 1);
 		return retval;
 	}
 	else return 0;
@@ -479,46 +480,9 @@ bool AInventory::CallTryPickup(AActor *toucher, AActor **toucher_return)
 	AActor *tret;
 	ret[0].IntAt(&res);
 	ret[1].PointerAt((void**)&tret);
-	GlobalVMStack.Call(func, params, 2, ret, 2);
+	VMCall(func, params, 2, ret, 2);
 	if (toucher_return) *toucher_return = tret;
 	return !!res;
-}
-
-//===========================================================================
-//
-// AInventory :: CanPickup
-//
-//===========================================================================
-
-DEFINE_ACTION_FUNCTION(AInventory, CanPickup)
-{
-	PARAM_SELF_PROLOGUE(AInventory);
-	PARAM_OBJECT(toucher, AActor);
-
-	if (!toucher)
-		ACTION_RETURN_BOOL(false);
-
-	auto ai = self->GetClass();
-	// Is the item restricted to certain player classes?
-	if (ai->RestrictedToPlayerClass.Size() != 0)
-	{
-		for (unsigned i = 0; i < ai->RestrictedToPlayerClass.Size(); ++i)
-		{
-			if (toucher->IsKindOf(ai->RestrictedToPlayerClass[i]))
-				ACTION_RETURN_BOOL(true);
-		}
-		ACTION_RETURN_BOOL(false);
-	}
-	// Or is it forbidden to certain other classes?
-	else
-	{
-		for (unsigned i = 0; i < ai->ForbiddenToPlayerClass.Size(); ++i)
-		{
-			if (toucher->IsKindOf(ai->ForbiddenToPlayerClass[i]))
-				ACTION_RETURN_BOOL(false);
-		}
-	}
-	ACTION_RETURN_BOOL(true);
 }
 
 //===========================================================================

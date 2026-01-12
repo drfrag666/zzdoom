@@ -33,7 +33,6 @@
 // States are tied to finite states are tied to animation frames.
 #include "info.h"
 
-#include <forward_list>
 #include "doomdef.h"
 #include "textures/textures.h"
 #include "r_data/renderstyle.h"
@@ -390,7 +389,9 @@ enum ActorFlag7
 	MF7_FORCEZERORADIUSDMG = 0x10000000,	// passes zero radius damage on to P_DamageMobj, this is necessary in some cases where DoSpecialDamage gets overrideen.
 	MF7_NOINFIGHTSPECIES = 0x20000000,	// don't start infights with one's own species.
 	MF7_FORCEINFIGHTING	= 0x40000000,	// overrides a map setting of 'no infighting'.
+	MF7_SPRITEFLIP		= 0x80000000,	// sprite flipped on x-axis
 };
+
 enum ActorFlag8
 {
 	MF8_FRIGHTENING		= 0x00000001,	// for those moments when halloween just won't do
@@ -618,6 +619,12 @@ public:
 		return (AActor *)(this->GetClass()->Defaults);
 	}
 
+	FActorInfo *GetInfo() const
+	{
+		return static_cast<PClassActor*>(GetClass())->ActorInfo();
+	}
+
+
 	FDropItem *GetDropItems() const;
 
 	// Return true if the monster should use a missile attack, false for melee
@@ -698,6 +705,7 @@ public:
 	int SpecialMissileHit (AActor *victim);
 
 	// Returns true if it's okay to switch target to "other" after being attacked by it.
+	bool CallOkayToSwitchTarget(AActor *other);
 	bool OkayToSwitchTarget (AActor *other);
 
 	// Note: Although some of the inventory functions are virtual, this
@@ -720,6 +728,8 @@ public:
 	// Returns true if the initial item count is positive.
 	virtual bool TakeInventory (PClassActor *itemclass, int amount, bool fromdecorate = false, bool notakeinfinite = false);
 
+	bool SetInventory(PClassActor *itemclass, int amount, bool beyondMax);
+
 	// Uses an item and removes it from the inventory.
 	virtual bool UseInventory (AInventory *item);
 
@@ -737,7 +747,7 @@ public:
 	AInventory *FindInventory (FName type, bool subclass = false);
 	template<class T> T *FindInventory ()
 	{
-		return static_cast<T *> (FindInventory (RUNTIME_TEMPLATE_CLASS(T)));
+		return static_cast<T *> (FindInventory (RUNTIME_CLASS(T)));
 	}
 
 	// Adds one item of a particular type. Returns NULL if it could not be added.
@@ -1149,6 +1159,7 @@ public:
 
 	uint8_t smokecounter;
 	uint8_t FloatBobPhase;
+	double FloatBobStrength;
 	uint8_t FriendPlayer;				// [RH] Player # + 1 this friendly monster works for (so 0 is no player, 1 is player 0, etc)
 	PalEntry BloodColor;
 	uint32_t BloodTranslation;
@@ -1485,7 +1496,7 @@ public:
 		do
 		{
 			actor = FActorIterator::Next ();
-		} while (actor && !actor->IsKindOf (RUNTIME_TEMPLATE_CLASS(T)));
+		} while (actor && !actor->IsKindOf (RUNTIME_CLASS(T)));
 		return static_cast<T *>(actor);
 	}
 };
@@ -1536,12 +1547,23 @@ inline AActor *Spawn(FName type, const DVector3 &pos, replace_t allowreplacement
 
 template<class T> inline T *Spawn(const DVector3 &pos, replace_t allowreplacement)
 {
-	return static_cast<T *>(AActor::StaticSpawn(RUNTIME_TEMPLATE_CLASS(T), pos, allowreplacement));
+	return static_cast<T *>(AActor::StaticSpawn(RUNTIME_CLASS(T), pos, allowreplacement));
 }
 
 template<class T> inline T *Spawn()	// for inventory items we do not need coordinates and replacement info.
 {
-	return static_cast<T *>(AActor::StaticSpawn(RUNTIME_TEMPLATE_CLASS(T), DVector3(0, 0, 0), NO_REPLACE));
+	return static_cast<T *>(AActor::StaticSpawn(RUNTIME_CLASS(T), DVector3(0, 0, 0), NO_REPLACE));
+}
+
+inline PClassActor *PClass::FindActor(FName name)
+{
+	auto cls = FindClass(name);
+	return cls && cls->IsDescendantOf(RUNTIME_CLASS(AActor)) ? static_cast<PClassActor*>(cls) : nullptr;
+}
+
+inline PClassActor *ValidateActor(PClass *cls)
+{
+	return cls && cls->IsDescendantOf(RUNTIME_CLASS(AActor)) ? static_cast<PClassActor*>(cls) : nullptr;
 }
 
 void PrintMiscActorInfo(AActor * query);

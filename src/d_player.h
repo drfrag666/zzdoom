@@ -26,7 +26,7 @@
 // Finally, for odd reasons, the player input
 // is buffered within the player data struct,
 // as commands per game tick.
-#include "d_ticcmd.h"
+#include "d_protocol.h"
 #include "doomstat.h"
 
 #include "a_weapons.h"
@@ -94,12 +94,9 @@ public:
 
 	bool ResetAirSupply (bool playgasp = true);
 	int GetMaxHealth(bool withupgrades = false) const;
-	void TweakSpeeds (double &forwardmove, double &sidemove);
-	void MorphPlayerThink ();
 	void ActivateMorphWeapon ();
 	AWeapon *PickNewWeapon (PClassActor *ammotype);
 	AWeapon *BestWeapon (PClassActor *ammotype);
-	void CheckWeaponSwitch(PClassActor *ammotype);
 	void GiveDeathmatchInventory ();
 	void FilterCoopRespawnInventory (APlayerPawn *oldplayer);
 
@@ -108,8 +105,6 @@ public:
 
 	// These are virtual on the script side only.
 	void PlayIdle();
-	void PlayRunning();
-	void PlayAttacking ();
 	void PlayAttacking2 ();
 
 	const char *GetSoundClass () const;
@@ -235,7 +230,7 @@ enum
 // The VM cannot deal with this as an invalid pointer because it performs a read barrier on every object pointer read.
 // This doesn't have to point to a valid weapon, though, because WP_NOCHANGE is never dereferenced, but it must point to a valid object
 // and the class descriptor just works fine for that.
-#define WP_NOCHANGE ((AWeapon*)RUNTIME_CLASS_CASTLESS(AWeapon))
+extern AWeapon *WP_NOCHANGE;
 
 
 #define MAXPLAYERNAME	15
@@ -308,7 +303,7 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 	{
 		return *static_cast<FIntCVar *>(*CheckKey(NAME_ColorSet));
 	}
-	uint32 GetColor() const
+	uint32_t GetColor() const
 	{
 		return *static_cast<FColorCVar *>(*CheckKey(NAME_Color));
 	}
@@ -356,8 +351,8 @@ struct userinfo_t : TMap<FName,FBaseCVar *>
 	int GenderChanged(const char *gendername);
 	int PlayerClassChanged(const char *classname);
 	int PlayerClassNumChanged(int classnum);
-	uint32 ColorChanged(const char *colorname);
-	uint32 ColorChanged(uint32 colorval);
+	uint32_t ColorChanged(const char *colorname);
+	uint32_t ColorChanged(uint32_t colorval);
 	int ColorSetChanged(int setnum);
 };
 
@@ -532,6 +527,8 @@ public:
 
 	// [Nash] set player FOV
 	void SetFOV(float fov);
+	bool HasWeaponsInSlot(int slot) const;
+	bool Resurrect();
 };
 
 // Bookkeeping on players - state.
@@ -561,8 +558,6 @@ inline bool AActor::IsNoClip2() const
 	}
 	return false;
 }
-
-#define CROUCHSPEED (1./12)
 
 bool P_IsPlayerTotallyFrozen(const player_t *player);
 

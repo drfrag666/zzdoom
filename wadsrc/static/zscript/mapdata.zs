@@ -198,10 +198,20 @@ struct SecSpecial play
 	int Flags;
 }
 
+struct FColormap
+{
+	Color		LightColor;
+	Color		FadeColor;
+	uint8		Desaturation;
+	uint8		BlendFactor;
+	uint16		FogDensity;
+}
+
 struct Sector native play
 {
-	//secplane_t	floorplane, ceilingplane;	// defined internally
-	//FDynamicColormap *ColorMap;
+
+	native readonly FColormap 	ColorMap;
+	native readonly Color		SpecialColors[5];
 
 	native Actor 		SoundTarget;
 
@@ -227,7 +237,11 @@ struct Sector native play
 	enum EPlane
 	{
 		floor,
-		ceiling
+		ceiling,
+		// only used for specialcolors array
+		walltop,
+		wallbottom,
+		sprites
 	};
 	
 	enum EInterpolationType
@@ -244,8 +258,11 @@ struct Sector native play
 	native int 			prevsec;
 	native int	 		nextsec;
 
-	//TStaticPointedArray<line_t *> Lines; // this is defined internally to avoid exposing some overly complicated type to the parser
+	native readonly Array<Line> lines;
 
+	native readonly @secplane floorplane;
+	native readonly @secplane ceilingplane;
+	
 	native readonly Sector		heightsec;
 
 	native uint			bottommap, midmap, topmap;
@@ -320,8 +337,6 @@ struct Sector native play
 
 	native void RemoveForceField();
 	native static Sector PointInSector(Vector2 pt);
-	native void SetColor(color c, int desat = 0);
-	native void SetFade(color c);
 
 	native bool PlaneMoving(int pos);
 	native int GetFloorLight();
@@ -356,6 +371,11 @@ struct Sector native play
 	native void ChangeFlags(int pos, int And, int Or);
 	native int GetPlaneLight(int pos);
 	native void SetPlaneLight(int pos, int level);
+	native void SetColor(color c, int desat = 0);
+	native void SetFade(color c);
+	native void SetFogDensity(int dens);
+	native void SetSpecialColor(int pos, color color);
+	
 	native TextureID GetTexture(int pos);
 	native void SetTexture(int pos, TextureID tex, bool floorclip = true);
 	native double GetPlaneTexZ(int pos);

@@ -46,6 +46,8 @@
 #include "s_sound.h"
 #include "p_local.h"
 #include "templates.h"
+#include "actor.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 

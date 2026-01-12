@@ -47,7 +47,7 @@
 #include "r_utility.h"
 #include "p_blockmap.h"
 #include "p_3dmidtex.h"
-#include "virtual.h"
+#include "vm.h"
 
 #include "s_sound.h"
 #include "decallib.h"
@@ -64,6 +64,7 @@
 #include "g_level.h"
 #include "r_sky.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 
 CVAR(Bool, cl_bloodsplats, true, CVAR_ARCHIVE)
 CVAR(Int, sv_smartaim, 0, CVAR_ARCHIVE | CVAR_SERVERINFO)
@@ -154,7 +155,7 @@ bool P_CanCollideWith(AActor *tmthing, AActor *thing)
 	VMFunction *func = clss->Virtuals.Size() > VIndex ? clss->Virtuals[VIndex] : nullptr;
 	if (func != nullptr)
 	{
-		GlobalVMStack.Call(func, params, 3, &ret, 1, nullptr);
+		VMCall(func, params, 3, &ret, 1);
 		if (!retval) return false;
 	}
 	std::swap(params[0].a, params[1].a);
@@ -165,7 +166,7 @@ bool P_CanCollideWith(AActor *tmthing, AActor *thing)
 	func = clss->Virtuals.Size() > VIndex ? clss->Virtuals[VIndex] : nullptr;
 	if (func != nullptr)
 	{
-		GlobalVMStack.Call(func, params, 3, &ret, 1, nullptr);
+		VMCall(func, params, 3, &ret, 1);
 		if (!retval) return false;
 	}
 	return true;
@@ -2095,7 +2096,7 @@ DEFINE_ACTION_FUNCTION(AActor, TestMobjZ)
 	if (numret > 1)
 	{
 		numret = 2;
-		ret[1].SetPointer(on, ATAG_OBJECT);
+		ret[1].SetObject(on);
 	}
 	if (numret > 0)
 	{
@@ -4486,7 +4487,7 @@ static ETraceStatus CheckForActor(FTraceResults &res, void *userdata)
 //==========================================================================
 
 AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
-	DAngle pitch, int damage, FName damageType, PClassActor *pufftype, int flags, FTranslatedLineTarget*victim, int *actualdamage)
+	DAngle pitch, int damage, FName damageType, PClassActor *pufftype, int flags, FTranslatedLineTarget*victim, int *actualdamage, double sz)
 {
 	bool nointeract = !!(flags & LAF_NOINTERACT);
 	DVector3 direction;
@@ -4530,6 +4531,12 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	{
 		shootz += 8;
 	}
+
+	// [MC] If overriding, set it to the base of the actor.
+	// Offset by the amount specified.
+	if (flags & LAF_OVERRIDEZ)
+		shootz = t1->Z();
+	shootz += sz;
 
 	// We need to check the defaults of the replacement here
 	AActor *puffDefaults = GetDefaultByType(pufftype->GetReplacement());
@@ -4787,7 +4794,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 }
 
 AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
-	DAngle pitch, int damage, FName damageType, FName pufftype, int flags, FTranslatedLineTarget *victim, int *actualdamage)
+	DAngle pitch, int damage, FName damageType, FName pufftype, int flags, FTranslatedLineTarget *victim, int *actualdamage, double sz)
 {
 	PClassActor *type = PClass::FindActor(pufftype);
 	if (type == NULL)
@@ -4801,7 +4808,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	}
 	else
 	{
-		return P_LineAttack(t1, angle, distance, pitch, damage, damageType, type, flags, victim, actualdamage);
+		return P_LineAttack(t1, angle, distance, pitch, damage, damageType, type, flags, victim, actualdamage, sz);
 	}
 }
 
@@ -4816,11 +4823,12 @@ DEFINE_ACTION_FUNCTION(AActor, LineAttack)
 	PARAM_CLASS(puffType, AActor);
 	PARAM_INT_DEF(flags);
 	PARAM_POINTER_DEF(victim, FTranslatedLineTarget);
+	PARAM_FLOAT_DEF(offsetz);
 
 	int acdmg;
 	if (puffType == nullptr) puffType = PClass::FindActor("BulletPuff");	// P_LineAttack does not work without a puff to take info from.
-	auto puff = P_LineAttack(self, angle, distance, pitch, damage, damageType, puffType, flags, victim, &acdmg);
-	if (numret > 0) ret[0].SetPointer(puff, ATAG_OBJECT);
+	auto puff = P_LineAttack(self, angle, distance, pitch, damage, damageType, puffType, flags, victim, &acdmg, offsetz);
+	if (numret > 0) ret[0].SetObject(puff);
 	if (numret > 1) ret[1].SetInt(acdmg), numret = 2;
 	return numret;
 }
@@ -5437,7 +5445,7 @@ bool P_UseTraverse(AActor *usething, const DVector2 &start, const DVector2 &end,
 				VMValue params[] = { mobj, usething };
 				int ret;
 				VMReturn vret(&ret);
-				GlobalVMStack.Call(func, params, 2, &vret, 1);
+				VMCall(func, params, 2, &vret, 1);
 				if (ret) return true;
 			}
 			continue;

@@ -14,12 +14,13 @@
 #include "r_data/sprites.h"
 #include "r_data/voxels.h"
 #include "textures/textures.h"
+#include "vm.h"
 
 // variables used to look up
 //	and range check thing_t sprites patches
 TArray<spritedef_t> sprites;
 TArray<spriteframe_t> SpriteFrames;
-DWORD			NumStdSprites;		// The first x sprites that don't belong to skins.
+uint32_t			NumStdSprites;		// The first x sprites that don't belong to skins.
 
 struct spriteframewithrotate : public spriteframe_t
 {
@@ -260,7 +261,7 @@ void R_InitSpriteDefs ()
 		char Frame;
 	} *vhashes;
 	unsigned int i, j, smax, vmax;
-	DWORD intname;
+	uint32_t intname;
 
 	spriteframewithrotate sprtemp[MAX_SPRITE_FRAMES];
 
@@ -508,7 +509,7 @@ void R_InitSkins (void)
 	spritedef_t temp;
 	int sndlumps[NUMSKINSOUNDS];
 	char key[65];
-	DWORD intname, crouchname;
+	uint32_t intname, crouchname;
 	unsigned i;
 	int j, k, base;
 	int lastlump;
@@ -572,13 +573,13 @@ void R_InitSkins (void)
 			{
 				for (j = 3; j >= 0; j--)
 					sc.String[j] = toupper (sc.String[j]);
-				intname = *((DWORD *)sc.String);
+				intname = *((uint32_t *)sc.String);
 			}
 			else if (0 == stricmp (key, "crouchsprite"))
 			{
 				for (j = 3; j >= 0; j--)
 					sc.String[j] = toupper (sc.String[j]);
-				crouchname = *((DWORD *)sc.String);
+				crouchname = *((uint32_t *)sc.String);
 			}
 			else if (0 == stricmp (key, "face"))
 			{
@@ -785,7 +786,7 @@ void R_InitSkins (void)
 				for (k = base + 1; Wads.GetLumpNamespace(k) == basens; k++)
 				{
 					char lname[9];
-					DWORD lnameint;
+					uint32_t lnameint;
 					Wads.GetLumpName (lname, k);
 					memcpy(&lnameint, lname, 4);
 					if (lnameint == intname)

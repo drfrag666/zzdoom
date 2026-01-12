@@ -548,7 +548,6 @@ DFrameBuffer* CocoaVideo::CreateFrameBuffer(const int width, const int height, c
 		}
 
 		old->GetFlash(flashColor, flashAmount);
-		old->ObjectFlags |= OF_YesReallyDelete;
 
 		if (old == screen)
 		{
@@ -1048,7 +1047,6 @@ void I_ShutdownGraphics()
 {
 	if (NULL != screen)
 	{
-		screen->ObjectFlags |= OF_YesReallyDelete;
 		delete screen;
 		screen = NULL;
 	}
@@ -1112,7 +1110,7 @@ void I_ClosestResolution(int *width, int *height, int bits)
 	int twidth, theight;
 	int cwidth = 0, cheight = 0;
 	int iteration;
-	DWORD closest = DWORD(-1);
+	uint32_t closest = uint32_t(-1);
 
 	for (iteration = 0; iteration < 2; ++iteration)
 	{
@@ -1130,7 +1128,7 @@ void I_ClosestResolution(int *width, int *height, int bits)
 				continue;
 			}
 
-			const DWORD dist = (twidth - *width) * (twidth - *width)
+			const uint32_t dist = (twidth - *width) * (twidth - *width)
 				+ (theight - *height) * (theight - *height);
 
 			if (dist < closest)
@@ -1141,7 +1139,7 @@ void I_ClosestResolution(int *width, int *height, int bits)
 			}
 		}
 
-		if (closest != DWORD(-1))
+		if (closest != uint32_t(-1))
 		{
 			*width = cwidth;
 			*height = cheight;

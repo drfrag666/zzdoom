@@ -70,6 +70,7 @@
 #include "a_keys.h"
 #include "r_data/colormaps.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 
 
 //=============================================================================
@@ -173,12 +174,12 @@ CVAR (Color, am_ovportalcolor,			0x004022,	CVAR_ARCHIVE);
 struct AMColor
 {
 	int Index;
-	uint32 RGB;
+	uint32_t RGB;
 
 	void FromCVar(FColorCVar & cv)
 	{
 		Index = cv.GetIndex();
-		RGB = uint32(cv) | MAKEARGB(255, 0, 0, 0);
+		RGB = uint32_t(cv) | MAKEARGB(255, 0, 0, 0);
 	}
 
 	void FromRGB(int r,int g, int b)
@@ -1087,7 +1088,7 @@ static void AM_calcMinMaxMtoF()
 {
 	const double safe_frame = 1.0 - am_emptyspacemargin / 100.0;
 	double a = safe_frame * (SCREENWIDTH / max_w);
-	double b = safe_frame * (gST_Y / max_h);
+	double b = safe_frame * (StatusBar->GetTopOfStatusbar() / max_h);
 
 	min_scale_mtof = a < b ? a : b;
 	max_scale_mtof = SCREENHEIGHT / (2*PLAYERRADIUS);
@@ -1445,7 +1446,7 @@ void AM_NewResolution()
 	else if (scale_mtof > max_scale_mtof)
 		AM_maxOutWindowScale();
 	f_w = screen->GetWidth();
-	f_h = gST_Y;
+	f_h = StatusBar->GetTopOfStatusbar();
 	AM_activateNewScale();
 }
 
@@ -1479,7 +1480,6 @@ void AM_ToggleMap ()
 	if (dmflags2 & DF2_NO_AUTOMAP)
 		return;
 
-	ST_SetNeedRefresh();
 	if (!automapactive)
 	{
 		AM_Start ();
@@ -1490,7 +1490,6 @@ void AM_ToggleMap ()
 		if (am_overlay==1 && viewactive)
 		{
 			viewactive = false;
-			ST_SetNeedRefresh();
 		}
 		else
 		{
@@ -1862,6 +1861,8 @@ void AM_drawGrid (int color)
 	mline_t ml;
 	double minlen, extx, exty;
 	double minx, miny;
+	auto bmaporgx = level.blockmap.bmaporgx;
+	auto bmaporgy = level.blockmap.bmaporgy;
 
 	// [RH] Calculate a minimum for how long the grid lines should be so that
 	// they cover the screen at any rotation.
@@ -1874,12 +1875,12 @@ void AM_drawGrid (int color)
 
 	// Figure out start of vertical gridlines
 	start = minx - extx;
-	start = ceil((start - bmaporgx) / MAPBLOCKUNITS) * MAPBLOCKUNITS + bmaporgx;
+	start = ceil((start - bmaporgx) / FBlockmap::MAPBLOCKUNITS) * FBlockmap::MAPBLOCKUNITS + bmaporgx;
 
 	end = minx + minlen - extx;
 
 	// draw vertical gridlines
-	for (x = start; x < end; x += MAPBLOCKUNITS)
+	for (x = start; x < end; x += FBlockmap::MAPBLOCKUNITS)
 	{
 		ml.a.x = x;
 		ml.b.x = x;
@@ -1895,11 +1896,11 @@ void AM_drawGrid (int color)
 
 	// Figure out start of horizontal gridlines
 	start = miny - exty;
-	start = ceil((start - bmaporgy) / MAPBLOCKUNITS) * MAPBLOCKUNITS + bmaporgy;
+	start = ceil((start - bmaporgy) / FBlockmap::MAPBLOCKUNITS) * FBlockmap::MAPBLOCKUNITS + bmaporgy;
 	end = miny + minlen - exty;
 
 	// draw horizontal gridlines
-	for (y=start; y<end; y+=MAPBLOCKUNITS)
+	for (y=start; y<end; y+=FBlockmap::MAPBLOCKUNITS)
 	{
 		ml.a.x = minx - extx;
 		ml.b.x = ml.a.x + minlen;
@@ -1929,11 +1930,12 @@ void AM_drawSubsectors()
 	int floorlight, ceilinglight;
 	double scalex, scaley;
 	double originx, originy;
-	FDynamicColormap *colormap;
+	FColormap colormap;
 	PalEntry flatcolor;
 	mpoint_t originpt;
 
-	for (int i = 0; i < numsubsectors; ++i)
+	auto &subsectors = level.subsectors;
+	for (unsigned i = 0; i < subsectors.Size(); ++i)
 	{
 		if (subsectors[i].flags & SSECF_POLYORG)
 		{
@@ -1970,7 +1972,7 @@ void AM_drawSubsectors()
 		originpt.y = sec->GetYOffset(sector_t::floor);
 		rotation = -sec->GetAngle(sector_t::floor);
 		// Coloring for the polygon
-		colormap = sec->ColorMap;
+		colormap = sec->Colormap;
 
 		FTextureID maptex = sec->GetTexture(sector_t::floor);
 		flatcolor = sec->SpecialColors[sector_t::floor];
@@ -2062,14 +2064,11 @@ void AM_drawSubsectors()
 		// to see it on the map), tint and desaturate it.
 		if (!(subsectors[i].flags & SSECF_DRAWN))
 		{
-			colormap = GetSpecialLights(
-				MAKERGB(
-					(colormap->Color.r + 255) / 2,
-					(colormap->Color.g + 200) / 2,
-					(colormap->Color.b + 160) / 2),
-				colormap->Fade,
-				255 - (255 - colormap->Desaturate) / 4);
-			floorlight = (floorlight + 200 * 15) / 16;
+			colormap.LightColor = PalEntry(
+				(colormap.LightColor.r + 255) / 2,
+				(colormap.LightColor.g + 200) / 2,
+				(colormap.LightColor.b + 160) / 2);
+			colormap.Desaturation = 255 - (255 - colormap.Desaturation) / 4;
 		}
 
 		// Draw the polygon.
@@ -2162,14 +2161,14 @@ void AM_drawPolySeg(FPolySeg *seg, const AMColor &color)
 
 void AM_showSS()
 {
-	if (am_showsubsector >= 0 && am_showsubsector < numsubsectors)
+	if (am_showsubsector >= 0 && (unsigned)am_showsubsector < level.subsectors.Size())
 	{
 		AMColor yellow;
 		yellow.FromRGB(255,255,0);
 		AMColor red;
 		red.FromRGB(255,0,0);
 
-		subsector_t *sub = &subsectors[am_showsubsector];
+		subsector_t *sub = &level.subsectors[am_showsubsector];
 		for (unsigned int i = 0; i < sub->numlines; i++)
 		{
 			AM_drawSeg(sub->firstline + i, yellow);
@@ -3077,7 +3076,7 @@ void AM_drawCrosshair (const AMColor &color)
 //
 //=============================================================================
 
-void AM_Drawer ()
+void AM_Drawer (int bottom)
 {
 	if (!automapactive)
 		return;
@@ -3101,7 +3100,7 @@ void AM_Drawer ()
 		// and view size adjustments.
 		f_x = f_y = 0;
 		f_w = screen->GetWidth ();
-		f_h = gST_Y;
+		f_h = bottom;
 		f_p = screen->GetPitch ();
 
 		AM_clearFB(AMColors[AMColors.Background]);

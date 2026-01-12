@@ -1843,18 +1843,30 @@ HUDMNU_CROSSHAIRHEALTH			= "Crosshair shows health";
 HUDMNU_CROSSHAIRSCALE			= "Scale crosshair";
 HUDMNU_NAMETAGS					= "Display nametags";
 HUDMNU_NAMETAGCOLOR				= "Nametag color";
-HUDMNU_SCALESTATBAR				= "Stretch status bar";
 HUDMNU_SCALEFULLSCREENHUD		= "Stretch Fullscreen HUD";
 HUDMNU_OLDOUCH					= "Use old ouch mug shot formula";
 HUDMNU_HEXENFLASHES				= "Hexen weapon flashes";
 HUDMNU_POISONFLASHES			= "Poison damage flashes";
 HUDMNU_ICEFLASHES				= "Ice death flashes";
 HUDMNU_HAZARDFLASHES			= "Poison Buildup flashes";
+HUDMNU_SCALEOPT					= "Scaling Options";
+
+// Scaling options
+SCALEMNU_TITLE					= "Scaling Options";
+SCALEMNU_OVERRIDE				= "Overrides for above setting";
+SCALEMNU_MESSAGES 				= "Messages";
+SCALEMNU_CONSOLE				= "Console";
+SCALEMNU_STATBAR				= "Status bar";
+SCALEMNU_HUD					= "Fullscreen HUD";
+SCALEMNU_ALTHUD					= "Alternative HUD";
+SCALEMNU_HUDASPECT				= "HUD preserves aspect ratio";
+SCALEMNU_USEUI					= "Use default scale";
+SCALEMNU_USEFS					= "Scale to fullscreen";
+SCALEMNU_ADAPT					= "Adapt to screen size";
 
 // AltHUD Options
 ALTHUDMNU_TITLE					= "Alternative HUD";
 ALTHUDMNU_ENABLE				= "Enable alternative HUD";
-ALTHUDMNU_SCALEHUD				= "Stretch alternative HUD";
 ALTHUDMNU_SHOWSECRETS			= "Show secret count";
 ALTHUDMNU_SHOWMONSTERS			= "Show monster count";
 ALTHUDMNU_SHOWITEMS				= "Show item count";
@@ -1976,8 +1988,6 @@ MSGMNU_TITLE				= "MESSAGES";
 MSGMNU_SHOWMESSAGES			= "Show messages";
 MSGMNU_SHOWOBITUARIES		= "Show obituaries";
 MSGMNU_SHOWSECRETS			= "Show secret notifications";
-MSGMNU_SCALETEXT			= "Scale text in high res";
-MSGMNU_SCALECONSOLE			= "Scale console";
 MSGMNU_MESSAGELEVEL			= "Minimum message level";
 MSGMNU_CENTERMESSAGES		= "Center messages";
 MSGMNU_MESSAGECOLORS		= "Message Colors";
@@ -2142,6 +2152,8 @@ FMODMNU_BUFFERCOUNT		= "Buffer count";
 OPENALMNU_TITLE				= "OPENAL OPTIONS";
 OPENALMNU_PLAYBACKDEVICE	= "Playback device";
 OPENALMNU_ENABLEEFX			= "Enable EFX";
+OPENALMNU_RESAMPLER			= "Resampler";
+OPENALMNU_HRTF				= "HRTF";
 
 // Advanced Sound Options
 ADVSNDMNU_TITLE				= "ADVANCED SOUND OPTIONS";
@@ -2166,6 +2178,7 @@ ADVSNDMNU_TIMIDITYCHORUS	= "Chorus";
 ADVSNDMNU_TIMIDITYVOLUME	= "Relative volume";
 ADVSNDMNU_WILDMIDI			= "WildMidi";
 ADVSNDMNU_WILDMIDICONFIG	= "WildMidi config file";
+ADVSNDMNU_SELCONFIG			= "Select configuration";
 
 // Module Replayer Options
 MODMNU_TITLE			= "MODULE REPLAYER OPTIONS";
@@ -2221,6 +2234,7 @@ OPTVAL_ON					= "On";
 OPTVAL_LOW					= "Low";
 OPTVAL_MEDIUM				= "Medium";
 OPTVAL_HIGH					= "High";
+OPTVAL_AUTO					= "Auto";
 OPTVAL_MALE					= "Male";
 OPTVAL_FEMALE				= "Female";
 OPTVAL_OTHER				= "Other";
@@ -2633,3 +2647,13 @@ MUSIC_ULTIMA = "ultima";
 MUSIC_READ_M = "read_m";
 MUSIC_DM2TTL = "dm2ttl";
 MUSIC_DM2INT = "dm2int";
+
+// SVE strings:
+
+TAG_TALISMANRED = "Red Talisman";
+TAG_TALISMANGREEN = "Green Talisman";
+TAG_TALISMANBLUE = "Blue Talisman";
+MSG_TALISMANRED = "You have a feeling that it wasn't to be touched...";
+MSG_TALISMANGREEN = "Whatever it is, it doesn't belong in this world...";
+MSG_TALISMANBLUE = "It must do something...";
+MSG_TALISMANPOWER = "You have super strength!";

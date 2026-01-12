@@ -68,7 +68,6 @@
 #include "r_thread.h"
 #include "events.h"
 
-EXTERN_CVAR(Bool, st_scale)
 EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Int, r_drawfuzz)
 EXTERN_CVAR(Bool, r_deathcamera);
@@ -162,7 +161,7 @@ short			screenheightarray[MAXWIDTH];
 //
 
 int OffscreenBufferWidth, OffscreenBufferHeight;
-BYTE *OffscreenColorBuffer;
+uint8_t *OffscreenColorBuffer;
 FCoverageBuffer *OffscreenCoverageBuffer;
 
 //
@@ -275,7 +274,7 @@ bool			sprflipvert;
 void R_DrawMaskedColumn (FTexture *tex, fixed_t col, bool useRt, bool unmasked)
 {
 	const FTexture::Span *span;
-	const BYTE *column;
+	const uint8_t *column;
 
 	column = tex->GetColumn(col >> FRACBITS, &span);
 
@@ -730,7 +729,7 @@ void R_DrawVisVoxel(vissprite_t *spr, int minslabz, int maxslabz, short *cliptop
 // R_ProjectSprite
 // Generates a vissprite for a thing if it might be visible.
 //
-void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor *fakeceiling, sector_t *current_sector)
+void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor *fakeceiling, sector_t *current_sector, bool flipagain)
 {
 	double 			tr_x;
 	double 			tr_y;
@@ -810,12 +809,27 @@ void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor
 			spriteframe_t *sprframe = &SpriteFrames[tex->Rotations];
 			DAngle ang = (pos - ViewPos).Angle();
 			angle_t rot;
-			if (sprframe->Texture[0] == sprframe->Texture[1])
+			if ((sprframe->Texture[0] == sprframe->Texture[1]) && flipagain)
+			{
+				if (thing->flags7 & MF7_SPRITEANGLE)
+					rot = (360.0 - ang + 45.0 / 2 * 9).BAMs() >> 28;
+				else
+					rot = (360.0 - ang - (thing->Angles.Yaw + thing->SpriteRotation) + 45.0 / 2 * 9).BAMs() >> 28;
+			}
+			else if (sprframe->Texture[0] == sprframe->Texture[1])
 			{
 				if (thing->flags7 & MF7_SPRITEANGLE)
 					rot = (thing->SpriteAngle + 45.0 / 2 * 9).BAMs() >> 28;
 				else
 					rot = (ang - (thing->Angles.Yaw + thing->SpriteRotation) + 45.0 / 2 * 9).BAMs() >> 28;
+			}
+			else if (flipagain)
+			{
+				if (thing->flags7 & MF7_SPRITEANGLE)
+					rot = (360.0 - ang + (45.0 / 2 * 9 - 180.0 / 16)).BAMs() >> 28;
+				else
+					rot = (360.0 - ang - (thing->Angles.Yaw + thing->SpriteRotation) + (45.0 / 2 * 9 - 180.0 / 16)).BAMs() >> 28;
+					
 			}
 			else
 			{
@@ -980,6 +994,10 @@ void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor
 
 		// [RH] Flip for mirrors
 		renderflags ^= MirrorFlags & RF_XFLIP;
+
+		// [SP] SpriteFlip
+		if (thing->flags7 & MF7_SPRITEFLIP)
+			renderflags ^= RF_XFLIP;
 
 		// calculate edges of the shape
 		const double thingxscalemul = spriteScale.X / tex->Scale.X;
@@ -1181,7 +1199,7 @@ static void R_ProjectWallSprite(AActor *thing, const DVector3 &pos, FTextureID p
 	left.X = pos.X - x1 * angcos - ViewPos.X;
 	left.Y = pos.Y - x1 * angsin - ViewPos.Y;
 	right.X = left.X + x2 * angcos;
-	right.Y = right.Y + x2 * angsin;
+	right.Y = left.Y + x2 * angsin;
 
 	// Is it off-screen?
 	if (wallc.Init(left, right, TOO_CLOSE_Z))
@@ -1263,7 +1281,7 @@ void R_AddSprites (sector_t *sec, int lightlevel, int fakeside)
 		if (thing->validcount == validcount) continue;
 		thing->validcount = validcount;
 		
-		FIntCVar *cvar = thing->GetClass()->distancecheck;
+		FIntCVar *cvar = thing->GetInfo()->distancecheck;
 		if (cvar != NULL && *cvar >= 0)
 		{
 			double dist = (thing->Pos() - ViewPos).LengthSquared();
@@ -1291,7 +1309,7 @@ void R_AddSprites (sector_t *sec, int lightlevel, int fakeside)
 				if(rover->bottom.plane->ZatPoint(0., 0.) >= thing->Top()) fakeceiling = rover;
 			}
 		}	
-		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec);
+		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec, !!(thing->flags7 & MF7_SPRITEFLIP));
 		fakeceiling = NULL;
 		fakefloor = NULL;
 	}
@@ -1309,7 +1327,7 @@ void R_DrawPSprite(DPSprite *pspr, AActor *owner, float bobx, float boby, double
 	spritedef_t*		sprdef;
 	spriteframe_t*		sprframe;
 	FTextureID			picnum;
-	WORD				flip;
+	uint16_t				flip;
 	FTexture*			tex;
 	vissprite_t*		vis;
 	bool				noaccel;
@@ -1389,7 +1407,7 @@ void R_DrawPSprite(DPSprite *pspr, AActor *owner, float bobx, float boby, double
 
 	if (camera->player && (RenderTarget != screen ||
 		viewheight == RenderTarget->GetHeight() ||
-		(RenderTarget->GetWidth() > (BASEXCENTER * 2) && !st_scale)))
+		(RenderTarget->GetWidth() > (BASEXCENTER * 2))))
 	{	// Adjust PSprite for fullscreen views
 		AWeapon *weapon = dyn_cast<AWeapon>(pspr->GetCaller());
 		if (weapon != nullptr && weapon->YAdjust != 0)
@@ -1596,9 +1614,9 @@ void R_DrawPlayerSprites ()
 						break;
 					sec = rover->model;
 					if (rover->flags & FF_FADEWALLS)
-						basecolormap = sec->ColorMap;
+						basecolormap = GetColorTable(sec->Colormap);
 					else
-						basecolormap = viewsector->e->XFloor.lightlist[i].extra_colormap;
+						basecolormap = GetColorTable(viewsector->e->XFloor.lightlist[i].extra_colormap);
 				}
 				break;
 			}
@@ -1606,7 +1624,7 @@ void R_DrawPlayerSprites ()
 		if(!sec)
 		{
 			sec = viewsector;
-			basecolormap = sec->ColorMap;
+			basecolormap = GetColorTable(sec->Colormap);
 		}
 		floorlight = ceilinglight = sec->lightlevel;
 	}
@@ -1617,7 +1635,7 @@ void R_DrawPlayerSprites ()
 			&ceilinglight, false);
 
 		// [RH] set basecolormap
-		basecolormap = sec->ColorMap;
+		basecolormap = GetColorTable(sec->Colormap);
 	}
 
 	// [RH] set foggy flag
@@ -1716,7 +1734,7 @@ void R_DrawRemainingPlayerSprites()
 			colormap->Desaturate == 0)
 		{
 			overlay = colormap->Fade;
-			overlay.a = BYTE(((vis->colormap - colormap->Maps) >> 8) * 255 / NUMCOLORMAPS);
+			overlay.a = uint8_t(((vis->colormap - colormap->Maps) >> 8) * 255 / NUMCOLORMAPS);
 		}
 		else
 		{
@@ -2018,11 +2036,11 @@ void R_DrawSprite (vissprite_t *spr)
 					sec = rover->model;
 					if (rover->flags & FF_FADEWALLS)
 					{
-						mybasecolormap = sec->ColorMap;
+						mybasecolormap = GetColorTable(sec->Colormap);
 					}
 					else
 					{
-						mybasecolormap = spr->sector->e->XFloor.lightlist[i].extra_colormap;
+						mybasecolormap = GetColorTable(spr->sector->e->XFloor.lightlist[i].extra_colormap);
 					}
 				}
 				break;
@@ -2277,6 +2295,11 @@ void R_DrawSprite (vissprite_t *spr)
 				neardepth = ds->sz2, fardepth = ds->sz1;
 			}
 		}
+		else
+		{
+			// GCC complained about this case, is there something missing here?
+			fardepth = neardepth = 0;
+		}
 		// Check if sprite is in front of draw seg:
 		if ((!spr->bWallSprite && neardepth > spr->depth) || ((spr->bWallSprite || fardepth > spr->depth) &&
 			(spr->gpos.Y - ds->curline->v1->fY()) * (ds->curline->v2->fX() - ds->curline->v1->fX()) -
@@ -2487,7 +2510,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 	int 				x1, x2, y1, y2;
 	vissprite_t*		vis;
 	sector_t*			heightsec = NULL;
-	BYTE*				map;
+	uint8_t*				map;
 
 	// [ZZ] Particle not visible through the portal plane
 	if (CurrentPortal && !!P_PointOnLineSide(particle->Pos, CurrentPortal->dst))
@@ -2560,7 +2583,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 			botplane = &heightsec->ceilingplane;
 			toppic = sector->GetTexture(sector_t::ceiling);
 			botpic = heightsec->GetTexture(sector_t::ceiling);
-			map = heightsec->ColorMap->Maps;
+			map = GetColorTable(heightsec->Colormap)->Maps;
 		}
 		else if (fakeside == FAKED_BelowFloor)
 		{
@@ -2568,7 +2591,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 			botplane = &sector->floorplane;
 			toppic = heightsec->GetTexture(sector_t::floor);
 			botpic = sector->GetTexture(sector_t::floor);
-			map = heightsec->ColorMap->Maps;
+			map = GetColorTable(heightsec->Colormap)->Maps;
 		}
 		else
 		{
@@ -2576,7 +2599,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 			botplane = &heightsec->floorplane;
 			toppic = heightsec->GetTexture(sector_t::ceiling);
 			botpic = heightsec->GetTexture(sector_t::floor);
-			map = sector->ColorMap->Maps;
+			map = GetColorTable(sector->Colormap)->Maps;
 		}
 	}
 	else
@@ -2585,7 +2608,7 @@ void R_ProjectParticle (particle_t *particle, const sector_t *sector, int shade,
 		botplane = &sector->floorplane;
 		toppic = sector->GetTexture(sector_t::ceiling);
 		botpic = sector->GetTexture(sector_t::floor);
-		map = sector->ColorMap->Maps;
+		map = GetColorTable(sector->Colormap)->Maps;
 	}
 
 	if (botpic != skyflatnum && particle->Pos.Z < botplane->ZatPoint (particle->Pos))
@@ -2663,11 +2686,11 @@ static void R_DrawMaskedSegsBehindParticle (const vissprite_t *vis)
 
 void R_DrawParticle_C (vissprite_t *vis)
 {
-	DWORD *bg2rgb;
+	uint32_t *bg2rgb;
 	int spacing;
-	BYTE *dest;
-	DWORD fg;
-	BYTE color = vis->colormap[vis->startfrac];
+	uint8_t *dest;
+	uint32_t fg;
+	uint8_t color = vis->colormap[vis->startfrac];
 	int yl = vis->y1;
 	int ycount = vis->y2 - yl + 1;
 	int x1 = vis->x1;
@@ -2680,7 +2703,7 @@ void R_DrawParticle_C (vissprite_t *vis)
 	// vis->renderflags holds translucency level (0-255)
 	{
 		fixed_t fglevel, bglevel;
-		DWORD *fg2rgb;
+		uint32_t *fg2rgb;
 
 		fglevel = ((vis->renderflags + 1) << 8) & ~0x3ff;
 		bglevel = FRACUNIT-fglevel;
@@ -2720,7 +2743,7 @@ void R_DrawParticle_C (vissprite_t *vis)
 		dest = ylookup[yl] + x + dc_destorg;
 		for (int y = 0; y < ycount; y++)
 		{
-			DWORD bg = bg2rgb[*dest];
+			uint32_t bg = bg2rgb[*dest];
 			bg = (fg+bg) | 0x1f07c1f;
 			*dest = RGB32k.All[bg & (bg>>15)];
 			dest += spacing;
@@ -2889,9 +2912,9 @@ void R_DrawVoxel(const FVector3 &globalpos, FAngle viewangle,
 			case 8: case 7: x2 = gyinc;			y2 = -gxinc;		break;
 			case 6: case 3: x2 = gxinc+gyinc;	y2 = gyinc-gxinc;	break;
 		}
-		BYTE oand = (1 << int(xs<backx)) + (1 << (int(ys<backy)+2));
-		BYTE oand16 = oand + 16;
-		BYTE oand32 = oand + 32;
+		uint8_t oand = (1 << int(xs<backx)) + (1 << (int(ys<backy)+2));
+		uint8_t oand16 = oand + 16;
+		uint8_t oand32 = oand + 32;
 
 		if (yi > 0) { dagxinc =  gxinc; dagyinc =  FixedMul(gyinc, viewingrangerecip); }
 			   else { dagxinc = -gxinc; dagyinc = -FixedMul(gyinc, viewingrangerecip); }
@@ -2905,7 +2928,7 @@ void R_DrawVoxel(const FVector3 &globalpos, FAngle viewangle,
 
 		for (x = xs; x != xe; x += xi)
 		{
-			BYTE *slabxoffs = &mip->SlabData[mip->OffsetX[x]];
+			uint8_t *slabxoffs = &mip->SlabData[mip->OffsetX[x]];
 			short *xyoffs = &mip->OffsetXY[x * (mip->SizeY + 1)];
 
 			nx = FixedMul(ggxstart + ggxinc[x], viewingrangerecip) + x1;
@@ -2932,9 +2955,9 @@ void R_DrawVoxel(const FVector3 &globalpos, FAngle viewangle,
 
 				fixed_t l1 = xs_RoundToInt(centerxwidebig_f / (ny - yoff));
 				fixed_t l2 = xs_RoundToInt(centerxwidebig_f / (ny + yoff));
-				for (; voxptr < voxend; voxptr = (kvxslab_t *)((BYTE *)voxptr + voxptr->zleng + 3))
+				for (; voxptr < voxend; voxptr = (kvxslab_t *)((uint8_t *)voxptr + voxptr->zleng + 3))
 				{
-					const BYTE *col = voxptr->col;
+					const uint8_t *col = voxptr->col;
 					int zleng = voxptr->zleng;
 					int ztop = voxptr->ztop;
 					fixed_t z1, z2;
@@ -3266,12 +3289,12 @@ void R_CheckOffscreenBuffer(int width, int height, bool spansonly)
 	{
 		if (OffscreenColorBuffer == NULL)
 		{
-			OffscreenColorBuffer = new BYTE[width * height];
+			OffscreenColorBuffer = new uint8_t[width * height];
 		}
 		else if (OffscreenBufferWidth != width || OffscreenBufferHeight != height)
 		{
 			delete[] OffscreenColorBuffer;
-			OffscreenColorBuffer = new BYTE[width * height];
+			OffscreenColorBuffer = new uint8_t[width * height];
 		}
 	}
 	OffscreenBufferWidth = width;

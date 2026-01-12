@@ -44,7 +44,7 @@ class OptionMenuItem : MenuItemBase
 		mCentered = center;
 	}
 
-	protected void drawLabel(int indent, int y, int color, bool grayed = false)
+	protected int drawLabel(int indent, int y, int color, bool grayed = false)
 	{
 		String label = Stringtable.Localize(mLabel);
 		
@@ -55,6 +55,7 @@ class OptionMenuItem : MenuItemBase
 		if (!mCentered) x = indent - w;
 		else x = (screen.GetWidth() - w) / 2;
 		screen.DrawText (SmallFont, color, x, y, label, DTA_CleanNoMove_1, true, DTA_ColorOverlay, overlay);
+		return x;
 	}
 	
 	int CursorSpace()
@@ -92,16 +93,20 @@ class OptionMenuItem : MenuItemBase
 class OptionMenuItemSubmenu : OptionMenuItem
 {
 	int mParam;
-	OptionMenuItemSubmenu Init(String label, Name command, int param = 0)
+	OptionMenuItemSubmenu Init(String label, Name command, int param = 0, bool centered = false)
 	{
-		Super.init(label, command);
+		Super.init(label, command, centered);
 		mParam = param;
 		return self;
 	}
 
 	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
 	{
-		drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColorMore);
+		int x = drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColorMore);
+		if (mCentered) 
+		{
+			return x - 16*CleanXfac_1;
+		}
 		return indent;
 	}
 
@@ -124,9 +129,9 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 	private String ccmd;	// do not allow access to this from the outside.
 	private bool mUnsafe;
 	
-	OptionMenuItemCommand Init(String label, Name command)
+	OptionMenuItemCommand Init(String label, Name command, bool centered = false)
 	{
-		Super.Init(label, command);
+		Super.Init(label, command, 0, centered);
 		ccmd = command;
 		mUnsafe = true;
 		return self;
@@ -672,7 +677,7 @@ class OptionMenuSliderBase : OptionMenuItem
 	//
 	//=============================================================================
 
-	private void DrawSlider (int x, int y, double min, double max, double cur, int fracdigits, int indent)
+	protected void DrawSlider (int x, int y, double min, double max, double cur, int fracdigits, int indent)
 	{
 		String formater = String.format("%%.%df", fracdigits);	// The format function cannot do the '%.*f' syntax.
 		String textbuf;
@@ -1219,5 +1224,76 @@ class OptionMenuItemNumberField : OptionMenuFieldBase
 	float mMinimum;
 	float mMaximum;
 	float mStep;
+}
+
+//=============================================================================
+//
+// A special slider that displays plain text for special settings related
+// to scaling.
+//
+//=============================================================================
+
+class OptionMenuItemScaleSlider : OptionMenuItemSlider
+{
+	String TextZero;
+	String TextNegOne;
+	int mClickVal;
+	
+	OptionMenuItemScaleSlider Init(String label, Name command, double min, double max, double step, String zero, String negone = "")
+	{
+		Super.Init(label, command, min, max, step, 0);
+		mCVar =CVar.FindCVar(command);
+		TextZero = zero;
+		TextNEgOne = negone;
+		mClickVal = -10;
+		return self;
+	}
+
+	//=============================================================================
+	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
+	{
+		drawLabel(indent, y, selected? OptionMenuSettings.mFontColorSelection : OptionMenuSettings.mFontColor);
+
+		int Selection = int(GetSliderValue());
+		if ((Selection == 0 || Selection == -1) && mClickVal <= 0)
+		{
+			String text = Selection == 0? TextZero : Selection == -1? TextNegOne  : "";
+			screen.DrawText (SmallFont, OptionMenuSettings.mFontColorValue, indent + CursorSpace(), y, text, DTA_CleanNoMove_1, true);
+		}
+		else
+		{
+			mDrawX = indent + CursorSpace();
+			DrawSlider (mDrawX, y, mMin, mMax, GetSliderValue(), mShowValue, indent);
+		}
+		return indent;
+	}
+	
+	override bool MouseEvent(int type, int x, int y)
+	{
+		int value = int(GetSliderValue());
+		switch (type)
+		{
+			case Menu.MOUSE_Click:
+				mClickVal = value;
+				if (value <= 0) return false;
+				return Super.MouseEvent(type, x, y);
+				
+			case Menu.MOUSE_Move:
+				if (mClickVal <= 0) return false;
+				return Super.MouseEvent(type, x, y);
+				
+			case Menu.MOUSE_Release:
+				if (mClickVal <= 0)
+				{
+					mClickVal = -10;
+					SetSliderValue(value + 1);
+					return true;
+				}
+				mClickVal = -10;
+				return Super.MouseEvent(type, x, y);
+		}
+		return false;
+	}
+	
 }
 

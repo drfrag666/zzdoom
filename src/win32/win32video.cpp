@@ -55,7 +55,6 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#define USE_WINDOWS_DWORD
 #include "doomtype.h"
 
 #include "c_dispatch.h"
@@ -80,8 +79,6 @@
 // MACROS ------------------------------------------------------------------
 
 // TYPES -------------------------------------------------------------------
-
-IMPLEMENT_CLASS(BaseWinFB, true, false)
 
 typedef IDirect3D9 *(WINAPI *DIRECT3DCREATE9FUNC)(UINT SDKVersion);
 typedef HRESULT (WINAPI *DIRECTDRAWCREATEFUNC)(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter);
@@ -666,8 +663,7 @@ DFrameBuffer *Win32Video::CreateFrameBuffer (int width, int height, bool fullscr
 			return old;
 		}
 		old->GetFlash (flashColor, flashAmount);
-		old->ObjectFlags |= OF_YesReallyDelete;
-		if (old == screen) screen = NULL;
+		if (old == screen) screen = nullptr;
 		delete old;
 	}
 	else
@@ -703,7 +699,6 @@ DFrameBuffer *Win32Video::CreateFrameBuffer (int width, int height, bool fullscr
 			{
 				hr = fb->GetHR ();
 			}
-			fb->ObjectFlags |= OF_YesReallyDelete;
 			delete fb;
 
 			LOG1 ("fb is bad: %08lx\n", hr);

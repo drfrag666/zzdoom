@@ -32,6 +32,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "r_defs.h"
+
 #include "doomtype.h"
 #include "version.h"
 
@@ -40,6 +42,7 @@
 #else
 #include <unistd.h>
 #endif
+
 
 #include <ctype.h>
 
@@ -57,7 +60,6 @@
 #include "i_system.h"
 #include "i_video.h"
 #include "v_video.h"
-#include "r_defs.h"
 
 #include "hu_stuff.h"
 
@@ -229,7 +231,7 @@ void M_FindResponseFile (void)
 				ParseCommandLine (file, NULL, argv);
 
 				// Create a new argument vector
-				DArgs *newargs = new DArgs;
+				FArgs *newargs = new FArgs;
 
 				// Copy parameters before response file.
 				for (index = 0; index < i; ++index)
@@ -244,6 +246,7 @@ void M_FindResponseFile (void)
 					newargs->AppendArg(Args->GetArg(index));
 
 				// Use the new argument vector as the global Args object.
+				delete Args;
 				Args = newargs;
 				if (++added_stuff == limit)
 				{

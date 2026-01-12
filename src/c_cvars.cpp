@@ -52,6 +52,7 @@
 #include "v_video.h"
 #include "colormatcher.h"
 #include "menu/menu.h"
+#include "vm.h"
 #include "v_text.h"
 
 struct FLatchedValue
@@ -1586,6 +1587,14 @@ DEFINE_ACTION_FUNCTION(_CVar, FindCVar)
 	ACTION_RETURN_POINTER(FindCVar(name, nullptr));
 }
 
+DEFINE_ACTION_FUNCTION(_CVar, GetCVar)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(name);
+	PARAM_POINTER_DEF(plyr, player_t);
+	ACTION_RETURN_POINTER(GetCVar(plyr ? plyr->mo : nullptr, name));
+}
+
 FBaseCVar *FindCVarSub (const char *var_name, int namelen)
 {
 	FBaseCVar *var;
@@ -1721,7 +1730,7 @@ void C_SetCVarsToDefaults (void)
 	}
 }
 
-void C_ArchiveCVars (FConfigFile *f, uint32 filter)
+void C_ArchiveCVars (FConfigFile *f, uint32_t filter)
 {
 	FBaseCVar *cvar = CVars;
 

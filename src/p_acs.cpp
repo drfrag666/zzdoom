@@ -62,6 +62,7 @@
 #include "r_sky.h"
 #include "gstrings.h"
 #include "gi.h"
+#include "g_game.h"
 #include "sc_man.h"
 #include "c_bind.h"
 #include "info.h"
@@ -84,7 +85,10 @@
 #include "a_pickups.h"
 #include "r_data/colormaps.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 #include "stats.h"
+#include "types.h"
+#include "vm.h"
 
 	// P-codes for ACS scripts
 	enum
@@ -658,6 +662,134 @@ struct CallReturn
 	int bDiscardResult;
 	unsigned int EntryInstrCount;
 };
+
+
+class DLevelScript : public DObject
+{
+	DECLARE_CLASS(DLevelScript, DObject)
+	HAS_OBJECT_POINTERS
+public:
+
+
+	enum EScriptState
+	{
+		SCRIPT_Running,
+		SCRIPT_Suspended,
+		SCRIPT_Delayed,
+		SCRIPT_TagWait,
+		SCRIPT_PolyWait,
+		SCRIPT_ScriptWaitPre,
+		SCRIPT_ScriptWait,
+		SCRIPT_PleaseRemove,
+		SCRIPT_DivideBy0,
+		SCRIPT_ModulusBy0,
+	};
+
+	DLevelScript(AActor *who, line_t *where, int num, const ScriptPtr *code, FBehavior *module,
+		const int *args, int argcount, int flags);
+	~DLevelScript();
+
+	void Serialize(FSerializer &arc);
+	int RunScript();
+
+	inline void SetState(EScriptState newstate) { state = newstate; }
+	inline EScriptState GetState() { return state; }
+
+	DLevelScript *GetNext() const { return next; }
+
+	void MarkLocalVarStrings() const
+	{
+		GlobalACSStrings.MarkStringArray(&Localvars[0], Localvars.Size());
+	}
+	void LockLocalVarStrings() const
+	{
+		GlobalACSStrings.LockStringArray(&Localvars[0], Localvars.Size());
+	}
+	void UnlockLocalVarStrings() const
+	{
+		GlobalACSStrings.UnlockStringArray(&Localvars[0], Localvars.Size());
+	}
+
+protected:
+	DLevelScript	*next, *prev;
+	int				script;
+	TArray<int32_t>	Localvars;
+	int				*pc;
+	EScriptState	state;
+	int				statedata;
+	TObjPtr<AActor*>	activator;
+	line_t			*activationline;
+	bool			backSide;
+	FFont			*activefont;
+	int				hudwidth, hudheight;
+	int				ClipRectLeft, ClipRectTop, ClipRectWidth, ClipRectHeight;
+	int				WrapWidth;
+	bool			HandleAspect;
+	FBehavior	    *activeBehavior;
+	int				InModuleScriptNumber;
+
+	void Link();
+	void Unlink();
+	void PutLast();
+	void PutFirst();
+	static int Random(int min, int max);
+	static int ThingCount(int type, int stringid, int tid, int tag);
+	static void ChangeFlat(int tag, int name, bool floorOrCeiling);
+	static int CountPlayers();
+	static void SetLineTexture(int lineid, int side, int position, int name);
+	static int DoSpawn(int type, const DVector3 &pos, int tid, DAngle angle, bool force);
+	static int DoSpawn(int type, int x, int y, int z, int tid, int angle, bool force);
+	static bool DoCheckActorTexture(int tid, AActor *activator, int string, bool floor);
+	int DoSpawnSpot(int type, int spot, int tid, int angle, bool forced);
+	int DoSpawnSpotFacing(int type, int spot, int tid, bool forced);
+	int DoClassifyActor(int tid);
+	int CallFunction(int argCount, int funcIndex, int32_t *args);
+
+	void DoFadeTo(int r, int g, int b, int a, int time);
+	void DoFadeRange(int r1, int g1, int b1, int a1,
+		int r2, int g2, int b2, int a2, int time);
+	void DoSetFont(int fontnum);
+	void SetActorProperty(int tid, int property, int value);
+	void DoSetActorProperty(AActor *actor, int property, int value);
+	int GetActorProperty(int tid, int property);
+	int CheckActorProperty(int tid, int property, int value);
+	int GetPlayerInput(int playernum, int inputnum);
+
+	int LineFromID(int id);
+	int SideFromID(int id, int side);
+
+private:
+	DLevelScript();
+
+	friend class DACSThinker;
+};
+
+class DACSThinker : public DThinker
+{
+	DECLARE_CLASS(DACSThinker, DThinker)
+	HAS_OBJECT_POINTERS
+public:
+	DACSThinker();
+	~DACSThinker();
+
+	void Serialize(FSerializer &arc);
+	void Tick();
+
+	typedef TMap<int, DLevelScript *> ScriptMap;
+	ScriptMap RunningScripts;	// Array of all synchronous scripts
+	static TObjPtr<DACSThinker*> ActiveThinker;
+
+	void DumpScriptStatus();
+	void StopScriptsFor(AActor *actor);
+
+private:
+	DLevelScript *LastScript;
+	DLevelScript *Scripts;				// List of all running scripts
+
+	friend class DLevelScript;
+	friend class FBehavior;
+};
+
 
 static DLevelScript *P_GetScriptGoing (AActor *who, line_t *where, int num, const ScriptPtr *code, FBehavior *module,
 	const int *args, int argcount, int flags);
@@ -3552,7 +3684,7 @@ DLevelScript::DLevelScript ()
 {
 	next = prev = NULL;
 	if (DACSThinker::ActiveThinker == NULL)
-		new DACSThinker;
+		Create<DACSThinker>();
 	activefont = SmallFont;
 }
 
@@ -3964,7 +4096,7 @@ showme:
 							fa1 = viewer->BlendA;
 						}
 					}
-					new DFlashFader (fr1, fg1, fb1, fa1, fr2, fg2, fb2, fa2, ftime, viewer->mo);
+					Create<DFlashFader> (fr1, fg1, fb1, fa1, fr2, fg2, fb2, fa2, ftime, viewer->mo);
 				}
 			}
 		}
@@ -4857,6 +4989,7 @@ enum EACSFunctions
 	ACSF_Round,
 	ACSF_Ceil,
 	ACSF_ScriptCall,
+	ACSF_StartSlideshow,
 
 		// Eternity's
 	ACSF_GetLineX = 300,
@@ -4906,8 +5039,7 @@ int DLevelScript::LineFromID(int id)
 
 bool GetVarAddrType(AActor *self, FName varname, int index, void *&addr, PType *&type, bool readonly)
 {
-	PField *var = dyn_cast<PField>(self->GetClass()->Symbols.FindSymbol(varname, true));
-	PArray *arraytype;
+	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
 	if (var == NULL || (!readonly && (var->Flags & VARF_Native)))
 	{
@@ -4915,9 +5047,9 @@ bool GetVarAddrType(AActor *self, FName varname, int index, void *&addr, PType *
 	}
 	type = var->Type;
 	uint8_t *baddr = reinterpret_cast<uint8_t *>(self) + var->Offset;
-	arraytype = dyn_cast<PArray>(type);
-	if (arraytype != NULL)
+	if (type->isArray())
 	{
+		PArray *arraytype = static_cast<PArray*>(type);
 		// unwrap contained type
 		type = arraytype->ElementType;
 		// offset by index (if in bounds)
@@ -4932,12 +5064,11 @@ bool GetVarAddrType(AActor *self, FName varname, int index, void *&addr, PType *
 		return false;
 	}
 	addr = baddr;
-	// We don't want Int subclasses like Name or Color to be accessible,
-	// but we do want to support Float subclasses like Fixed.
-	if (!type->IsA(RUNTIME_CLASS(PInt)) && !type->IsKindOf(RUNTIME_CLASS(PFloat)))
+	// We don't want Int subclasses like Name or Color to be accessible here.
+	if (!type->isInt() && !type->isFloat() && type != TypeBool)
 	{
 		// For reading, we also support Name and String types.
-		if (readonly && (type->IsA(RUNTIME_CLASS(PName)) || type->IsA(RUNTIME_CLASS(PString))))
+		if (readonly && (type == TypeName || type == TypeString))
 		{
 			return true;
 		}
@@ -4953,7 +5084,7 @@ static void SetUserVariable(AActor *self, FName varname, int index, int value)
 
 	if (GetVarAddrType(self, varname, index, addr, type, false))
 	{
-		if (!type->IsKindOf(RUNTIME_CLASS(PFloat)))
+		if (!type->isFloat())
 		{
 			type->SetValue(addr, value);
 		}
@@ -4971,15 +5102,15 @@ static int GetUserVariable(AActor *self, FName varname, int index)
 
 	if (GetVarAddrType(self, varname, index, addr, type, true))
 	{
-		if (type->IsKindOf(RUNTIME_CLASS(PFloat)))
+		if (type->isFloat())
 		{
 			return DoubleToACS(type->GetValueFloat(addr));
 		}
-		else if (type->IsA(RUNTIME_CLASS(PName)))
+		else if (type == TypeName)
 		{
 			return GlobalACSStrings.AddString(FName(ENamedName(type->GetValueInt(addr))).GetChars());
 		}
-		else if (type->IsA(RUNTIME_CLASS(PString)))
+		else if (type == TypeString)
 		{
 			return GlobalACSStrings.AddString(*(FString *)addr);
 		}
@@ -5243,7 +5374,7 @@ static int SwapActorTeleFog(AActor *activator, int tid)
 	return count;
 }
 
-static int ScriptCall(unsigned argc, int32_t *args)
+static int ScriptCall(AActor *activator, unsigned argc, int32_t *args)
 {
 	int retval = 0;
 	if (argc >= 2)
@@ -5256,7 +5387,7 @@ static int ScriptCall(unsigned argc, int32_t *args)
 		{
 			I_Error("ACS call to unknown class in script function %s.%s", clsname, funcname);
 		}
-		auto funcsym = dyn_cast<PFunction>(cls->Symbols.FindSymbol(funcname, true));
+		auto funcsym = dyn_cast<PFunction>(cls->FindSymbol(funcname, true));
 		if (funcsym == nullptr)
 		{
 			I_Error("ACS call to unknown script function %s.%s", clsname, funcname);
@@ -5266,14 +5397,23 @@ static int ScriptCall(unsigned argc, int32_t *args)
 		{
 			I_Error("ACS call to non-static script function %s.%s", clsname, funcname);
 		}
+
+		// Note that this array may not be reallocated so its initial size must be the maximum possible elements.
+		TArray<FString> strings(argc);
 		TArray<VMValue> params;
+		int p = 1;
+		if (func->Proto->ArgumentTypes.Size() > 0 && func->Proto->ArgumentTypes[0] == NewPointer(RUNTIME_CLASS(AActor)))
+		{
+			params.Push(activator);
+			p = 0;
+		}
 		for (unsigned i = 2; i < argc; i++)
 		{
-			if (func->Proto->ArgumentTypes.Size() < i - 1)
+			if (func->Proto->ArgumentTypes.Size() < i - p)
 			{
 				I_Error("Too many parameters in call to %s.%s", clsname, funcname);
 			}
-			auto argtype = func->Proto->ArgumentTypes[i - 2];
+			auto argtype = func->Proto->ArgumentTypes[i - p - 1];
 			// The only types allowed are int, bool, double, Name, Sound, Color and String
 			if (argtype == TypeSInt32 || argtype == TypeColor)
 			{
@@ -5293,7 +5433,8 @@ static int ScriptCall(unsigned argc, int32_t *args)
 			}
 			else if (argtype == TypeString)
 			{
-				params.Push(FBehavior::StaticLookupString(args[i]));
+				strings.Push(FBehavior::StaticLookupString(args[i]));
+				params.Push(&strings.Last());
 			}
 			else if (argtype == TypeSound)
 			{
@@ -5315,7 +5456,7 @@ static int ScriptCall(unsigned argc, int32_t *args)
 		// The return value can be the same types as the parameter types, plus void
 		if (func->Proto->ReturnTypes.Size() == 0)
 		{
-			GlobalVMStack.Call(func, &params[0], params.Size(), nullptr, 0);
+			VMCall(func, &params[0], params.Size(), nullptr, 0);
 		}
 		else
 		{
@@ -5323,7 +5464,7 @@ static int ScriptCall(unsigned argc, int32_t *args)
 			if (rettype == TypeSInt32 || rettype == TypeBool || rettype == TypeColor || rettype == TypeName || rettype == TypeSound)
 			{
 				VMReturn ret(&retval);
-				GlobalVMStack.Call(func, &params[0], params.Size(), &ret, 1);
+				VMCall(func, &params[0], params.Size(), &ret, 1);
 				if (rettype == TypeName)
 				{
 					retval = GlobalACSStrings.AddString(FName(ENamedName(retval)));
@@ -5337,20 +5478,20 @@ static int ScriptCall(unsigned argc, int32_t *args)
 			{
 				double d;
 				VMReturn ret(&d);
-				GlobalVMStack.Call(func, &params[0], params.Size(), &ret, 1);
+				VMCall(func, &params[0], params.Size(), &ret, 1);
 				retval = DoubleToACS(d);
 			}
 			else if (rettype == TypeString)
 			{
 				FString d;
 				VMReturn ret(&d);
-				GlobalVMStack.Call(func, &params[0], params.Size(), &ret, 1);
+				VMCall(func, &params[0], params.Size(), &ret, 1);
 				retval = GlobalACSStrings.AddString(d);
 			}
 			else
 			{
 				// All other return values can not be handled so ignore them.
-				GlobalVMStack.Call(func, &params[0], params.Size(), nullptr, 0);
+				VMCall(func, &params[0], params.Size(), nullptr, 0);
 			}
 		}
 	}
@@ -6658,9 +6799,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			int d = clamp(args[1]/2, 0, 255);
 			while ((s = it.Next()) >= 0)
 			{
-				auto &sec = level.sectors[s];
-				auto f = sec.ColorMap->Fade;
-				sec.ColorMap = GetSpecialLights(sec.ColorMap->Color, PalEntry(d, f.r, f.g, f.b), sec.ColorMap->Desaturate);
+				level.sectors[s].SetFogDensity(d);
 			}
 			break;
 		}
@@ -6706,7 +6845,11 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			return (args[0] + 32768) & ~0xffff;
 
 		case ACSF_ScriptCall:
-			return ScriptCall(argCount, args);
+			return ScriptCall(activator, argCount, args);
+
+		case ACSF_StartSlideshow:
+			G_StartSlideshow(FName(FBehavior::StaticLookupString(args[0])));
+			break;
 
 		case ACSF_GetLineX:
 		case ACSF_GetLineY:
@@ -6792,7 +6935,7 @@ static void SetMarineWeapon(AActor *marine, int weapon)
 	if (smw)
 	{
 		VMValue params[2] = { marine, weapon };
-		GlobalVMStack.Call(smw, params, 2, nullptr, 0, nullptr);
+		VMCall(smw, params, 2, nullptr, 0);
 	}
 }
 
@@ -6803,7 +6946,7 @@ static void SetMarineSprite(AActor *marine, PClassActor *source)
 	if (sms)
 	{
 		VMValue params[2] = { marine, source };
-		GlobalVMStack.Call(sms, params, 2, nullptr, 0, nullptr);
+		VMCall(sms, params, 2, nullptr, 0);
 	}
 }
 
@@ -8703,13 +8846,13 @@ scriptwait:
 					{
 					default:	// normal
 						alpha = (optstart < sp) ? ACSToFloat(Stack[optstart]) : 1.f;
-						msg = new DHUDMessage (activefont, work, x, y, hudwidth, hudheight, color, holdTime);
+						msg = Create<DHUDMessage> (activefont, work, x, y, hudwidth, hudheight, color, holdTime);
 						break;
 					case 1:		// fade out
 						{
 							float fadeTime = (optstart < sp) ? ACSToFloat(Stack[optstart]) : 0.5f;
 							alpha = (optstart < sp-1) ? ACSToFloat(Stack[optstart+1]) : 1.f;
-							msg = new DHUDMessageFadeOut (activefont, work, x, y, hudwidth, hudheight, color, holdTime, fadeTime);
+							msg = Create<DHUDMessageFadeOut> (activefont, work, x, y, hudwidth, hudheight, color, holdTime, fadeTime);
 						}
 						break;
 					case 2:		// type on, then fade out
@@ -8717,7 +8860,7 @@ scriptwait:
 							float typeTime = (optstart < sp) ? ACSToFloat(Stack[optstart]) : 0.05f;
 							float fadeTime = (optstart < sp-1) ? ACSToFloat(Stack[optstart+1]) : 0.5f;
 							alpha = (optstart < sp-2) ? ACSToFloat(Stack[optstart+2]) : 1.f;
-							msg = new DHUDMessageTypeOnFadeOut (activefont, work, x, y, hudwidth, hudheight, color, typeTime, holdTime, fadeTime);
+							msg = Create<DHUDMessageTypeOnFadeOut> (activefont, work, x, y, hudwidth, hudheight, color, typeTime, holdTime, fadeTime);
 						}
 						break;
 					case 3:		// fade in, then fade out
@@ -8725,7 +8868,7 @@ scriptwait:
 							float inTime = (optstart < sp) ? ACSToFloat(Stack[optstart]) : 0.5f;
 							float outTime = (optstart < sp-1) ? ACSToFloat(Stack[optstart+1]) : 0.5f;
 							alpha = (optstart < sp-2) ? ACSToFloat(Stack[optstart + 2]) : 1.f;
-							msg = new DHUDMessageFadeInOut (activefont, work, x, y, hudwidth, hudheight, color, holdTime, inTime, outTime);
+							msg = Create<DHUDMessageFadeInOut> (activefont, work, x, y, hudwidth, hudheight, color, holdTime, inTime, outTime);
 						}
 						break;
 					}
@@ -8753,7 +8896,6 @@ scriptwait:
 					{
 						static const char bar[] = TEXTCOLOR_ORANGE "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
 					"\36\36\36\36\36\36\36\36\36\36\36\36\37" TEXTCOLOR_NORMAL "\n";
-						static const char logbar[] = "\n<------------------------------->\n";
 						char consolecolor[3];
 
 						consolecolor[0] = '\x1c';
@@ -9422,7 +9564,7 @@ scriptwait:
 				}
 				else
 				{
-					STACK(1) = DoubleToACS(pcd == PCD_GETACTORX ? actor->X() : pcd == PCD_GETACTORY ? actor->Y() : actor->Z());
+					STACK(1) = DoubleToACS(pcd == PCD_GETACTORX ? actor->X() : actor->Y());
 				}
 			}
 			break;
@@ -9514,13 +9656,13 @@ scriptwait:
 			break;
 
 		case PCD_SETFLOORTRIGGER:
-			new DPlaneWatcher (activator, activationline, backSide, false, STACK(8),
+			Create<DPlaneWatcher> (activator, activationline, backSide, false, STACK(8),
 				STACK(7), STACK(6), STACK(5), STACK(4), STACK(3), STACK(2), STACK(1));
 			sp -= 8;
 			break;
 
 		case PCD_SETCEILINGTRIGGER:
-			new DPlaneWatcher (activator, activationline, backSide, true, STACK(8),
+			Create<DPlaneWatcher> (activator, activationline, backSide, true, STACK(8),
 				STACK(7), STACK(6), STACK(5), STACK(4), STACK(3), STACK(2), STACK(1));
 			sp -= 8;
 			break;
@@ -9661,8 +9803,7 @@ scriptwait:
 			}
 			else
 			{
-				AInventory *item = activator->FindInventory (dyn_cast<PClassActor>(
-					PClass::FindClass (FBehavior::StaticLookupString (STACK(1)))));
+				AInventory *item = activator->FindInventory (PClass::FindActor (FBehavior::StaticLookupString (STACK(1))));
 
 				if (item == NULL || !item->IsKindOf(NAME_Weapon))
 				{
@@ -10408,7 +10549,7 @@ static DLevelScript *P_GetScriptGoing (AActor *who, line_t *where, int num, cons
 		return NULL;
 	}
 
-	return new DLevelScript (who, where, num, code, module, args, argcount, flags);
+	return Create<DLevelScript> (who, where, num, code, module, args, argcount, flags);
 }
 
 DLevelScript::DLevelScript (AActor *who, line_t *where, int num, const ScriptPtr *code, FBehavior *module,
@@ -10416,7 +10557,7 @@ DLevelScript::DLevelScript (AActor *who, line_t *where, int num, const ScriptPtr
 	: activeBehavior (module)
 {
 	if (DACSThinker::ActiveThinker == NULL)
-		new DACSThinker;
+		Create<DACSThinker>();
 
 	script = num;
 	assert(code->VarCount >= code->ArgCount);

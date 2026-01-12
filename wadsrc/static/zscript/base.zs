@@ -1,3 +1,51 @@
+struct _ native	// These are the global variables, the struct is only here to avoid extending the parser for this.
+{
+	native readonly Array<class<Actor> > AllActorClasses;
+	native readonly Array<@PlayerClass> PlayerClasses;
+	native readonly Array<@PlayerSkin> PlayerSkins;
+	native readonly Array<@Team> Teams;
+	native int validcount;
+	native readonly bool multiplayer;
+	native play @LevelLocals level;
+	native @KeyBindings Bindings;
+	native @KeyBindings AutomapBindings;
+	native play @DehInfo deh;
+	native readonly @GameInfoStruct gameinfo;
+	native play @PlayerInfo players[MAXPLAYERS];
+	native readonly bool playeringame[MAXPLAYERS];
+
+	native readonly bool automapactive;
+	native play uint gameaction;
+	native readonly int gamestate;
+	native readonly TextureID skyflatnum;
+	native readonly uint8 globalfreeze;
+	native readonly int consoleplayer;
+	native readonly Font smallfont;
+	native readonly Font smallfont2;
+	native readonly Font bigfont;
+	native readonly Font confont;
+	native readonly Font intermissionfont;
+	native readonly int CleanXFac;
+	native readonly int CleanYFac;
+	native readonly int CleanWidth;
+	native readonly int CleanHeight;
+	native readonly int CleanXFac_1;
+	native readonly int CleanYFac_1;
+	native readonly int CleanWidth_1;
+	native readonly int CleanHeight_1;
+	native ui int menuactive;
+	native readonly @FOptionMenuSettings OptionMenuSettings;
+	native readonly int gametic;
+	native readonly bool demoplayback;
+	native ui int BackbuttonTime;
+	native ui float BackbuttonAlpha;
+	native readonly int Net_Arbitrator;
+	native ui BaseStatusBar StatusBar;
+	native readonly Weapon WP_NOCHANGE;
+	native int LocalViewPitch;
+	
+}
+
 struct TexMan
 {
 	enum EUseTypes
@@ -44,6 +92,10 @@ struct TexMan
 	native static void ReplaceTextures(String from, String to, int flags);
 	native static int, int GetSize(TextureID tex);
 	native static Vector2 GetScaledSize(TextureID tex);
+	native static Vector2 GetScaledOffset(TextureID tex);
+	native static int CheckRealHeight(TextureID tex);
+
+	native static void SetCameraToTexture(Actor viewpoint, String texture, int fov);
 }
 
 enum DrawTextureTags
@@ -112,11 +164,22 @@ struct Screen native
 	native static void Clear(int left, int top, int right, int bottom, Color color, int palcolor = -1);
 	native static void Dim(Color col, double amount, int x, int y, int w, int h);
 
-	native static void DrawHUDTexture(TextureID tex, double x, double y);
 	native static vararg void DrawTexture(TextureID tex, bool animate, double x, double y, ...);
 	native static vararg void DrawChar(Font font, int normalcolor, double x, double y, int character, ...);
 	native static vararg void DrawText(Font font, int normalcolor, double x, double y, String text, ...);
 	native static void DrawFrame(int x, int y, int w, int h);
+	native static Vector2, Vector2 VirtualToRealCoords(Vector2 pos, Vector2 size, Vector2 vsize, bool vbottom=false, bool handleaspect=true);
+	native static double GetAspectRatio();
+	native static void SetClipRect(int x, int y, int w, int h);
+	native static void ClearClipRect();
+	native static int, int, int, int GetClipRect();
+	
+	
+	// This is a leftover of the abandoned Inventory.DrawPowerup method.
+	deprecated("2.5") static ui void DrawHUDTexture(TextureID tex, double x, double y)
+	{
+		statusBar.DrawTexture(tex, (x, y), BaseStatusBar.DI_SCREEN_RIGHT_TOP, 1., (32, 32));
+	}
 }
 
 struct Font native
@@ -206,6 +269,7 @@ struct Translation version("2.4")
 	
 	native int AddTranslation();
 	native static bool SetPlayerTranslation(int group, int num, int plrnum, PlayerClass pclass);
+	native static int GetID(Name transname);
 	static int MakeID(int group, int num)
 	{
 		return (group << 16) + num;
@@ -236,6 +300,7 @@ struct CVar native
 	};
 
 	native static CVar FindCVar(Name name);
+	native static CVar GetCVar(Name name, PlayerInfo player = null);
 	native int GetInt();
 	native double GetFloat();
 	native String GetString();
@@ -267,6 +332,7 @@ struct GameInfoStruct native
 	native GIFont mStatscreenEnteringFont;
 	native GIFont mStatscreenFinishedFont;
 	native double gibfactor;
+	native bool intermissioncounter;
 }
 
 class Object native
@@ -274,6 +340,7 @@ class Object native
 	native bool bDestroyed;
 
 	// These really should be global functions...
+	native static String G_SkillName();
 	native static int G_SkillPropertyInt(int p);
 	native static double G_SkillPropertyFloat(int p);
 	native static vector3, int G_PickDeathmatchStart();
@@ -285,8 +352,8 @@ class Object native
 	native static uint BAM(double angle);
 	native static void SetMusicVolume(float vol);
 	native static uint MSTime();
+	native vararg static void ThrowAbortException(String fmt, ...);
 
-	native Name GetClassName();
 	native virtualscope void Destroy();
 
 	// This does not call into the native method of the same name to avoid problems with objects that get garbage collected late on shutdown.
@@ -338,6 +405,13 @@ class Thinker : Object native play
 	virtual native void Tick();
 	virtual native void PostBeginPlay();
 	virtual native void ChangeStatNum(int stat);
+	
+	static clearscope int Tics2Seconds(int tics)
+	{
+		// This compensates for one tic being slightly less than 1/35 of a second.
+		return int(tics * (0.98 / TICRATE));
+	}
+
 }
 
 class ThinkerIterator : Object native
@@ -403,6 +477,12 @@ struct LevelLocals native
 		//UDMF_Thing // not implemented
 	};
 
+	native Array<@Sector> Sectors;
+	native Array<@Line> Lines;
+	native Array<@Side> Sides;
+	native readonly Array<@Vertex> Vertexes;
+	native Array<@SectorPortal> SectorPortals;
+
 	native readonly int time;
 	native readonly int maptime;
 	native readonly int totaltime;
@@ -431,6 +511,7 @@ struct LevelLocals native
 	native play double airfriction;
 	native play int airsupply;
 	native readonly double teamdamage;
+	native readonly bool noinventorybar;
 	native readonly bool monsterstelefrag;
 	native readonly bool actownspecial;
 	native readonly bool sndseqtotalctrl;
@@ -440,6 +521,7 @@ struct LevelLocals native
 	native readonly bool checkswitchrange;
 	native readonly bool polygrind;
 	native readonly bool nomonsters;
+	native readonly bool allowrespawn;
 	native bool frozen;
 	native readonly bool infinite_flight;
 	native readonly bool no_dlg_freeze;
@@ -449,7 +531,20 @@ struct LevelLocals native
 	native int GetUDMFInt(int type, int index, Name key);
 	native double GetUDMFFloat(int type, int index, Name key);
 	native int ExecuteSpecial(int special, Actor activator, line linedef, bool lineside, int arg1 = 0, int arg2 = 0, int arg3 = 0, int arg4 = 0, int arg5 = 0);
-
+	native static void StartSlideshow(Name whichone = 'none');
+	native static void WorldDone();
+	native static void RemoveAllBots(bool fromlist);
+	native void SetInterMusic(String nextmap);
+	native String FormatMapName(int mapnamecolor);
+	native bool IsJumpingAllowed() const;
+	native bool IsCrouchingAllowed() const;
+	native bool IsFreelookAllowed() const;
+	
+	String TimeFormatted(bool totals = false)
+	{
+		int sec = Thinker.Tics2Seconds(totals? totaltime : time); 
+		return String.Format("%02d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60);
+	}
 }
 
 struct StringTable native
@@ -559,15 +654,29 @@ struct StringStruct native
 	native vararg void AppendFormat(String fmt, ...);
 
 	native void Replace(String pattern, String replacement);
-	native String Left(int len);
-	native String Mid(int pos = 0, int len = 2147483647);
+	native String Left(int len) const;
+	native String Mid(int pos = 0, int len = 2147483647) const;
 	native void Truncate(int newlen);
-	native String CharAt(int pos);
-	native int CharCodeAt(int pos);
+	native String CharAt(int pos) const;
+	native int CharCodeAt(int pos) const;
 	native String Filter();
 }
 
-class Floor : Thinker native
+class SectorEffect : Thinker native
+{
+	native protected Sector m_Sector;
+}
+
+class Mover : SectorEffect native
+{}
+
+class MovingFloor : Mover native
+{}
+
+class MovingCeiling : Mover native
+{}
+
+class Floor : MovingFloor native
 {
 	// only here so that some constants and functions can be added. Not directly usable yet.
 	enum EFloor
@@ -612,7 +721,7 @@ class Floor : Thinker native
 	native static bool CreateFloor(sector sec, EFloor floortype, line ln, double speed, double height = 0, int crush = -1, int change = 0, bool crushmode = false, bool hereticlower = false);
 }
 
-class Ceiling : Thinker native
+class Ceiling : MovingCeiling native
 {
 	enum ECeiling
 	{
@@ -665,3 +774,8 @@ struct LookExParams
 	int flags;
 	State seestate;
 };
+
+class Lighting : SectorEffect native
+{
+}
+

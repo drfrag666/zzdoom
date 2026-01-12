@@ -57,6 +57,7 @@
 #include "resourcefiles/resourcefile.h"
 #include "md5.h"
 #include "doomstat.h"
+#include "vm.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -429,7 +430,7 @@ int FWadCollection::CheckNumForName (const char *name, int space)
 	union
 	{
 		char uname[8];
-		QWORD qname;
+		uint64_t qname;
 	};
 	uint32_t i;
 
@@ -475,7 +476,7 @@ int FWadCollection::CheckNumForName (const char *name, int space, int wadnum, bo
 	union
 	{
 		char uname[8];
-		QWORD qname;
+		uint64_t qname;
 	};
 	uint32_t i;
 
@@ -1060,7 +1061,7 @@ int FWadCollection::FindLump (const char *name, int *lastlump, bool anyns)
 	union
 	{
 		char name8[8];
-		QWORD qname;
+		uint64_t qname;
 	};
 	LumpRecord *lump_p;
 

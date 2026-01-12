@@ -61,7 +61,6 @@
 #include <stdarg.h>
 #include <math.h>
 
-#define USE_WINDOWS_DWORD
 #include "doomerrors.h"
 #include "hardware.h"
 
@@ -82,6 +81,7 @@
 #include "doomstat.h"
 #include "r_utility.h"
 #include "g_levellocals.h"
+#include "s_sound.h"
 
 #include "stats.h"
 #include "st_start.h"
@@ -109,7 +109,7 @@
 LRESULT CALLBACK WndProc (HWND, UINT, WPARAM, LPARAM);
 void CreateCrashLog (char *custominfo, DWORD customsize, HWND richedit);
 void DisplayCrashLog ();
-extern BYTE *ST_Util_BitsForBitmap (BITMAPINFO *bitmap_info);
+extern uint8_t *ST_Util_BitsForBitmap (BITMAPINFO *bitmap_info);
 void I_FlushBufferedConsoleStuff();
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
@@ -125,7 +125,7 @@ extern UINT TimerPeriod;
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 
 // The command line arguments.
-DArgs *Args;
+FArgs *Args;
 
 HINSTANCE		g_hInst;
 DWORD			SessionID;
@@ -841,7 +841,7 @@ void DoMain (HINSTANCE hInstance)
 		_set_new_handler (NewFailure);
 #endif
 
-		Args = new DArgs(__argc, __argv);
+		Args = new FArgs(__argc, __argv);
 
 		// Load Win32 modules
 		Kernel32Module.Load({"kernel32.dll"});
@@ -1061,6 +1061,7 @@ void DoMain (HINSTANCE hInstance)
 	{
 		I_ShutdownGraphics ();
 		RestoreConView ();
+		S_StopMusic(true);
 		I_FlushBufferedConsoleStuff();
 		if (error.GetMessage ())
 		{

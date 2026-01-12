@@ -62,13 +62,40 @@
 #include "colormatcher.h"
 #include "r_data/colormaps.h"
 #include "g_levellocals.h"
+#include "textures.h"
+#include "vm.h"
 
-CUSTOM_CVAR(Int, uiscale, 2, CVAR_ARCHIVE | CVAR_NOINITCALL)
+CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
 {
+	if (self < 0)
+	{
+		self = 0;
+		return;
+	}
 	if (StatusBar != NULL)
 	{
-		StatusBar->ScreenSizeChanged();
+		StatusBar->CallScreenSizeChanged();
 	}
+}
+
+int GetUIScale(int altval)
+{
+	int scaleval;
+	if (altval > 0) scaleval = altval;
+	else if (uiscale == 0)
+	{
+		// Default should try to scale to 640x400
+		int vscale = screen->GetHeight() / 400;
+		int hscale = screen->GetWidth() / 640;
+		scaleval = clamp(vscale, 1, hscale);
+	}
+	else scaleval = uiscale;
+
+	// block scales that result in something larger than the current screen.
+	int vmax = screen->GetHeight() / 200;
+	int hmax = screen->GetWidth() / 320;
+	int max = MAX(vmax, hmax);
+	return MIN(scaleval, max);
 }
 
 // [RH] Stretch values to make a 320x200 image best fit the screen
@@ -84,12 +111,11 @@ int CleanXfac_1, CleanYfac_1, CleanWidth_1, CleanHeight_1;
 // FillSimplePoly uses this
 extern "C" short spanend[MAXHEIGHT];
 
-CVAR (Bool, hud_scale, true, CVAR_ARCHIVE);
 
 // For routines that take RGB colors, cache the previous lookup in case there
 // are several repetitions with the same color.
 static int LastPal = -1;
-static uint32 LastRGB;
+static uint32_t LastRGB;
 
 DEFINE_ACTION_FUNCTION(_Screen, GetWidth)
 {
@@ -112,7 +138,7 @@ DEFINE_ACTION_FUNCTION(_Screen, PaletteColor)
 	ACTION_RETURN_INT(index);
 }
 
-static int PalFromRGB(uint32 rgb)
+static int PalFromRGB(uint32_t rgb)
 {
 	if (LastPal >= 0 && LastRGB == rgb)
 	{
@@ -170,19 +196,11 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawTexture)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
+
 	FTexture *tex = animate ? TexMan(FSetTextureID(texid)) : TexMan[FSetTextureID(texid)];
 	VMVa_List args = { param + 4, 0, numparam - 4 };
 	screen->DrawTexture(tex, x, y, args);
-	return 0;
-}
-
-DEFINE_ACTION_FUNCTION(_Screen, DrawHUDTexture)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	screen->DrawTexture(TexMan(FSetTextureID(texid)), x, y, DTA_HUDRules, HUD_Normal, TAG_END);
 	return 0;
 }
 
@@ -193,7 +211,7 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 	using namespace drawerargs;
 
 	static short bottomclipper[MAXWIDTH], topclipper[MAXWIDTH];
-	const BYTE *translation = NULL;
+	const uint8_t *translation = NULL;
 
 	if (APART(parms.colorOverlay) != 0)
 	{
@@ -232,7 +250,7 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 	fixedcolormap = dc_colormap;
 	ESPSResult mode = R_SetPatchStyle (parms.style, parms.Alpha, 0, parms.fillcolor);
 
-	BYTE *destorgsave = dc_destorg;
+	uint8_t *destorgsave = dc_destorg;
 	dc_destorg = screen->GetBuffer();
 	if (dc_destorg == NULL)
 	{
@@ -374,6 +392,53 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 #endif
 }
 
+void DCanvas::SetClipRect(int x, int y, int w, int h)
+{
+	clipleft = clamp(x, 0, GetWidth());
+	clipwidth = clamp(w, -1, GetWidth() - x);
+	cliptop = clamp(y, 0, GetHeight());
+	clipheight = clamp(h, -1, GetHeight() - y);
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, SetClipRect)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(x);
+	PARAM_INT(y);
+	PARAM_INT(w);
+	PARAM_INT(h);
+	screen->SetClipRect(x, y, w, h);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, ClearClipRect)
+{
+	PARAM_PROLOGUE;
+	screen->ClearClipRect();
+	return 0;
+}
+
+void DCanvas::GetClipRect(int *x, int *y, int *w, int *h)
+{
+	if (x) *x = clipleft;
+	if (y) *y = cliptop;
+	if (w) *w = clipwidth;
+	if (h) *h = clipheight;
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, GetClipRect)
+{
+	PARAM_PROLOGUE;
+	int x, y, w, h;
+	screen->GetClipRect(&x, &y, &w, &h);
+	if (numret > 0) ret[0].SetInt(x);
+	if (numret > 1) ret[1].SetInt(y);
+	if (numret > 2) ret[2].SetInt(w);
+	if (numret > 3) ret[3].SetInt(h);
+	return MIN(numret, 4);
+}
+
+
 bool DCanvas::SetTextureParms(DrawParms *parms, FTexture *img, double xx, double yy) const
 {
 	if (img != NULL)
@@ -428,31 +493,21 @@ bool DCanvas::SetTextureParms(DrawParms *parms, FTexture *img, double xx, double
 		case DTA_HUDRules:
 		case DTA_HUDRulesC:
 		{
+			// Note that this has been deprecated because the HUD should be drawn by the status bar.
 			bool xright = parms->x < 0;
 			bool ybot = parms->y < 0;
+			DVector2 scale = StatusBar->GetHUDScale();
 
-			if (hud_scale)
-			{
-				parms->x *= CleanXfac;
-				if (parms->cleanmode == DTA_HUDRulesC)
-					parms->x += Width * 0.5;
-				else if (xright)
-					parms->x = Width + parms->x;
-				parms->y *= CleanYfac;
-				if (ybot)
-					parms->y = Height + parms->y;
-				parms->destwidth = parms->texwidth * CleanXfac;
-				parms->destheight = parms->texheight * CleanYfac;
-			}
-			else
-			{
-				if (parms->cleanmode == DTA_HUDRulesC)
-					parms->x += Width * 0.5;
-				else if (xright)
-					parms->x = Width + parms->x;
-				if (ybot)
-					parms->y = Height + parms->y;
-			}
+			parms->x *= scale.X;
+			if (parms->cleanmode == DTA_HUDRulesC)
+				parms->x += Width * 0.5;
+			else if (xright)
+				parms->x = Width + parms->x;
+			parms->y *= scale.Y;
+			if (ybot)
+				parms->y = Height + parms->y;
+			parms->destwidth = parms->texwidth * scale.X;
+			parms->destheight = parms->texheight * scale.Y;
 			break;
 		}
 		}
@@ -532,7 +587,7 @@ static inline FColormapStyle * ListGetColormapStyle(VMVa_List &tags)
 }
 
 template<class T>
-bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag, T& tags, DrawParms *parms, bool fortext) const
+bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t tag, T& tags, DrawParms *parms, bool fortext) const
 {
 	INTBOOL boolval;
 	int intval;
@@ -572,6 +627,7 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag,
 	parms->colorOverlay = 0;
 	parms->alphaChannel = false;
 	parms->flipX = false;
+	parms->color = 0xffffffff;
 	//parms->shadowAlpha = 0;
 	parms->shadowColor = 0;
 	parms->virtWidth = this->GetWidth();
@@ -729,7 +785,15 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag,
 
 		case DTA_FillColor:
 			parms->fillcolor = ListGetInt(tags);
-			fillcolorset = true;
+			if (parms->fillcolor != ~0u)
+			{
+				fillcolorset = true;
+			}
+			else if (parms->fillcolor != 0)
+			{
+				// The crosshair is the only thing which uses a non-black fill color.
+				parms->fillcolor = PalEntry(ColorMatcher.Pick(parms->fillcolor), RPART(parms->fillcolor), GPART(parms->fillcolor), BPART(parms->fillcolor));
+			}
 			break;
 
 		case DTA_TranslationIndex:
@@ -738,6 +802,10 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag,
 
 		case DTA_ColorOverlay:
 			parms->colorOverlay = ListGetInt(tags);
+			break;
+
+		case DTA_Color:
+			parms->color = ListGetInt(tags);
 			break;
 
 		case DTA_FlipX:
@@ -913,6 +981,15 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag,
 		parms->remap = nullptr;
 	}
 
+	// intersect with the canvas's clipping rectangle.
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		if (parms->lclip < clipleft) parms->lclip = clipleft;
+		if (parms->rclip > clipleft + clipwidth) parms->rclip = clipleft + clipwidth;
+		if (parms->uclip < cliptop) parms->uclip = cliptop;
+		if (parms->dclip > cliptop + clipheight) parms->dclip = cliptop + clipheight;
+	}
+
 	if (parms->uclip >= parms->dclip || parms->lclip >= parms->rclip)
 	{
 		return false;
@@ -958,8 +1035,8 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, DWORD tag,
 }
 // explicitly instantiate both versions for v_text.cpp.
 
-template bool DCanvas::ParseDrawTextureTags<Va_List>(FTexture *img, double x, double y, DWORD tag, Va_List& tags, DrawParms *parms, bool fortext) const;
-template bool DCanvas::ParseDrawTextureTags<VMVa_List>(FTexture *img, double x, double y, DWORD tag, VMVa_List& tags, DrawParms *parms, bool fortext) const;
+template bool DCanvas::ParseDrawTextureTags<Va_List>(FTexture *img, double x, double y, uint32_t tag, Va_List& tags, DrawParms *parms, bool fortext) const;
+template bool DCanvas::ParseDrawTextureTags<VMVa_List>(FTexture *img, double x, double y, uint32_t tag, VMVa_List& tags, DrawParms *parms, bool fortext) const;
 
 void DCanvas::VirtualToRealCoords(double &x, double &y, double &w, double &h,
 	double vwidth, double vheight, bool vbottom, bool handleaspect) const
@@ -1004,20 +1081,21 @@ void DCanvas::VirtualToRealCoords(double &x, double &y, double &w, double &h,
 	}
 }
 
-void DCanvas::VirtualToRealCoordsFixed(fixed_t &x, fixed_t &y, fixed_t &w, fixed_t &h,
-	int vwidth, int vheight, bool vbottom, bool handleaspect) const
+DEFINE_ACTION_FUNCTION(_Screen, VirtualToRealCoords)
 {
-	double dx, dy, dw, dh;
-
-	dx = FIXED2DBL(x);
-	dy = FIXED2DBL(y);
-	dw = FIXED2DBL(w);
-	dh = FIXED2DBL(h);
-	VirtualToRealCoords(dx, dy, dw, dh, vwidth, vheight, vbottom, handleaspect);
-	x = FLOAT2FIXED(dx);
-	y = FLOAT2FIXED(dy);
-	w = FLOAT2FIXED(dw);
-	h = FLOAT2FIXED(dh);
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_FLOAT(vw);
+	PARAM_FLOAT(vh);
+	PARAM_BOOL_DEF(vbottom);
+	PARAM_BOOL_DEF(handleaspect);
+	screen->VirtualToRealCoords(x, y, w, h, vw, vh, vbottom, handleaspect);
+	if (numret >= 1) ret[0].SetVector2(DVector2(x, y));
+	if (numret >= 2) ret[1].SetVector2(DVector2(w, h));
+	return MIN(numret, 2);
 }
 
 void DCanvas::VirtualToRealCoordsInt(int &x, int &y, int &w, int &h,
@@ -1124,17 +1202,17 @@ void DCanvas::PUTTRANSDOT (int xx, int yy, int basecolor, int level)
 		oldyyshifted = yy * GetPitch();
 	}
 
-	BYTE *spot = GetBuffer() + oldyyshifted + xx;
-	DWORD *bg2rgb = Col2RGB8[1+level];
-	DWORD *fg2rgb = Col2RGB8[63-level];
-	DWORD fg = fg2rgb[basecolor];
-	DWORD bg = bg2rgb[*spot];
+	uint8_t *spot = GetBuffer() + oldyyshifted + xx;
+	uint32_t *bg2rgb = Col2RGB8[1+level];
+	uint32_t *fg2rgb = Col2RGB8[63-level];
+	uint32_t fg = fg2rgb[basecolor];
+	uint32_t bg = bg2rgb[*spot];
 	bg = (fg+bg) | 0x1f07c1f;
 	*spot = RGB32k.All[bg&(bg>>15)];
 }
 
-void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 realcolor)
-//void DrawTransWuLine (int x0, int y0, int x1, int y1, BYTE palColor)
+void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32_t realcolor)
+//void DrawTransWuLine (int x0, int y0, int x1, int y1, uint8_t palColor)
 {
 	const int WeightingScale = 0;
 	const int WEIGHTBITS = 6;
@@ -1178,7 +1256,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 real
 	}
 	else if (deltaX == 0)
 	{ // vertical line
-		BYTE *spot = GetBuffer() + y0*GetPitch() + x0;
+		uint8_t *spot = GetBuffer() + y0*GetPitch() + x0;
 		int pitch = GetPitch ();
 		do
 		{
@@ -1188,7 +1266,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 real
 	}
 	else if (deltaX == deltaY)
 	{ // diagonal line.
-		BYTE *spot = GetBuffer() + y0*GetPitch() + x0;
+		uint8_t *spot = GetBuffer() + y0*GetPitch() + x0;
 		int advance = GetPitch() + xDir;
 		do
 		{
@@ -1261,7 +1339,7 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 real
 		}
 		else
 		{ // x-major line
-			fixed_t errorAdj = (((DWORD) deltaY << 16) / (DWORD) deltaX) & 0xffff;
+			fixed_t errorAdj = (((uint32_t) deltaY << 16) / (uint32_t) deltaX) & 0xffff;
 
 			if (WeightingScale == 0)
 			{
@@ -1293,14 +1371,14 @@ void DCanvas::DrawLine(int x0, int y0, int x1, int y1, int palColor, uint32 real
 	Unlock();
 }
 
-void DCanvas::DrawPixel(int x, int y, int palColor, uint32 realcolor)
+void DCanvas::DrawPixel(int x, int y, int palColor, uint32_t realcolor)
 {
 	if (palColor < 0)
 	{
 		palColor = PalFromRGB(realcolor);
 	}
 
-	Buffer[Pitch * y + x] = (BYTE)palColor;
+	Buffer[Pitch * y + x] = (uint8_t)palColor;
 }
 
 //==========================================================================
@@ -1311,10 +1389,33 @@ void DCanvas::DrawPixel(int x, int y, int palColor, uint32 realcolor)
 //
 //==========================================================================
 
-void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32 color)
+void DCanvas::Clear (int left, int top, int right, int bottom, int palcolor, uint32_t color)
 {
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		int w = right - left;
+		int h = bottom - top;
+		if (left < clipleft)
+		{
+			w -= (clipleft - left);
+			left = clipleft;
+		}
+		if (w > clipwidth) w = clipwidth;
+		if (w <= 0) return;
+
+		if (top < cliptop)
+		{
+			h -= (cliptop - top);
+			top = cliptop;
+		}
+		if (h > clipheight) w = clipheight;
+		if (h <= 0) return;
+		right = left + w;
+		bottom = top + h;
+	}
+
 	int x, y;
-	BYTE *dest;
+	uint8_t *dest;
 
 	if (left == right || top == bottom)
 	{
@@ -1362,7 +1463,104 @@ DEFINE_ACTION_FUNCTION(_Screen, Clear)
 	PARAM_INT(y2);
 	PARAM_INT(color);
 	PARAM_INT_DEF(palcol);
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->Clear(x1, y1, x2, y2, palcol, color);
+	return 0;
+}
+
+//==========================================================================
+//
+// DCanvas :: Dim
+//
+// Applies a colored overlay to an area of the screen.
+//
+//==========================================================================
+
+void DCanvas::Dim (PalEntry color, float damount, int x1, int y1, int w, int h)
+{
+	if (clipwidth >= 0 && clipheight >= 0)
+	{
+		if (x1 < clipleft)
+		{
+			w -= (clipleft - x1);
+			x1 = clipleft;
+		}
+		if (w > clipwidth) w = clipwidth;
+		if (w <= 0) return;
+
+		if (y1 < cliptop)
+		{
+			h -= (cliptop - y1);
+			y1 = cliptop;
+		}
+		if (h > clipheight) h = clipheight;
+		if (h <= 0) return;
+	}
+
+	if (damount == 0.f)
+		return;
+
+	uint32_t *bg2rgb;
+	uint32_t fg;
+	int gap;
+	uint8_t *spot;
+	int x, y;
+
+	if (x1 >= Width || y1 >= Height)
+	{
+		return;
+	}
+	if (x1 + w > Width)
+	{
+		w = Width - x1;
+	}
+	if (y1 + h > Height)
+	{
+		h = Height - y1;
+	}
+	if (w <= 0 || h <= 0)
+	{
+		return;
+	}
+
+	{
+		int amount;
+
+		amount = (int)(damount * 64);
+		bg2rgb = Col2RGB8[64-amount];
+
+		fg = (((color.r * amount) >> 4) << 20) |
+			  ((color.g * amount) >> 4) |
+			 (((color.b * amount) >> 4) << 10);
+	}
+
+	spot = Buffer + x1 + y1*Pitch;
+	gap = Pitch - w;
+	for (y = h; y != 0; y--)
+	{
+		for (x = w; x != 0; x--)
+		{
+			uint32_t bg;
+
+			bg = bg2rgb[(*spot)&0xff];
+			bg = (fg+bg) | 0x1f07c1f;
+			*spot = RGB32k.All[bg&(bg>>15)];
+			spot++;
+		}
+		spot += gap;
+	}
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, Dim)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(color);
+	PARAM_FLOAT(amount);
+	PARAM_INT(x1);
+	PARAM_INT(y1);
+	PARAM_INT(w);
+	PARAM_INT(h);
+	screen->Dim(color, float(amount), x1, y1, w, h);
 	return 0;
 }
 
@@ -1383,7 +1581,7 @@ DEFINE_ACTION_FUNCTION(_Screen, Clear)
 
 void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 	double originx, double originy, double scalex, double scaley, DAngle rotation,
-	FDynamicColormap *colormap, PalEntry flatcolor, int lightlevel, int bottomclip)
+	const FColormap &colormap, PalEntry flatcolor, int lightlevel, int bottomclip)
 {
 #ifndef NO_SWRENDER
 	using namespace swrenderer;
@@ -1439,7 +1637,7 @@ void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 		return;
 	}
 
-	BYTE *destorgsave = dc_destorg;
+	uint8_t *destorgsave = dc_destorg;
 	dc_destorg = screen->GetBuffer();
 	if (dc_destorg == NULL)
 	{
@@ -1455,7 +1653,7 @@ void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 
 	// Setup constant texture mapping parameters.
 	R_SetupSpanBits(tex);
-	R_SetSpanColormap(colormap != NULL ? &colormap->Maps[clamp(shade >> FRACBITS, 0, NUMCOLORMAPS-1) * 256] : identitymap);
+	R_SetSpanColormap(GetColorTable(colormap) != NULL ? &GetColorTable(colormap)->Maps[clamp(shade >> FRACBITS, 0, NUMCOLORMAPS-1) * 256] : identitymap);
 	R_SetSpanSource(tex);
 	if (ds_xbits != 0)
 	{
@@ -1580,11 +1778,11 @@ void DCanvas::FillSimplePoly(FTexture *tex, FVector2 *points, int npoints,
 // V_DrawBlock
 // Draw a linear block of pixels into the view buffer.
 //
-void DCanvas::DrawBlock (int x, int y, int _width, int _height, const BYTE *src) const
+void DCanvas::DrawBlock (int x, int y, int _width, int _height, const uint8_t *src) const
 {
 	int srcpitch = _width;
 	int destpitch;
-	BYTE *dest;
+	uint8_t *dest;
 
 	if (ClipBox (x, y, _width, _height, src, srcpitch))
 	{
@@ -1606,9 +1804,9 @@ void DCanvas::DrawBlock (int x, int y, int _width, int _height, const BYTE *src)
 // V_GetBlock
 // Gets a linear block of pixels from the view buffer.
 //
-void DCanvas::GetBlock (int x, int y, int _width, int _height, BYTE *dest) const
+void DCanvas::GetBlock (int x, int y, int _width, int _height, uint8_t *dest) const
 {
-	const BYTE *src;
+	const uint8_t *src;
 
 #ifdef RANGECHECK 
 	if (x<0
@@ -1631,7 +1829,7 @@ void DCanvas::GetBlock (int x, int y, int _width, int _height, BYTE *dest) const
 }
 
 // Returns true if the box was completely clipped. False otherwise.
-bool DCanvas::ClipBox (int &x, int &y, int &w, int &h, const BYTE *&src, const int srcpitch) const
+bool DCanvas::ClipBox (int &x, int &y, int &w, int &h, const uint8_t *&src, const int srcpitch) const
 {
 	if (x >= Width || y >= Height || x+w <= 0 || y+h <= 0)
 	{ // Completely clipped off screen
@@ -1769,13 +1967,6 @@ int BorderNeedRefresh;
 
 static void V_DrawViewBorder (void)
 {
-	// [RH] Redraw the status bar if SCREENWIDTH > status bar width.
-	// Will draw borders around itself, too.
-	if (SCREENWIDTH > 320)
-	{
-		ST_SetNeedRefresh();
-	}
-
 	if (viewwidth == SCREENWIDTH)
 	{
 		return;
@@ -1784,10 +1975,9 @@ static void V_DrawViewBorder (void)
 	V_DrawBorder (0, 0, SCREENWIDTH, viewwindowy);
 	V_DrawBorder (0, viewwindowy, viewwindowx, viewheight + viewwindowy);
 	V_DrawBorder (viewwindowx + viewwidth, viewwindowy, SCREENWIDTH, viewheight + viewwindowy);
-	V_DrawBorder (0, viewwindowy + viewheight, SCREENWIDTH, gST_Y);
+	V_DrawBorder (0, viewwindowy + viewheight, SCREENWIDTH, StatusBar->GetTopOfStatusbar());
 
 	V_DrawFrame (viewwindowx, viewwindowy, viewwidth, viewheight);
-	V_MarkRect (0, 0, SCREENWIDTH, gST_Y);
 }
 
 //==========================================================================

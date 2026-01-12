@@ -52,6 +52,7 @@
 #include "p_checkposition.h"
 #include "math/cmath.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 // simulation recurions maximum
 CVAR(Int, sv_portal_recursions, 4, CVAR_ARCHIVE|CVAR_SERVERINFO)
@@ -113,14 +114,16 @@ struct FPortalBits
 
 static void BuildBlockmap()
 {
+	auto bmapwidth = level.blockmap.bmapwidth;
+	auto bmapheight = level.blockmap.bmapheight;
+
 	PortalBlockmap.Clear();
 	PortalBlockmap.Create(bmapwidth, bmapheight);
 	for (int y = 0; y < bmapheight; y++)
 	{
 		for (int x = 0; x < bmapwidth; x++)
 		{
-			int offset = y*bmapwidth + x;
-			int *list = blockmaplump + *(blockmap + offset) + 1;
+			int *list = level.blockmap.GetLines(x, y);
 			FPortalBlock &block = PortalBlockmap(x, y);
 
 			while (*list != -1)
@@ -165,7 +168,7 @@ static void BuildBlockmap()
 
 void FLinePortalTraverse::AddLineIntercepts(int bx, int by)
 {
-	if (by < 0 || by >= bmapheight || bx < 0 || bx >= bmapwidth) return;
+	if (by < 0 || by >= PortalBlockmap.dy || bx < 0 || bx >= PortalBlockmap.dx) return;
 
 	FPortalBlock &block = PortalBlockmap(bx, by);
 
@@ -739,9 +742,9 @@ DVector2 P_GetOffsetPosition(double x, double y, double dx, double dy)
 		// Try some easily discoverable early-out first. If we know that the trace cannot possibly find a portal, this saves us from calling the traverser completely for vast parts of the map.
 		if (dx < 128 && dy < 128)
 		{
-			int blockx = GetBlockX(actx);
-			int blocky = GetBlockY(acty);
-			if (blockx < 0 || blocky < 0 || blockx >= bmapwidth || blocky >= bmapheight || !PortalBlockmap(blockx, blocky).neighborContainsLines) return dest;
+			int blockx = level.blockmap.GetBlockX(actx);
+			int blocky = level.blockmap.GetBlockY(acty);
+			if (blockx < 0 || blocky < 0 || blockx >= PortalBlockmap.dx || blocky >= PortalBlockmap.dy || !PortalBlockmap(blockx, blocky).neighborContainsLines) return dest;
 		}
 
 		bool repeat;
@@ -1103,10 +1106,9 @@ void P_CreateLinkedPortals()
 	}
 
 	// reject would just get in the way when checking sight through portals.
-	if (Displacements.size > 1 && rejectmatrix != nullptr)
+	if (Displacements.size > 1)
 	{
-		delete[] rejectmatrix;
-		rejectmatrix = nullptr;
+		level.rejectmatrix.Reset();
 	}
 	// finally we must flag all planes which are obstructed by the sector's own ceiling or floor.
 	for (auto &sec : level.sectors)

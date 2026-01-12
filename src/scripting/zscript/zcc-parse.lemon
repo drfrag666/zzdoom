@@ -287,6 +287,8 @@ class_member(X) ::= states_def(A).						{ X = A; /*X-overwrites-A*/ }
 class_member(X) ::= default_def(A).						{ X = A; /*X-overwrites-A*/ }
 class_member(X) ::= const_def(A).						{ X = A; /*X-overwrites-A*/ }
 class_member(X) ::= property_def(A).					{ X = A; /*X-overwrites-A*/ }
+class_member(X) ::= staticarray_statement(A).			{ X = A; /*X-overwrites-A*/ }
+
 
 /*----- Struct Definition -----*/
 /* Structs can define variables and enums. */
@@ -401,7 +403,7 @@ enum_def(X) ::= ENUM(T) IDENTIFIER(A) enum_type(B) LBRACE opt_enum_list(C) RBRAC
 			// Compute implicit values by adding one to the preceding value.
 			assert(prev->Value != NULL);
 			// If the preceding node is a constant, then we can do this now.
-			if (prev->Value->Operation == PEX_ConstValue && prev->Value->Type->IsA(RUNTIME_CLASS(PInt)))
+			if (prev->Value->Operation == PEX_ConstValue && prev->Value->Type->isInt())
 			{
 				NEW_INTCONST_NODE(cval, prev->Value->Type, static_cast<ZCC_ExprConstant *>(prev->Value)->IntVal + 1, node);
 				node->Value = cval;
@@ -764,11 +766,34 @@ type_name(X) ::= IDENTIFIER(A).			/* User-defined type (struct, enum, or class) 
 	id->Id = A.Name();
 	X = type;
 }
+
+type_name(X) ::= ATSIGN IDENTIFIER(A).
+{
+	NEW_AST_NODE(BasicType, type, A);
+	NEW_AST_NODE(Identifier, id, A);
+	type->Type = ZCC_NativeType;
+	type->UserType = id;
+	type->isconst = false;
+	id->Id = A.Name();
+	X = type;
+}
+
 type_name(X) ::= READONLY LT IDENTIFIER(A) GT.
 {
 	NEW_AST_NODE(BasicType, type, A);
 	NEW_AST_NODE(Identifier, id, A);
 	type->Type = ZCC_UserType;
+	type->UserType = id;
+	type->isconst = true;
+	id->Id = A.Name();
+	X = type;
+}
+
+type_name(X) ::= READONLY LT ATSIGN IDENTIFIER(A) GT.
+{
+	NEW_AST_NODE(BasicType, type, A);
+	NEW_AST_NODE(Identifier, id, A);
+	type->Type = ZCC_NativeType;
 	type->UserType = id;
 	type->isconst = true;
 	id->Id = A.Name();
@@ -1231,9 +1256,9 @@ unary_expr(X) ::= primary(X).
 unary_expr(X) ::= SUB unary_expr(A). [UNARY]
 {
 	ZCC_ExprConstant *con = static_cast<ZCC_ExprConstant *>(A);
-	if (A->Operation == PEX_ConstValue && (con->Type->IsA(RUNTIME_CLASS(PInt)) || con->Type->IsA(RUNTIME_CLASS(PFloat))))
+	if (A->Operation == PEX_ConstValue && (con->Type->isInt() || con->Type->isFloat()))
 	{ // For constants, manipulate the child node directly, and don't create a new node.
-		if (con->Type->IsA(RUNTIME_CLASS(PInt)))
+		if (con->Type->isInt())
 		{
 			con->IntVal = -con->IntVal;
 		}
@@ -1255,7 +1280,7 @@ unary_expr(X) ::= ADD unary_expr(A). [UNARY]
 	// it so we can type check that it is being applied to something numeric.
 	// But we can do that right now for constant numerals.
 	ZCC_ExprConstant *con = static_cast<ZCC_ExprConstant *>(A);
-	if (A->Operation != PEX_ConstValue || (!con->Type->IsA(RUNTIME_CLASS(PInt)) && !con->Type->IsA(RUNTIME_CLASS(PFloat))))
+	if (A->Operation != PEX_ConstValue || (!con->Type->isInt() && !con->Type->isFloat()))
 	{
 		UNARY_EXPR(A,PEX_AntiNegate);
 		X = expr1;
@@ -1669,7 +1694,7 @@ statement(X) ::= staticarray_statement(A).			{ X = A; /*X-overwrites-A*/ }
 
 %type staticarray_statement{ZCC_StaticArrayStatement *}
 
-staticarray_statement(X) ::= STATIC CONST type(A) IDENTIFIER(B) LBRACKET RBRACKET EQ LBRACE expr_list(C) RBRACE.
+staticarray_statement(X) ::= STATICCONST type(A) IDENTIFIER(B) LBRACKET RBRACKET EQ LBRACE expr_list(C) RBRACE SEMICOLON.
 {
 	NEW_AST_NODE(StaticArrayStatement, stmt, A);
 	stmt->Type = A;
@@ -1678,7 +1703,7 @@ staticarray_statement(X) ::= STATIC CONST type(A) IDENTIFIER(B) LBRACKET RBRACKE
 	X = stmt;
 }
 
-staticarray_statement(X) ::= STATIC CONST type(A) LBRACKET RBRACKET IDENTIFIER(B)  EQ LBRACE expr_list(C) RBRACE.
+staticarray_statement(X) ::= STATICCONST type(A) LBRACKET RBRACKET IDENTIFIER(B)  EQ LBRACE expr_list(C) RBRACE SEMICOLON.
 {
 	NEW_AST_NODE(StaticArrayStatement, stmt, A);
 	stmt->Type = A;
@@ -1834,6 +1859,7 @@ for_init(X) ::= for_bump(A).						{ X = A /*X-overwrites-A*/; }
 %type for_bump{ZCC_Statement *}
 for_bump(X) ::= .									{ X = NULL; }
 for_bump(X) ::= expression_statement(A).			{ X = A; /*X-overwrites-A*/ }
+for_bump(X) ::= for_bump(A) COMMA expression_statement(B). { X = A; /*X-overwrites-A*/ AppendTreeNodeSibling(X, B); }
 
 /*----- If Statements -----*/
 

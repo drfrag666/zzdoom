@@ -40,6 +40,7 @@
 #include "doomstat.h"
 #include "serializer.h"
 #include "a_pickups.h"
+#include "vm.h"
 
 static FRandom pr_spot ("SpecialSpot");
 static FRandom pr_spawnmace ("SpawnMace");
@@ -247,7 +248,7 @@ void DSpotState::Tick ()
 
 DSpotState *DSpotState::GetSpotState(bool create)
 {
-	if (SpotState == NULL && create) SpotState = new DSpotState;
+	if (SpotState == NULL && create) SpotState = Create<DSpotState>();
 	return SpotState;
 }
 

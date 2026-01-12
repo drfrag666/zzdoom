@@ -436,6 +436,25 @@ CCMD (take)
 		Net_WriteLong (0);
 }
 
+CCMD(setinv)
+{
+	if (CheckCheatmode() || argv.argc() < 2)
+		return;
+
+	Net_WriteByte(DEM_SETINV);
+	Net_WriteString(argv[1]);
+	if (argv.argc() > 2)
+		Net_WriteLong(atoi(argv[2]));
+	else
+		Net_WriteLong(0);
+
+	if (argv.argc() > 3)
+		Net_WriteByte(!!atoi(argv[3]));
+	else
+		Net_WriteByte(0);
+
+}
+
 CCMD (gameversion)
 {
 	Printf ("%s @ %s\nCommit %s\n", GetVersionString(), GetGitTime(), GetGitHash());
@@ -1140,34 +1159,6 @@ CCMD(currentpos)
 	{
 		Printf("You are not in game!\n");
 	}
-}
-
-//-----------------------------------------------------------------------------
-//
-//
-//
-//-----------------------------------------------------------------------------
-CCMD(vmengine)
-{
-	if (argv.argc() == 2)
-	{
-		if (stricmp(argv[1], "default") == 0)
-		{
-			VMSelectEngine(VMEngine_Default);
-			return;
-		}
-		else if (stricmp(argv[1], "checked") == 0)
-		{
-			VMSelectEngine(VMEngine_Checked);
-			return;
-		}
-		else if (stricmp(argv[1], "unchecked") == 0)
-		{
-			VMSelectEngine(VMEngine_Unchecked);
-			return;
-		}
-	}
-	Printf("Usage: vmengine <default|checked|unchecked>\n");
 }
 
 //-----------------------------------------------------------------------------

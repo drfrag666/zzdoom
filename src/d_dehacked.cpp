@@ -74,6 +74,7 @@
 #include "info.h"
 #include "v_text.h"
 #include "backend/vmbuilder.h"
+#include "types.h"
 #include "m_argv.h"
 
 // [SO] Just the way Randy said to do it :)
@@ -213,6 +214,7 @@ DehInfo deh =
 	40,		// BFG cells per shot
 };
 
+DEFINE_GLOBAL(deh)
 DEFINE_FIELD_X(DehInfo, DehInfo, MaxSoulsphere)
 DEFINE_FIELD_X(DehInfo, DehInfo, ExplosionStyle)
 DEFINE_FIELD_X(DehInfo, DehInfo, ExplosionAlpha)
@@ -673,7 +675,7 @@ static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2)
 		I_Error("No class found for dehackednum %d!\n", value1+1);
 		return 0;
 	}
-	int typereg = buildit.GetConstantAddress(InfoNames[value1-1], ATAG_OBJECT);
+	int typereg = buildit.GetConstantAddress(InfoNames[value1-1]);
 	int heightreg = buildit.GetConstantFloat(value2);
 
 	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, typereg);	// itemtype
@@ -726,7 +728,7 @@ static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value
 // misc1 = state, misc2 = probability
 static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2)
 { // A_Jump
-	int statereg = buildit.GetConstantAddress(FindState(value1), ATAG_STATE);
+	int statereg = buildit.GetConstantAddress(FindState(value1));
 
 	buildit.EmitParamInt(value2);									// maxchance
 	buildit.Emit(OP_PARAM, 0, REGT_POINTER | REGT_KONST, statereg);	// jumpto
@@ -793,7 +795,7 @@ void SetDehParams(FState *state, int codepointer)
 	
 	// Let's identify the codepointer we're dealing with.
 	PFunction *sym;
-	sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->Symbols.FindSymbol(FName(MBFCodePointers[codepointer].name), true));
+	sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(FName(MBFCodePointers[codepointer].name), true));
 	if (sym == NULL) return;
 
 	if (codepointer < 0 || (unsigned)codepointer >= countof(MBFCodePointerFactories))
@@ -815,7 +817,7 @@ void SetDehParams(FState *state, int codepointer)
 		}
 		// Emit code for action parameters.
 		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2);
-		buildit.Emit(OP_TAIL_K, buildit.GetConstantAddress(sym->Variants[0].Implementation, ATAG_OBJECT), numargs + argcount, 0);
+		buildit.Emit(OP_TAIL_K, buildit.GetConstantAddress(sym->Variants[0].Implementation), numargs + argcount, 0);
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
 		buildit.MakeFunction(sfunc);
@@ -888,7 +890,7 @@ static int PatchThing (int thingy)
 			else
 			{
 				info = GetDefaultByType (type);
-				ednum = &type->DoomEdNum;
+				ednum = &type->ActorInfo()->DoomEdNum;
 			}
 		}
 	}
@@ -2000,7 +2002,7 @@ static int PatchMisc (int dummy)
 		player->health = deh.StartHealth;
 
 		// Hm... I'm not sure that this is the right way to change this info...
-		FDropItem *di = PClass::FindActor(NAME_DoomPlayer)->DropItems;
+		FDropItem *di = PClass::FindActor(NAME_DoomPlayer)->ActorInfo()->DropItems;
 		while (di != NULL)
 		{
 			if (di->Name == NAME_Clip)
@@ -2137,7 +2139,7 @@ static int PatchCodePtrs (int dummy)
 
 				// This skips the action table and goes directly to the internal symbol table
 				// DEH compatible functions are easy to recognize.
-				PFunction *sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->Symbols.FindSymbol(symname, true));
+				PFunction *sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(symname, true));
 				if (sym == NULL)
 				{
 					Printf(TEXTCOLOR_RED "Frame %d: Unknown code pointer '%s'\n", frame, Line2);
@@ -2763,7 +2765,7 @@ static bool LoadDehSupp ()
 						// or AActor so this will find all of them.
 						FString name = "A_";
 						name << sc.String;
-						PFunction *sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->Symbols.FindSymbol(name, true));
+						PFunction *sym = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(name, true));
 						if (sym == NULL)
 						{
 							sc.ScriptError("Unknown code pointer '%s'", sc.String);
@@ -2846,7 +2848,7 @@ static bool LoadDehSupp ()
 					{
 						sc.ScriptError ("Can't find type %s", sc.String);
 					}
-					else if (!type->IsKindOf(RUNTIME_CLASS(PClassActor)))
+					else if (!type->IsDescendantOf(RUNTIME_CLASS(AActor)))
 					{
 						sc.ScriptError ("%s is not an actor", sc.String);
 					}
@@ -2862,7 +2864,7 @@ static bool LoadDehSupp ()
 
 					sc.MustGetStringName(",");
 					sc.MustGetNumber();
-					if (s.State == NULL || s.State + sc.Number > actortype->OwnedStates + actortype->NumOwnedStates)
+					if (s.State == NULL || sc.Number < 1 || !actortype->OwnsState(s.State + sc.Number - 1))
 					{
 						sc.ScriptError("Invalid state range in '%s'", type->TypeName.GetChars());
 					}
@@ -3053,7 +3055,8 @@ void FinishDehPatch ()
 			subclass = static_cast<PClassActor *>(dehtype->CreateDerivedClass(typeNameBuilder, dehtype->Size));
 		} 
 		while (subclass == nullptr);
-		
+		NewClassType(subclass);	// This needs a VM type to work as intended.
+
 		AActor *defaults2 = GetDefaultByType (subclass);
 		memcpy ((void *)defaults2, (void *)defaults1, sizeof(AActor));
 
@@ -3064,21 +3067,21 @@ void FinishDehPatch ()
 		if (!type->IsDescendantOf(RUNTIME_CLASS(AInventory)))
 		{
 			// If this is a hacked non-inventory item we must also copy AInventory's special states
-			statedef.AddStateDefines(RUNTIME_CLASS(AInventory)->StateList);
+			statedef.AddStateDefines(RUNTIME_CLASS(AInventory)->GetStateLabels());
 		}
 		statedef.InstallStates(subclass, defaults2);
 
 		// Use the DECORATE replacement feature to redirect all spawns
 		// of the original class to the new one.
-		PClassActor *old_replacement = type->Replacement;
+		PClassActor *old_replacement = type->ActorInfo()->Replacement;
 
-		type->Replacement = subclass;
-		subclass->Replacee = type;
+		type->ActorInfo()->Replacement = subclass;
+		subclass->ActorInfo()->Replacee = type;
 		// If this actor was already replaced by another actor, copy that
 		// replacement over to this item.
 		if (old_replacement != NULL)
 		{
-			subclass->Replacement = old_replacement;
+			subclass->ActorInfo()->Replacement = old_replacement;
 		}
 
 		DPrintf (DMSG_NOTIFY, "%s replaces %s\n", subclass->TypeName.GetChars(), type->TypeName.GetChars());
@@ -3135,7 +3138,7 @@ void FinishDehPatch ()
 				{
 					if (AmmoPerAttacks[j].ptr == nullptr)
 					{
-						auto p = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->Symbols.FindSymbol(AmmoPerAttacks[j].func, true));
+						auto p = dyn_cast<PFunction>(RUNTIME_CLASS(AWeapon)->FindSymbol(AmmoPerAttacks[j].func, true));
 						if (p != nullptr) AmmoPerAttacks[j].ptr = p->Variants[0].Implementation;
 					}
 					if (state->ActionFunc == AmmoPerAttacks[j].ptr)
@@ -3171,7 +3174,7 @@ DEFINE_ACTION_FUNCTION(ADehackedPickup, DetermineType)
 		int lex = memcmp (DehSpriteMappings[mid].Sprite, sprites[self->sprite].name, 4);
 		if (lex == 0)
 		{
-			ACTION_RETURN_OBJECT(PClass::FindActor(DehSpriteMappings[mid].ClassName));
+			ACTION_RETURN_POINTER(PClass::FindActor(DehSpriteMappings[mid].ClassName));
 		}
 		else if (lex < 0)
 		{
@@ -3182,6 +3185,6 @@ DEFINE_ACTION_FUNCTION(ADehackedPickup, DetermineType)
 			max = mid - 1;
 		}
 	}
-	ACTION_RETURN_OBJECT(nullptr);
+	ACTION_RETURN_POINTER(nullptr);
 }
 

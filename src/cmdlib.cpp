@@ -1,3 +1,25 @@
+//-----------------------------------------------------------------------------
+//
+// Copyright 1996 id Software
+// Copyright 1999-2016 Randy Heit
+// Copyright 2002-2016 Christoph Oelckers
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see http://www.gnu.org/licenses/
+//
+//-----------------------------------------------------------------------------
+//
+
 // cmdlib.c (mostly borrowed from the Q2 source)
 
 #ifdef _WIN32
@@ -407,7 +429,7 @@ bool CheckWildcards (const char *pattern, const char *text)
 void FormatGUID (char *buffer, size_t buffsize, const GUID &guid)
 {
 	mysnprintf (buffer, buffsize, "{%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}",
-		(uint32)guid.Data1, guid.Data2, guid.Data3,
+		(uint32_t)guid.Data1, guid.Data2, guid.Data3,
 		guid.Data4[0], guid.Data4[1],
 		guid.Data4[2], guid.Data4[3],
 		guid.Data4[4], guid.Data4[5],
@@ -622,7 +644,7 @@ int strbin (char *str)
 				case '5':
 				case '6':
 				case '7':
-					c = 0;
+					c = *p - '0';
 					for (i = 0; i < 2; i++)
 					{
 						p++;
@@ -725,7 +747,7 @@ FString strbin1 (const char *start)
 				case '5':
 				case '6':
 				case '7':
-					c = 0;
+					c = *p - '0';
 					for (i = 0; i < 2; i++)
 					{
 						p++;

@@ -1,6 +1,6 @@
 cmake_minimum_required( VERSION 2.8.7 )
 
-include(../precompiled_headers.cmake)
+include(precompiled_headers)
 
 if( COMMAND cmake_policy )
 	cmake_policy( SET CMP0003 NEW )
@@ -13,6 +13,7 @@ include( CheckIncludeFile )
 include( CheckIncludeFiles )
 include( CheckLibraryExists )
 include( FindPkgConfig )
+include( TargetArch )
 
 if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	option( NO_STRIP "Do not strip Release or MinSizeRel builds" )
@@ -25,12 +26,16 @@ endif()
 
 option( DYN_FLUIDSYNTH "Dynamically load fluidsynth" ON )
 option( DYN_OPENAL "Dynamically load OpenAL" ON )
+option( DYN_SNDFILE "Dynamically load libsndfile" ON )
+option( DYN_MPG123 "Dynamically load libmpg123" ON )
 
 if( APPLE )
     option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
 endif()
 
-if( CMAKE_SIZEOF_VOID_P MATCHES "8" )
+target_architecture(ZDOOM_TARGET_ARCH)
+
+if( ${ZDOOM_TARGET_ARCH} MATCHES "x86_64" )
 	set( X64 64 )
 endif()
 
@@ -249,22 +254,22 @@ else()
 endif()
 
 if( NOT NO_OPENAL )
-	find_package( OpenAL )
-	mark_as_advanced(CLEAR OPENAL_INCLUDE_DIR)
-	if( OPENAL_INCLUDE_DIR )
-		include_directories( ${OPENAL_INCLUDE_DIR} )
-		if( DYN_OPENAL )
-			add_definitions( -DDYN_OPENAL )
-		else()
+	if ( NOT DYN_OPENAL )	# DYN_OPENAL uses local copies of the headers.
+		find_package( OpenAL )
+		mark_as_advanced(CLEAR OPENAL_INCLUDE_DIR)
+		if( OPENAL_INCLUDE_DIR )
+			include_directories( ${OPENAL_INCLUDE_DIR} )
 			mark_as_advanced(CLEAR OPENAL_LIBRARY)
 			if( OPENAL_LIBRARY )
 				set( ZDOOM_LIBS ${OPENAL_LIBRARY} ${ZDOOM_LIBS} )
 			else()
 				set( NO_OPENAL ON )
 			endif()
+		else()
+			set( NO_OPENAL ON )
 		endif()
 	else()
-		set( NO_OPENAL ON )
+		add_definitions( -DDYN_OPENAL )
 	endif()
 endif()
 
@@ -352,11 +357,15 @@ if( NO_OPENAL )
 else()
 	# Search for libSndFile
 
-	find_package( SndFile )
+	if ( NOT DYN_SNDFILE )
+		find_package( SndFile )
+	endif()
 
 	# Search for libmpg123
 
-	find_package( MPG123 )
+	if ( NOT DYN_MPG123 )
+		find_package( MPG123 )
+	endif()
 endif()
 
 # Search for FluidSynth
@@ -452,6 +461,11 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm") 
 		set( CMAKE_CXX_FLAGS "-mfpu=neon ${CMAKE_CXX_FLAGS}" )
 	endif ()
+
+	if( NOT X64 AND NOT CAN_DO_MFPMATH )
+		set( CMAKE_C_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
+		set( CMAKE_CXX_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
+	endif()
 
 	# Use the highest C++ standard available since VS2015 compiles with C++14
 	# but we only require C++11.  The recommended way to do this in CMake is to
@@ -568,7 +582,9 @@ endif()
 
 # Start defining source files for ZDoom
 set( PLAT_WIN32_SOURCES
+	sound/mididevices/music_win_mididevice.cpp
 	win32/eaxedit.cpp
+	win32/critsec.cpp
 	win32/fb_d3d9.cpp
 	win32/fb_d3d9_wipe.cpp
 	win32/fb_ddraw.cpp
@@ -592,6 +608,7 @@ set( PLAT_POSIX_SOURCES
 	posix/i_steam.cpp )
 set( PLAT_SDL_SOURCES
 	posix/sdl/crashcatcher.c
+	posix/sdl/critsec.cpp
 	posix/sdl/hardware.cpp
 	posix/sdl/i_gui.cpp
 	posix/sdl/i_input.cpp
@@ -605,6 +622,7 @@ set( PLAT_UNIX_SOURCES
 	posix/unix/i_specialpaths.cpp
 	posix/unix/iwadpicker_gtk.cpp )
 set( PLAT_OSX_SOURCES
+	sound/mididevices/music_audiotoolbox_mididevice.cpp
 	posix/osx/iwadpicker_cocoa.mm
 	posix/osx/i_specialpaths.mm
 	posix/osx/zdoom.icns )
@@ -663,12 +681,18 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
-if( SNDFILE_FOUND )
-    add_definitions( -DHAVE_SNDFILE )
+if( DYN_SNDFILE)
+	add_definitions( -DHAVE_SNDFILE -DDYN_SNDFILE )
+elseif( SNDFILE_FOUND )
+	add_definitions( -DHAVE_SNDFILE )
 endif()
-if( MPG123_FOUND )
-    add_definitions( -DHAVE_MPG123 )
+
+if( DYN_MPG123)
+	add_definitions( -DHAVE_MPG123 -DDYN_MPG123 )
+elseif( MPG123_FOUND )
+	add_definitions( -DHAVE_MPG123 )
 endif()
+
 if( DYN_FLUIDSYNTH )
 	add_definitions( -DHAVE_FLUIDSYNTH -DDYN_FLUIDSYNTH )
 elseif( FLUIDSYNTH_FOUND )
@@ -696,8 +720,8 @@ file( GLOB HEADER_FILES
 	g_inventory/*.h
 	intermission/*.h
 	menu/*.h
-	oplsynth/*.h
-	oplsynth/dosbox/*.h
+	sound/oplsynth/*.h
+	sound/oplsynth/dosbox/*.h
 	posix/*.h
 	posix/cocoa/*.h
 	posix/sdl/*.h
@@ -712,8 +736,8 @@ file( GLOB HEADER_FILES
 	scripting/decorate/*.h
 	scripting/zscript/*.h
 	scripting/vm/*.h
-	timidity/*.h
-	wildmidi/*.h
+	sound/timidity/*.h
+	sound/wildmidi/*.h
 	xlat/*.h
 	*.h
 )
@@ -754,35 +778,12 @@ set( FASTMATH_PCH_SOURCES
 	s_sound.cpp
 	GuillotineBinPack.cpp
 	SkylineBinPack.cpp
-	intermission/intermission.cpp
-	intermission/intermission_parse.cpp
-	menu/joystickmenu.cpp
-	menu/loadsavemenu.cpp
-	menu/menu.cpp
-	menu/menudef.cpp
-	menu/messagebox.cpp
-	menu/optionmenu.cpp
-	menu/playermenu.cpp
-	menu/videomenu.cpp
-	oplsynth/fmopl.cpp
-	oplsynth/mlopl.cpp
-	oplsynth/mlopl_io.cpp
-	oplsynth/dosbox/opl.cpp
-	oplsynth/OPL3.cpp
-	oplsynth/nukedopl3.cpp
-	timidity/common.cpp
-	timidity/instrum.cpp
-	timidity/instrum_dls.cpp
-	timidity/instrum_font.cpp
-	timidity/instrum_sf2.cpp
-	timidity/mix.cpp
-	timidity/playmidi.cpp
-	timidity/resample.cpp
-	timidity/timidity.cpp
-	wildmidi/file_io.cpp
-	wildmidi/gus_pat.cpp
-	wildmidi/reverb.cpp
-	wildmidi/wm_error.cpp
+	sound/oplsynth/fmopl.cpp
+	sound/oplsynth/mlopl.cpp
+	sound/oplsynth/mlopl_io.cpp
+	sound/oplsynth/dosbox/opl.cpp
+	sound/oplsynth/OPL3.cpp
+	sound/oplsynth/nukedopl3.cpp
 	r_data/colormaps.cpp
 	r_data/r_translate.cpp
 )
@@ -793,35 +794,13 @@ set( FASTMATH_PCH_SOURCES
 # Enable fast math for some sources
 set( FASTMATH_SOURCES
 	${FASTMATH_PCH_SOURCES}
-	oplsynth/music_opldumper_mididevice.cpp
-	oplsynth/music_opl_mididevice.cpp
-	oplsynth/opl_mus_player.cpp
+	sound/oplsynth/opl_mus_player.cpp
 	sound/fmodsound.cpp
-	sound/i_music.cpp
-	sound/i_sound.cpp
 	sound/mpg123_decoder.cpp
-	sound/music_cd.cpp
-	sound/music_dumb.cpp
-	sound/music_gme.cpp
-	sound/music_mus_midiout.cpp
-	sound/music_smf_midiout.cpp
-	sound/music_hmi_midiout.cpp
-	sound/music_xmi_midiout.cpp
-	sound/music_midistream.cpp
 	sound/music_midi_base.cpp
-	sound/music_midi_timidity.cpp
-	sound/music_mus_opl.cpp
-	sound/music_stream.cpp
-	sound/music_fluidsynth_mididevice.cpp
-	sound/music_softsynth_mididevice.cpp
-	sound/music_timidity_mididevice.cpp
-	sound/music_wildmidi_mididevice.cpp
-	sound/music_win_mididevice.cpp
-	sound/music_audiotoolbox_mididevice.cpp
 	sound/oalsound.cpp
 	sound/sndfile_decoder.cpp
-	sound/music_pseudo_mididevice.cpp
-	wildmidi/wildmidi_lib.cpp
+	sound/mididevices/music_timiditypp_mididevice.cpp
 )
 
 set (PCH_SOURCES
@@ -856,7 +835,6 @@ set (PCH_SOURCES
 	dobject.cpp
 	dobjgc.cpp
 	dobjtype.cpp
-	doomdef.cpp
 	doomstat.cpp
 	dsectoreffect.cpp
 	dthinker.cpp
@@ -978,7 +956,14 @@ set (PCH_SOURCES
 	g_statusbar/sbarinfo.cpp
 	g_statusbar/sbar_mugshot.cpp
 	g_statusbar/shared_sbar.cpp
-	g_statusbar/strife_sbar.cpp
+	menu/joystickmenu.cpp
+	menu/loadsavemenu.cpp
+	menu/menu.cpp
+	menu/menudef.cpp
+	menu/messagebox.cpp
+	menu/optionmenu.cpp
+	menu/playermenu.cpp
+	menu/videomenu.cpp
 	resourcefiles/ancientzip.cpp
 	resourcefiles/file_7z.cpp
 	resourcefiles/file_grp.cpp
@@ -1006,6 +991,7 @@ set (PCH_SOURCES
 	textures/rawpagetexture.cpp
 	textures/emptytexture.cpp
 	textures/backdroptexture.cpp
+	textures/shadertexture.cpp
 	textures/texture.cpp
 	textures/texturemanager.cpp
 	textures/tgatexture.cpp
@@ -1020,11 +1006,14 @@ set (PCH_SOURCES
 	fragglescript/t_spec.cpp
 	fragglescript/t_variable.cpp
 	fragglescript/t_cmd.cpp
+	intermission/intermission.cpp
+	intermission/intermission_parse.cpp
 	r_data/sprites.cpp
 	r_data/voxels.cpp
 	r_data/renderstyle.cpp
 	r_data/r_interpolate.cpp
 	scripting/symbols.cpp
+	scripting/types.cpp
 	scripting/thingdef.cpp
 	scripting/thingdef_data.cpp
 	scripting/thingdef_properties.cpp
@@ -1043,8 +1032,43 @@ set (PCH_SOURCES
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
 	sfmt/SFMT.cpp
+	sound/i_music.cpp
+	sound/i_sound.cpp
+	sound/mididevices/music_opldumper_mididevice.cpp
+	sound/mididevices/music_opl_mididevice.cpp
+	sound/mididevices/music_pseudo_mididevice.cpp
+	sound/mididevices/music_fluidsynth_mididevice.cpp
+	sound/mididevices/music_softsynth_mididevice.cpp
+	sound/mididevices/music_timidity_mididevice.cpp
+	sound/mididevices/music_wildmidi_mididevice.cpp
+	sound/musicformats/music_cd.cpp
+	sound/musicformats/music_dumb.cpp
+	sound/musicformats/music_gme.cpp
+	sound/musicformats/music_libsndfile.cpp
+	sound/musicformats/music_mus_midiout.cpp
+	sound/musicformats/music_smf_midiout.cpp
+	sound/musicformats/music_hmi_midiout.cpp
+	sound/musicformats/music_xmi_midiout.cpp
+	sound/musicformats/music_midistream.cpp
+	sound/musicformats/music_opl.cpp
+	sound/musicformats/music_stream.cpp
+	sound/timidity/common.cpp
+	sound/timidity/instrum.cpp
+	sound/timidity/instrum_dls.cpp
+	sound/timidity/instrum_font.cpp
+	sound/timidity/instrum_sf2.cpp
+	sound/timidity/mix.cpp
+	sound/timidity/playmidi.cpp
+	sound/timidity/resample.cpp
+	sound/timidity/timidity.cpp
+	sound/wildmidi/file_io.cpp
+	sound/wildmidi/gus_pat.cpp
+	sound/wildmidi/reverb.cpp
+	sound/wildmidi/wildmidi_lib.cpp
+	sound/wildmidi/wm_error.cpp
 	events.cpp
 )
+
 enable_precompiled_headers( g_pch.h PCH_SOURCES )
 
 add_executable( zdoom WIN32 MACOSX_BUNDLE
@@ -1098,11 +1122,11 @@ include_directories( .
 	g_statusbar
 	g_shared
 	g_inventory
-	oplsynth
 	sound
 	textures
-	timidity
-	wildmidi
+	sound/oplsynth
+	sound/timidity
+	sound/wildmidi
 	xlat
 	scripting
 	scripting/vm
@@ -1147,9 +1171,6 @@ if( MSVC )
 	if( ZDOOM_GENERATE_MAPFILE )
 		set( LINKERSTUFF "${LINKERSTUFF} /MAP" )
 	endif()
-	if( NOT NO_OPENAL )
-		set( LINKERSTUFF "${LINKERSTUFF} /DELAYLOAD:\"libmpg123-0.dll\" /DELAYLOAD:\"libsndfile-1.dll\"" )
-	endif()
 	set_target_properties(zdoom PROPERTIES LINK_FLAGS ${LINKERSTUFF})
 
 	add_custom_command(TARGET zdoom POST_BUILD
@@ -1160,12 +1181,17 @@ if( MSVC )
 	create_default_target_launcher( zdoom WORKING_DIRECTORY ${ZDOOM_OUTPUT_DIR} )
 endif()
 
-if( NOT WIN32 )
+if( NOT WIN32 AND NOT APPLE )
 	FILE( WRITE ${CMAKE_CURRENT_BINARY_DIR}/link-make "if [ ! -e ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME} ]; then ln -sf ${CMAKE_CURRENT_BINARY_DIR}/${ZDOOM_EXE_NAME} ${ZDOOM_OUTPUT_DIR}/${ZDOOM_EXE_NAME}; fi" )
 	add_custom_command( TARGET zdoom POST_BUILD
 		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
 		COMMAND /bin/sh -c ${CMAKE_CURRENT_BINARY_DIR}/link-make )
 endif()
+
+add_custom_command(TARGET zdoom POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	${CMAKE_SOURCE_DIR}/soundfont/zzdoom.sf2 $<TARGET_FILE_DIR:zdoom>)
+
 if( CMAKE_COMPILER_IS_GNUCXX )
 	# GCC misoptimizes this file
 	set_source_files_properties( oplsynth/fmopl.cpp PROPERTIES COMPILE_FLAGS "-fno-tree-dominator-opts -fno-tree-fre" )
@@ -1214,12 +1240,12 @@ install(TARGETS zdoom
 		COMPONENT "Game executable")
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
-source_group("Audio Files\\OPL Synth" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/oplsynth/.+")
-source_group("Audio Files\\OPL Synth\\DOSBox" FILES oplsynth/dosbox/opl.cpp oplsynth/dosbox/opl.h)
-source_group("Audio Files\\Timidity\\Headers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/timidity/.+\\.h$")
-source_group("Audio Files\\Timidity\\Source" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/timidity/.+\\.cpp$")
-source_group("Audio Files\\WildMidi\\Headers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/wildmidi/.+\\.h$")
-source_group("Audio Files\\WildMidi\\Source" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/wildmidi/.+\\.cpp$")
+source_group("Audio Files\\OPL Synth" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/oplsynth/.+")
+source_group("Audio Files\\OPL Synth\\DOSBox" FILES sound/oplsynth/dosbox/opl.cpp sound/oplsynth/dosbox/opl.h)
+source_group("Audio Files\\Timidity" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/timidity/.+")
+source_group("Audio Files\\WildMidi" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/wildmidi/.+")
+source_group("Audio Files\\MIDI Devices" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/mididevices/.+")
+source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")
 source_group("External\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/math/.+")
 source_group("External\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/.+")
 source_group("External\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sfmt/.+")

@@ -54,6 +54,7 @@
 #include "d_player.h"
 #include "r_utility.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 CVAR (Int, cl_rockettrails, 1, CVAR_ARCHIVE);
 CVAR (Bool, r_rail_smartspiral, 0, CVAR_ARCHIVE);
@@ -194,12 +195,12 @@ void P_ClearParticles ()
 
 void P_FindParticleSubsectors ()
 {
-	if (ParticlesInSubsec.Size() < (size_t)numsubsectors)
+	if (ParticlesInSubsec.Size() < level.subsectors.Size())
 	{
-		ParticlesInSubsec.Reserve (numsubsectors - ParticlesInSubsec.Size());
+		ParticlesInSubsec.Reserve (level.subsectors.Size() - ParticlesInSubsec.Size());
 	}
 
-	fillshort (&ParticlesInSubsec[0], numsubsectors, NO_PARTICLE);
+	fillshort (&ParticlesInSubsec[0], level.subsectors.Size(), NO_PARTICLE);
 
 	if (!r_particles)
 	{
@@ -209,7 +210,7 @@ void P_FindParticleSubsectors ()
 	{
 		 // Try to reuse the subsector from the last portal check, if still valid.
 		if (Particles[i].subsector == NULL) Particles[i].subsector = R_PointInSubsector(Particles[i].Pos);
-		int ssnum = int(Particles[i].subsector - subsectors);
+		int ssnum = Particles[i].subsector->Index();
 		Particles[i].snext = ParticlesInSubsec[ssnum];
 		ParticlesInSubsec[ssnum] = i;
 	}
@@ -217,7 +218,7 @@ void P_FindParticleSubsectors ()
 
 static TMap<int, int> ColorSaver;
 
-static uint32 ParticleColor(int rgb)
+static uint32_t ParticleColor(int rgb)
 {
 	int *val;
 	int stuff;
@@ -232,7 +233,7 @@ static uint32 ParticleColor(int rgb)
 	return stuff;
 }
 
-static uint32 ParticleColor(int r, int g, int b)
+static uint32_t ParticleColor(int r, int g, int b)
 {
 	return ParticleColor(MAKERGB(r, g, b));
 }
@@ -362,7 +363,7 @@ void P_RunEffects ()
 		{
 			// Only run the effect if the actor is potentially visible
 			int rnum = pnum + actor->Sector->Index();
-			if (rejectmatrix == NULL || !(rejectmatrix[rnum>>3] & (1 << (rnum & 7))))
+			if (level.rejectmatrix.Size() == 0 || !(level.rejectmatrix[rnum>>3] & (1 << (rnum & 7))))
 				P_RunEffect (actor, actor->effects);
 		}
 	}

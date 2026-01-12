@@ -31,6 +31,7 @@
 
 class FScanner;
 struct level_info_t;
+struct FDoorAnimation;
 
 struct FThinkerCollection
 {
@@ -189,9 +190,9 @@ public:
 	void Tick ();
 
 	bool IsLift() const { return m_Type == platDownWaitUpStay || m_Type == platDownWaitUpStayStone; }
+	DPlat(sector_t *sector);
 
 protected:
-	DPlat (sector_t *sector);
 
 	double	 	m_Speed;
 	double	 	m_Low;

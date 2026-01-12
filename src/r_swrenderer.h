@@ -10,7 +10,7 @@ struct FSoftwareRenderer : public FRenderer
 
 	// precache one texture
 	void PrecacheTexture(FTexture *tex, int cache);
-	virtual void Precache(BYTE *texhitlist, TMap<PClassActor*, bool> &actorhitlist) override;
+	virtual void Precache(uint8_t *texhitlist, TMap<PClassActor*, bool> &actorhitlist) override;
 
 	// render 3D view
 	virtual void RenderView(player_t *player) override;

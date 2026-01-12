@@ -45,6 +45,7 @@
 #include "sc_man.h"
 #include "cmdlib.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 #include "xlat/xlat.h"
 
 // define names for the TriggerType field of the general linedefs
@@ -63,9 +64,9 @@ typedef enum
 
 void P_TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid)
 {
-	unsigned short special = (unsigned short) LittleShort(mld->special);
-	short tag = LittleShort(mld->tag);
-	uint32_t flags = LittleShort(mld->flags);
+	uint32_t special = mld->special;
+	short tag = mld->tag;
+	uint32_t flags =mld->flags;
 	INTBOOL passthrough = 0;
 
 	uint32_t flags1 = flags;

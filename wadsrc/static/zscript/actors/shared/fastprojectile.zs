@@ -162,7 +162,7 @@ class FastProjectile : Actor
 					ExplodeMissile (NULL, NULL);
 					return;
 				}
-				if (!(frac.xy ~== (0, 0)) && ripcount <= 0) 
+				if (changexy && ripcount <= 0) 
 				{
 					ripcount = count >> 3;
 

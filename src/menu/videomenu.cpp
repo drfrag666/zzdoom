@@ -53,6 +53,7 @@
 #include "m_joy.h"
 #include "sbar.h"
 #include "hardware.h"
+#include "vm.h"
 
 /*=======================================
  *
@@ -118,7 +119,7 @@ CUSTOM_CVAR (Bool, vid_tft, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 	setsizeneeded = true;
 	if (StatusBar != NULL)
 	{
-		StatusBar->ScreenSizeChanged();
+		StatusBar->CallScreenSizeChanged();
 	}	
 }
 

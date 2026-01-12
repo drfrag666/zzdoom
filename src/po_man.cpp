@@ -33,6 +33,7 @@
 #include "r_utility.h"
 #include "p_blockmap.h"
 #include "g_levellocals.h"
+#include "actorinlines.h"
 #include "v_text.h"
 #include "s_sndseq.h"
 
@@ -391,7 +392,7 @@ bool EV_RotatePoly (line_t *line, int polyNum, int speed, int byteAngle,
 			// cannot do rotations on linked polyportals.
 			break;
 		}
-		pe = new DRotatePoly(poly->tag);
+		pe = Create<DRotatePoly>(poly->tag);
 		poly->specialdata = pe;
 		poly->bBlocked = false;
 		if (byteAngle != 0)
@@ -473,7 +474,7 @@ bool EV_MovePoly (line_t *line, int polyNum, double speed, DAngle angle,
 		{ // poly is already in motion
 			break;
 		}
-		pe = new DMovePoly(poly->tag);
+		pe = Create<DMovePoly>(poly->tag);
 		poly->specialdata = pe;
 		poly->bBlocked = false;
 		pe->m_Dist = dist; // Distance
@@ -555,7 +556,7 @@ bool EV_MovePolyTo(line_t *line, int polyNum, double speed, const DVector2 &targ
 		{ // poly is already in motion
 			break;
 		}
-		pe = new DMovePolyTo(poly->tag);
+		pe = Create<DMovePolyTo>(poly->tag);
 		poly->specialdata = pe;
 		poly->bBlocked = false;
 		pe->m_Dist = distlen;
@@ -711,7 +712,7 @@ bool EV_OpenPolyDoor(line_t *line, int polyNum, double speed, DAngle angle, int 
 			break;
 		}
 
-		pd = new DPolyDoor(poly->tag, type);
+		pd = Create<DPolyDoor>(poly->tag, type);
 		poly->specialdata = pd;
 		if (type == PODOOR_SLIDE)
 		{
@@ -1071,10 +1072,10 @@ void FPolyObj::UnLinkPolyobj ()
 	// remove the polyobj from each blockmap section
 	for(j = bbox[BOXBOTTOM]; j <= bbox[BOXTOP]; j++)
 	{
-		index = j*bmapwidth;
+		index = j*level.blockmap.bmapwidth;
 		for(i = bbox[BOXLEFT]; i <= bbox[BOXRIGHT]; i++)
 		{
-			if(i >= 0 && i < bmapwidth && j >= 0 && j < bmapheight)
+			if(i >= 0 && i < level.blockmap.bmapwidth && j >= 0 && j < level.blockmap.bmapheight)
 			{
 				link = PolyBlockMap[index+i];
 				while(link != NULL && link->polyobj != this)
@@ -1107,13 +1108,15 @@ bool FPolyObj::CheckMobjBlocking (side_t *sd)
 	line_t *ld;
 	bool blocked;
 	bool performBlockingThrust;
+	int bmapwidth = level.blockmap.bmapwidth;
+	int bmapheight = level.blockmap.bmapheight;
 
 	ld = sd->linedef;
 
-	top = GetBlockY(ld->bbox[BOXTOP]);
-	bottom = GetBlockY(ld->bbox[BOXBOTTOM]);
-	left = GetBlockX(ld->bbox[BOXLEFT]);
-	right = GetBlockX(ld->bbox[BOXRIGHT]);
+	top = level.blockmap.GetBlockY(ld->bbox[BOXTOP]);
+	bottom = level.blockmap.GetBlockY(ld->bbox[BOXBOTTOM]);
+	left = level.blockmap.GetBlockX(ld->bbox[BOXLEFT]);
+	right = level.blockmap.GetBlockX(ld->bbox[BOXRIGHT]);
 
 	blocked = false;
 	checker.Clear();
@@ -1131,7 +1134,7 @@ bool FPolyObj::CheckMobjBlocking (side_t *sd)
 	{
 		for (i = left; i <= right; i++)
 		{
-			for (block = blocklinks[j+i]; block != NULL; block = block->NextActor)
+			for (block = level.blockmap.blocklinks[j+i]; block != NULL; block = block->NextActor)
 			{
 				mobj = block->Me;
 				for (k = (int)checker.Size()-1; k >= 0; --k)
@@ -1232,6 +1235,8 @@ void FPolyObj::LinkPolyobj ()
 {
 	polyblock_t **link;
 	polyblock_t *tempLink;
+	int bmapwidth = level.blockmap.bmapwidth;
+	int bmapheight = level.blockmap.bmapheight;
 
 	// calculate the polyobj bbox
 	Bounds.ClearBox();
@@ -1244,10 +1249,10 @@ void FPolyObj::LinkPolyobj ()
 		vt = Sidedefs[i]->linedef->v2;
 		Bounds.AddToBox(vt->fPos());
 	}
-	bbox[BOXRIGHT] = GetBlockX(Bounds.Right());
-	bbox[BOXLEFT] = GetBlockX(Bounds.Left());
-	bbox[BOXTOP] = GetBlockY(Bounds.Top());
-	bbox[BOXBOTTOM] = GetBlockY(Bounds.Bottom());
+	bbox[BOXRIGHT] = level.blockmap.GetBlockX(Bounds.Right());
+	bbox[BOXLEFT] = level.blockmap.GetBlockX(Bounds.Left());
+	bbox[BOXTOP] = level.blockmap.GetBlockY(Bounds.Top());
+	bbox[BOXBOTTOM] = level.blockmap.GetBlockY(Bounds.Bottom());
 	// add the polyobj to each blockmap section
 	for(int j = bbox[BOXBOTTOM]*bmapwidth; j <= bbox[BOXTOP]*bmapwidth;
 		j += bmapwidth)
@@ -1400,6 +1405,8 @@ void FPolyObj::ClosestPoint(const DVector2 &fpos, DVector2 &out, side_t **side) 
 static void InitBlockMap (void)
 {
 	int i;
+	int bmapwidth = level.blockmap.bmapwidth;
+	int bmapheight = level.blockmap.bmapheight;
 
 	PolyBlockMap = new polyblock_t *[bmapwidth*bmapheight];
 	memset (PolyBlockMap, 0, bmapwidth*bmapheight*sizeof(polyblock_t *));
@@ -1755,25 +1762,16 @@ void PO_Init (void)
 	// [RH] Don't need the side lists anymore
 	KillSideLists ();
 
-	for(int i=0;i<numnodes;i++)
-	{
-		node_t *no = &nodes[i];
-		double fdx = FIXED2DBL(no->dx);
-		double fdy = FIXED2DBL(no->dy);
-		no->len = (float)g_sqrt(fdx * fdx + fdy * fdy);
-	}
-
 	// mark all subsectors which have a seg belonging to a polyobj
 	// These ones should not be rendered on the textured automap.
-	for (int i = 0; i < numsubsectors; i++)
+	for (auto &ss : level.subsectors)
 	{
-		subsector_t *ss = &subsectors[i];
-		for(uint32_t j=0;j<ss->numlines; j++)
+		for(uint32_t j=0;j<ss.numlines; j++)
 		{
-			if (ss->firstline[j].sidedef != NULL &&
-				ss->firstline[j].sidedef->Flags & WALLF_POLYOBJ)
+			if (ss.firstline[j].sidedef != NULL &&
+				ss.firstline[j].sidedef->Flags & WALLF_POLYOBJ)
 			{
-				ss->flags |= SSECF_POLYORG;
+				ss.flags |= SSECF_POLYORG;
 				break;
 			}
 		}
@@ -2143,7 +2141,7 @@ void FPolyObj::CreateSubsectorLinks()
 	}
 	if (!(i_compatflags & COMPATF_POLYOBJ))
 	{
-		SplitPoly(node, nodes + numnodes - 1, dummybbox);
+		SplitPoly(node, level.HeadNode(), dummybbox);
 	}
 	else
 	{

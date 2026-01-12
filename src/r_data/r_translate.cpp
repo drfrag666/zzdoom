@@ -50,6 +50,7 @@
 #include "d_player.h"
 #include "r_data/sprites.h"
 #include "r_state.h"
+#include "vm.h"
 
 #include "gi.h"
 #include "stats.h"
@@ -1393,6 +1394,13 @@ int R_FindCustomTranslation(FName name)
 	}
 	int *t = customTranslationMap.CheckKey(FName(name, true));
 	return (t != nullptr)? *t : -1;
+}
+
+DEFINE_ACTION_FUNCTION(_Translation, GetID)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(t);
+	ACTION_RETURN_INT(R_FindCustomTranslation(t));
 }
 
 //----------------------------------------------------------------------------

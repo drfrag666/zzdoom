@@ -441,7 +441,7 @@ static void LoadSectors (sectortype *bsec, int count)
 		sec->gravity = 1.f;
 		sec->friction = ORIG_FRICTION;
 		sec->movefactor = ORIG_FRICTION_FACTOR;
-		sec->ColorMap = map;
+		sec->Colormap = map;
 		sec->ZoneNumber = 0xFFFF;
 		sec->terrainnum[sector_t::ceiling] = sec->terrainnum[sector_t::floor] = -1;
 

@@ -211,7 +211,7 @@ void P_StartLightning ()
 	DLightningThinker *lightning = LocateLightning ();
 	if (lightning == NULL)
 	{
-		new DLightningThinker ();
+		Create<DLightningThinker>();
 	}
 }
 
@@ -220,7 +220,7 @@ void P_ForceLightning (int mode)
 	DLightningThinker *lightning = LocateLightning ();
 	if (lightning == NULL)
 	{
-		lightning = new DLightningThinker ();
+		lightning = Create<DLightningThinker>();
 	}
 	if (lightning != NULL)
 	{

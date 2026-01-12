@@ -32,6 +32,8 @@
 #include "serializer.h"
 #include "p_spec.h"
 #include "g_levellocals.h"
+#include "textures.h"
+#include "vm.h"
 
 //============================================================================
 //
@@ -242,7 +244,7 @@ bool P_CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int t
 	}
 	
 	// new door thinker
-	DCeiling *ceiling = new DCeiling (sec, speed, speed2, silent & ~4);
+	DCeiling *ceiling = Create<DCeiling> (sec, speed, speed2, silent & ~4);
 	vertex_t *spot = sec->Lines[0]->v1;
 
 	switch (type)

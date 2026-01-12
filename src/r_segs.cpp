@@ -136,12 +136,12 @@ FTexture		*rw_pic;
 static fixed_t	*maskedtexturecol;
 
 static void R_RenderDecal (side_t *wall, DBaseDecal *first, drawseg_t *clipper, int pass);
-static void WallSpriteColumn (void (*drawfunc)(const BYTE *column, const FTexture::Span *spans));
+static void WallSpriteColumn (void (*drawfunc)(const uint8_t *column, const FTexture::Span *spans));
 
 inline bool IsFogBoundary (sector_t *front, sector_t *back)
 {
-	return r_fogboundary && fixedcolormap == NULL && front->ColorMap->Fade &&
-		front->ColorMap->Fade != back->ColorMap->Fade &&
+	return r_fogboundary && fixedcolormap == NULL && front->Colormap.FadeColor &&
+		front->Colormap.FadeColor != back->Colormap.FadeColor &&
 		(front->GetTexture(sector_t::ceiling) != skyflatnum || back->GetTexture(sector_t::ceiling) != skyflatnum);
 }
 
@@ -243,7 +243,7 @@ void R_RenderMaskedSegRange (drawseg_t *ds, int x1, int x2)
 	// killough 4/13/98: get correct lightlevel for 2s normal textures
 	sec = R_FakeFlat (frontsector, &tempsec, NULL, NULL, false);
 
-	basecolormap = sec->ColorMap;	// [RH] Set basecolormap
+	basecolormap = GetColorTable(sec->Colormap);	// [RH] Set basecolormap
 
 	wallshade = ds->shade;
 	rw_lightstep = ds->lightstep;
@@ -260,7 +260,7 @@ void R_RenderMaskedSegRange (drawseg_t *ds, int x1, int x2)
 			if (sclipTop <= frontsector->e->XFloor.lightlist[i].plane.Zat0())
 			{
 				lightlist_t *lit = &frontsector->e->XFloor.lightlist[i];
-				basecolormap = lit->extra_colormap;
+				basecolormap = GetColorTable(lit->extra_colormap);
 				wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(foggy, *lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
 				break;
 			}
@@ -823,7 +823,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 				}
 			}
 			// correct colors now
-			basecolormap = frontsector->ColorMap;
+			basecolormap = GetColorTable(frontsector->Colormap);
 			wallshade = ds->shade;
 			if (fixedlightlev < 0)
 			{
@@ -834,7 +834,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 						if (sclipTop <= backsector->e->XFloor.lightlist[j].plane.Zat0())
 						{
 							lightlist_t *lit = &backsector->e->XFloor.lightlist[j];
-							basecolormap = lit->extra_colormap;
+							basecolormap = GetColorTable(lit->extra_colormap);
 							wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(foggy, *lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
 							break;
 						}
@@ -847,7 +847,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 						if (sclipTop <= frontsector->e->XFloor.lightlist[j].plane.Zat0())
 						{
 							lightlist_t *lit = &frontsector->e->XFloor.lightlist[j];
-							basecolormap = lit->extra_colormap;
+							basecolormap = GetColorTable(lit->extra_colormap);
 							wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(foggy, *lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
 							break;
 						}
@@ -997,7 +997,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 				}
 			}
 			// correct colors now
-			basecolormap = frontsector->ColorMap;
+			basecolormap = GetColorTable(frontsector->Colormap);
 			wallshade = ds->shade;
 			if (fixedlightlev < 0)
 			{
@@ -1008,7 +1008,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 						if (sclipTop <= backsector->e->XFloor.lightlist[j].plane.Zat0())
 						{
 							lightlist_t *lit = &backsector->e->XFloor.lightlist[j];
-							basecolormap = lit->extra_colormap;
+							basecolormap = GetColorTable(lit->extra_colormap);
 							wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(foggy, *lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
 							break;
 						}
@@ -1021,7 +1021,7 @@ void R_RenderFakeWallRange (drawseg_t *ds, int x1, int x2)
 						if(sclipTop <= frontsector->e->XFloor.lightlist[j].plane.Zat0())
 						{
 							lightlist_t *lit = &frontsector->e->XFloor.lightlist[j];
-							basecolormap = lit->extra_colormap;
+							basecolormap = GetColorTable(lit->extra_colormap);
 							wallshade = LIGHT2SHADE(curline->sidedef->GetLightLevel(foggy, *lit->p_lightlevel, lit->lightsource != NULL) + r_actualextralight);
 							break;
 						}
@@ -1386,7 +1386,7 @@ void R_NewWall (bool needlights)
 				|| backsector->GetVisFlags(sector_t::floor) != frontsector->GetVisFlags(sector_t::floor)
 
 				// [RH] Add checks for colormaps
-				|| backsector->ColorMap != frontsector->ColorMap
+				|| backsector->Colormap != frontsector->Colormap
 
 
 				// kg3D - add fake lights
@@ -1417,7 +1417,7 @@ void R_NewWall (bool needlights)
 				|| backsector->GetFlags(sector_t::ceiling) != frontsector->GetFlags(sector_t::ceiling)
 
 				// [RH] Add check for colormaps
-				|| backsector->ColorMap != frontsector->ColorMap
+				|| backsector->Colormap != frontsector->Colormap
 
 				// kg3D - add fake lights
 				|| (frontsector->e && frontsector->e->XFloor.lightlist.Size())
@@ -2121,7 +2121,7 @@ static void R_RenderDecal (side_t *wall, DBaseDecal *decal, drawseg_t *clipper, 
 	DVector2 decal_left, decal_right, decal_pos;
 	int x1, x2;
 	double yscale;
-	BYTE flipx;
+	uint8_t flipx;
 	double zpos;
 	int needrepeat = 0;
 	sector_t *front, *back;
@@ -2173,7 +2173,7 @@ static void R_RenderDecal (side_t *wall, DBaseDecal *decal, drawseg_t *clipper, 
 	}
 
 	WallSpriteTile = TexMan(decal->PicNum, true);
-	flipx = (BYTE)(decal->RenderFlags & RF_XFLIP);
+	flipx = (uint8_t)(decal->RenderFlags & RF_XFLIP);
 
 	if (WallSpriteTile == NULL || WallSpriteTile->UseType == FTexture::TEX_Null)
 	{
@@ -2214,6 +2214,10 @@ static void R_RenderDecal (side_t *wall, DBaseDecal *decal, drawseg_t *clipper, 
 	// Get the top and bottom clipping arrays
 	switch (decal->RenderFlags & RF_CLIPMASK)
 	{
+	default:
+		// keep GCC quiet.
+		return;
+
 	case RF_CLIPFULL:
 		if (curline->backsector == NULL)
 		{

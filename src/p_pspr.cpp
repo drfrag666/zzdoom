@@ -31,6 +31,7 @@
 #include "v_text.h"
 #include "cmdlib.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 
 // MACROS ------------------------------------------------------------------
@@ -112,6 +113,7 @@ DEFINE_FIELD(DPSprite, Next)
 DEFINE_FIELD(DPSprite, Owner)
 DEFINE_FIELD(DPSprite, Sprite)
 DEFINE_FIELD(DPSprite, Frame)
+DEFINE_FIELD(DPSprite, Flags)
 DEFINE_FIELD(DPSprite, ID)
 DEFINE_FIELD(DPSprite, processPending)
 DEFINE_FIELD(DPSprite, x)
@@ -252,7 +254,7 @@ DPSprite *player_t::GetPSprite(PSPLayers layer)
 	DPSprite *pspr = FindPSprite(layer);
 	if (pspr == nullptr)
 	{
-		pspr = new DPSprite(this, newcaller, layer);
+		pspr = Create<DPSprite>(this, newcaller, layer);
 	}
 	else
 	{
@@ -348,8 +350,7 @@ void DPSprite::SetState(FState *newstate, bool pending)
 
 		if (!(newstate->UseFlags & (SUF_OVERLAY|SUF_WEAPON)))	// Weapon and overlay are mostly the same, the main difference is that weapon states restrict the self pointer to class Actor.
 		{
-			auto so = FState::StaticFindStateOwner(newstate);
-			Printf(TEXTCOLOR_RED "State %s.%d not flagged for use in overlays or weapons\n", so->TypeName.GetChars(), int(newstate - so->OwnedStates));
+			Printf(TEXTCOLOR_RED "State %s not flagged for use in overlays or weapons\n", FState::StaticGetStateName(newstate).GetChars());
 			State = nullptr;
 			Destroy();
 			return;
@@ -358,8 +359,7 @@ void DPSprite::SetState(FState *newstate, bool pending)
 		{
 			if (Caller->IsKindOf(NAME_Weapon))
 			{
-				auto so = FState::StaticFindStateOwner(newstate);
-				Printf(TEXTCOLOR_RED "State %s.%d not flagged for use in weapons\n", so->TypeName.GetChars(), int(newstate - so->OwnedStates));
+				Printf(TEXTCOLOR_RED "State %s not flagged for use in weapons\n", FState::StaticGetStateName(newstate).GetChars());
 				State = nullptr;
 				Destroy();
 				return;
@@ -412,9 +412,8 @@ void DPSprite::SetState(FState *newstate, bool pending)
 			if (newstate->ActionFunc != nullptr && newstate->ActionFunc->Unsafe)
 			{
 				// If an unsafe function (i.e. one that accesses user variables) is being detected, print a warning once and remove the bogus function. We may not call it because that would inevitably crash.
-				auto owner = FState::StaticFindStateOwner(newstate);
-				Printf(TEXTCOLOR_RED "Unsafe state call in state %s.%d to %s which accesses user variables. The action function has been removed from this state\n",
-					owner->TypeName.GetChars(), int(newstate - owner->OwnedStates), newstate->ActionFunc->PrintableName.GetChars());
+				Printf(TEXTCOLOR_RED "Unsafe state call in state %sd to %s which accesses user variables. The action function has been removed from this state\n", 
+					FState::StaticGetStateName(newstate).GetChars(), newstate->ActionFunc->PrintableName.GetChars());
 				newstate->ActionFunc = nullptr;
 			}
 			if (newstate->CallAction(Owner->mo, Caller, &stp, &nextstate))
@@ -514,82 +513,6 @@ DEFINE_ACTION_FUNCTION(_PlayerInfo, BringUpWeapon)
 	PARAM_SELF_STRUCT_PROLOGUE(player_t);
 	P_BringUpWeapon(self);
 	return 0;
-}
-
-//---------------------------------------------------------------------------
-//
-// PROC P_FireWeapon
-//
-//---------------------------------------------------------------------------
-
-void P_FireWeapon (player_t *player, FState *state)
-{
-	AWeapon *weapon;
-
-	// [SO] 9/2/02: People were able to do an awful lot of damage
-	// when they were observers...
-	if (player->Bot == nullptr && bot_observer)
-	{
-		return;
-	}
-
-	weapon = player->ReadyWeapon;
-	if (weapon == nullptr || !weapon->CheckAmmo (AWeapon::PrimaryFire, true))
-	{
-		return;
-	}
-
-	player->WeaponState &= ~WF_WEAPONBOBBING;
-	player->mo->PlayAttacking ();
-	weapon->bAltFire = false;
-	if (state == nullptr)
-	{
-		state = weapon->GetAtkState(!!player->refire);
-	}
-	P_SetPsprite(player, PSP_WEAPON, state);
-	if (!(weapon->WeaponFlags & WIF_NOALERT))
-	{
-		P_NoiseAlert (player->mo, player->mo, false);
-	}
-}
-
-//---------------------------------------------------------------------------
-//
-// PROC P_FireWeaponAlt
-//
-//---------------------------------------------------------------------------
-
-void P_FireWeaponAlt (player_t *player, FState *state)
-{
-	AWeapon *weapon;
-
-	// [SO] 9/2/02: People were able to do an awful lot of damage
-	// when they were observers...
-	if (player->Bot == nullptr && bot_observer)
-	{
-		return;
-	}
-
-	weapon = player->ReadyWeapon;
-	if (weapon == nullptr || weapon->FindState(NAME_AltFire) == nullptr || !weapon->CheckAmmo (AWeapon::AltFire, true))
-	{
-		return;
-	}
-
-	player->WeaponState &= ~WF_WEAPONBOBBING;
-	player->mo->PlayAttacking ();
-	weapon->bAltFire = true;
-
-	if (state == nullptr)
-	{
-		state = weapon->GetAltAtkState(!!player->refire);
-	}
-
-	P_SetPsprite(player, PSP_WEAPON, state);
-	if (!(weapon->WeaponFlags & WIF_NOALERT))
-	{
-		P_NoiseAlert (player->mo, player->mo, false);
-	}
 }
 
 //---------------------------------------------------------------------------
@@ -837,15 +760,6 @@ void DoReadyWeaponToGeneric(AActor *self, int paramflags)
 	}
 }
 
-// This function replaces calls to A_WeaponReady in other codepointers.
-void DoReadyWeapon(AActor *self)
-{
-	DoReadyWeaponToBob(self);
-	DoReadyWeaponToFire(self);
-	DoReadyWeaponToSwitch(self);
-	DoReadyWeaponToGeneric(self, ~0);
-}
-
 DEFINE_ACTION_FUNCTION(AStateProvider, A_WeaponReady)
 {
 	PARAM_ACTION_PROLOGUE(AStateProvider);
@@ -857,78 +771,6 @@ DEFINE_ACTION_FUNCTION(AStateProvider, A_WeaponReady)
 													DoReadyWeaponToGeneric(self, flags);
 	DoReadyWeaponDisableSwitch(self, flags & WRF_DisableSwitch);
 	return 0;
-}
-
-//---------------------------------------------------------------------------
-//
-// PROC P_CheckWeaponFire
-//
-// The player can fire the weapon.
-// [RH] This was in A_WeaponReady before, but that only works well when the
-// weapon's ready frames have a one tic delay.
-//
-//---------------------------------------------------------------------------
-
-void P_CheckWeaponFire (player_t *player)
-{
-	AWeapon *weapon = player->ReadyWeapon;
-
-	if (weapon == NULL)
-		return;
-
-	// Check for fire. Some weapons do not auto fire.
-	if ((player->WeaponState & WF_WEAPONREADY) && (player->cmd.ucmd.buttons & BT_ATTACK))
-	{
-		if (!player->attackdown || !(weapon->WeaponFlags & WIF_NOAUTOFIRE))
-		{
-			player->attackdown = true;
-			P_FireWeapon (player, NULL);
-			return;
-		}
-	}
-	else if ((player->WeaponState & WF_WEAPONREADYALT) && (player->cmd.ucmd.buttons & BT_ALTATTACK))
-	{
-		if (!player->attackdown || !(weapon->WeaponFlags & WIF_NOAUTOFIRE))
-		{
-			player->attackdown = true;
-			P_FireWeaponAlt (player, NULL);
-			return;
-		}
-	}
-	else
-	{
-		player->attackdown = false;
-	}
-}
-
-//---------------------------------------------------------------------------
-//
-// PROC P_CheckWeaponSwitch
-//
-// The player can change to another weapon at this time.
-// [GZ] This was cut from P_CheckWeaponFire.
-//
-//---------------------------------------------------------------------------
-
-void P_CheckWeaponSwitch (player_t *player)
-{
-	if (player == NULL)
-	{
-		return;
-	}
-	if ((player->WeaponState & WF_DISABLESWITCH) || // Weapon changing has been disabled.
-		player->morphTics != 0)					// Morphed classes cannot change weapons.
-	{ // ...so throw away any pending weapon requests.
-		player->PendingWeapon = WP_NOCHANGE;
-	}
-
-	// Put the weapon away if the player has a pending weapon or has died, and
-	// we're at a place in the state sequence where dropping the weapon is okay.
-	if ((player->PendingWeapon != WP_NOCHANGE || player->health <= 0) &&
-		player->WeaponState & WF_WEAPONSWITCHOK)
-	{
-		P_DropWeapon(player);
-	}
 }
 
 //---------------------------------------------------------------------------
@@ -970,52 +812,12 @@ static void P_CheckWeaponButtons (player_t *player)
 	}
 }
 
-//---------------------------------------------------------------------------
-//
-// PROC A_ReFire
-//
-// The player can re-fire the weapon without lowering it entirely.
-//
-//---------------------------------------------------------------------------
-
-DEFINE_ACTION_FUNCTION(AStateProvider, A_ReFire)
+DEFINE_ACTION_FUNCTION(APlayerPawn, CheckWeaponButtons)
 {
-	PARAM_ACTION_PROLOGUE(AStateProvider);
-	PARAM_STATE_ACTION_DEF(state);
-	A_ReFire(self, state);
+	PARAM_SELF_PROLOGUE(APlayerPawn);
+	P_CheckWeaponButtons(self->player);
 	return 0;
 }
-
-void A_ReFire(AActor *self, FState *state)
-{
-	player_t *player = self->player;
-	bool pending;
-
-	if (NULL == player)
-	{
-		return;
-	}
-	pending = player->PendingWeapon != WP_NOCHANGE && (player->WeaponState & WF_REFIRESWITCHOK);
-	if ((player->cmd.ucmd.buttons & BT_ATTACK)
-		&& !player->ReadyWeapon->bAltFire && !pending && player->health > 0)
-	{
-		player->refire++;
-		P_FireWeapon (player, state);
-	}
-	else if ((player->cmd.ucmd.buttons & BT_ALTATTACK)
-		&& player->ReadyWeapon->bAltFire && !pending && player->health > 0)
-	{
-		player->refire++;
-		P_FireWeaponAlt (player, state);
-	}
-	else
-	{
-		player->refire = 0;
-		player->ReadyWeapon->CheckAmmo (player->ReadyWeapon->bAltFire
-			? AWeapon::AltFire : AWeapon::PrimaryFire, true);
-	}
-}
-
 
 //---------------------------------------------------------------------------
 //
@@ -1210,7 +1012,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Overlay)
 	}
 
 	DPSprite *pspr;
-	pspr = new DPSprite(player, stateowner, layer);
+	pspr = Create<DPSprite>(player, stateowner, layer);
 	pspr->SetState(state);
 	ACTION_RETURN_BOOL(true);
 }
@@ -1323,80 +1125,6 @@ void P_SetupPsprites(player_t *player, bool startweaponup)
 
 //------------------------------------------------------------------------
 //
-// PROC P_MovePsprites
-//
-// Called every tic by player thinking routine
-//
-//------------------------------------------------------------------------
-
-void player_t::TickPSprites()
-{
-	DPSprite *pspr = psprites;
-	while (pspr)
-	{
-		// Destroy the psprite if it's from a weapon that isn't currently selected by the player
-		// or if it's from an inventory item that the player no longer owns. 
-		if ((pspr->Caller == nullptr ||
-			(pspr->Caller->IsKindOf(RUNTIME_CLASS(AInventory)) && barrier_cast<AInventory *>(pspr->Caller)->Owner != pspr->Owner->mo) ||
-			(pspr->Caller->IsKindOf(NAME_Weapon) && pspr->Caller != pspr->Owner->ReadyWeapon)))
-		{
-			pspr->Destroy();
-		}
-		else
-		{
-			pspr->Tick();
-		}
-
-		pspr = pspr->Next;
-	}
-
-	if ((health > 0) || (ReadyWeapon != nullptr && !(ReadyWeapon->WeaponFlags & WIF_NODEATHINPUT)))
-	{
-		if (ReadyWeapon == nullptr)
-		{
-			if (PendingWeapon != WP_NOCHANGE)
-				P_BringUpWeapon(this);
-		}
-		else
-		{
-			P_CheckWeaponSwitch(this);
-			if (WeaponState & (WF_WEAPONREADY | WF_WEAPONREADYALT))
-			{
-				P_CheckWeaponFire(this);
-			}
-			// Check custom buttons
-			P_CheckWeaponButtons(this);
-		}
-	}
-}
-
-//------------------------------------------------------------------------
-//
-//
-//
-//------------------------------------------------------------------------
-
-void DPSprite::Tick()
-{
-	if (processPending)
-	{
-		// drop tic count and possibly change state
-		if (Tics != -1)	// a -1 tic count never changes
-		{
-			Tics--;
-
-			// [BC] Apply double firing speed.
-			if ((Flags & PSPF_POWDOUBLE) && Tics && (Owner->mo->FindInventory (PClass::FindActor(NAME_PowerDoubleFiringSpeed), true)))
-				Tics--;
-
-			if (!Tics)
-				SetState(State->GetNextState());
-		}
-	}
-}
-
-//------------------------------------------------------------------------
-//
 //
 //
 //------------------------------------------------------------------------
@@ -1455,11 +1183,11 @@ void P_SetSafeFlash(AWeapon *weapon, player_t *player, FState *flashstate, int i
 		PClassActor *cls = weapon->GetClass();
 		while (cls != RUNTIME_CLASS(AWeapon))
 		{
-			if (flashstate >= cls->OwnedStates && flashstate < cls->OwnedStates + cls->NumOwnedStates)
+			if (cls->OwnsState(flashstate))
 			{
 				// The flash state belongs to this class.
 				// Now let's check if the actually wanted state does also
-				if (flashstate + index < cls->OwnedStates + cls->NumOwnedStates)
+				if (cls->OwnsState(flashstate + index))
 				{
 					// we're ok so set the state
 					P_SetPsprite(player, PSP_FLASH, flashstate + index, true);

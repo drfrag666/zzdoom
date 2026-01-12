@@ -35,16 +35,12 @@
 #define __G_LEVEL_H__
 
 #include "doomtype.h"
-#include "doomdef.h"
 #include "sc_man.h"
-#include "s_sound.h"
-#include "p_acs.h"
-#include "textures/textures.h"
 #include "resourcefiles/file_zip.h"
 
 struct level_info_t;
 struct cluster_info_t;
-class FScanner;
+class FSerializer;
 
 #if defined(_MSC_VER)
 #pragma section(".yreg$u",read)
@@ -54,6 +50,24 @@ class FScanner;
 #define MSVC_YSEG
 #define GCC_YSEG __attribute__((section(SECTION_YREG))) __attribute__((used))
 #endif
+
+// The structure used to control scripts between maps
+struct acsdefered_t
+{
+	enum EType
+	{
+		defexecute,
+		defexealways,
+		defsuspend,
+		defterminate
+	} type;
+	int script;
+	int args[3];
+	int playernum;
+};
+
+FSerializer &Serialize(FSerializer &arc, const char *key, acsdefered_t &defer, acsdefered_t *def);
+
 
 struct FIntermissionDescriptor;
 struct FIntermissionAction;
@@ -178,7 +192,7 @@ enum ELevelFlags : unsigned int
 	LEVEL_CHANGEMAPCHEAT		= 0x40000000,	// Don't display cluster messages
 	LEVEL_VISITED				= 0x80000000,	// Used for intermission map
 
-	// The flags QWORD is now split into 2 DWORDs 
+	// The flags uint64_t is now split into 2 DWORDs 
 	LEVEL2_RANDOMPLAYERSTARTS	= 0x00000001,	// Select single player starts randomnly (no voodoo dolls)
 	LEVEL2_ALLMAP				= 0x00000002,	// The player picked up a map on this level
 
@@ -370,7 +384,7 @@ struct level_info_t
 
 	TArray<FSpecialAction> specialactions;
 
-	TArray<FSoundID> PrecacheSounds;
+	TArray<int> PrecacheSounds;
 	TArray<FString> PrecacheTextures;
 	TArray<FName> PrecacheClasses;
 	
@@ -478,7 +492,7 @@ enum
 void G_ChangeLevel(const char *levelname, int position, int flags, int nextSkill=-1);
 
 void G_StartTravel ();
-void G_FinishTravel ();
+int G_FinishTravel ();
 
 void G_DoLoadLevel (int position, bool autosave);
 

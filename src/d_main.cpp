@@ -111,6 +111,8 @@
 #include "fragglescript/t_fs.h"
 #include "g_levellocals.h"
 #include "events.h"
+#include "vm.h"
+#include "types.h"
 
 EXTERN_CVAR(Bool, hud_althud)
 void DrawHUD();
@@ -143,7 +145,7 @@ void D_LoadWadSettings ();
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
 void D_DoomLoop ();
-static const char *BaseFileSearch (const char *file, const char *ext, bool lookfirstinprogdir=false);
+const char *BaseFileSearch (const char *file, const char *ext, bool lookfirstinprogdir=false);
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
@@ -160,7 +162,6 @@ EXTERN_CVAR (Bool, sv_unlimited_pickup)
 extern int testingmode;
 extern bool setmodeneeded;
 extern int NewWidth, NewHeight, NewBits, DisplayBits;
-EXTERN_CVAR (Bool, st_scale)
 extern bool gameisdead;
 extern bool demorecording;
 extern bool M_DemoNoPlay;	// [RH] if true, then skip any demos in the loop
@@ -685,7 +686,7 @@ void D_Display ()
 			// Let the status bar know the screen size changed
 			if (StatusBar != NULL)
 			{
-				StatusBar->ScreenSizeChanged ();
+				StatusBar->CallScreenSizeChanged ();
 			}
 			// Refresh the console.
 			C_NewModeAdjust ();
@@ -708,7 +709,6 @@ void D_Display ()
 
 	if (screen->Lock (false))
 	{
-		ST_SetNeedRefresh();
 		V_SetBorderNeedRefresh();
 	}
 
@@ -786,26 +786,23 @@ void D_Display ()
 			if ((hw2d = screen->Begin2D(viewactive)))
 			{
 				// Redraw everything every frame when using 2D accel
-				ST_SetNeedRefresh();
 				V_SetBorderNeedRefresh();
 			}
 			Renderer->DrawRemainingPlayerSprites();
 			screen->DrawBlendingRect();
 			if (automapactive)
 			{
-				int saved_ST_Y = gST_Y;
-				if (hud_althud && viewheight == SCREENHEIGHT)
-				{
-					gST_Y = viewheight;
-				}
-				AM_Drawer ();
-				gST_Y = saved_ST_Y;
+				AM_Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
 			}
 			if (!automapactive || viewactive)
 			{
 				V_RefreshViewBorder ();
 			}
 
+			// for timing the statusbar code.
+			//cycle_t stb;
+			//stb.Reset();
+			//stb.Clock();
 			if (hud_althud && viewheight == SCREENHEIGHT && screenblocks > 10)
 			{
 				StatusBar->DrawBottomStuff (HUD_AltHud);
@@ -814,7 +811,7 @@ void D_Display ()
 				{
 					StatusBar->DrawCrosshair();
 				}
-				StatusBar->Draw (HUD_AltHud);
+				StatusBar->CallDraw (HUD_AltHud);
 				StatusBar->DrawTopStuff (HUD_AltHud);
 			}
 			else 
@@ -822,15 +819,17 @@ void D_Display ()
 			{
 				EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
 				StatusBar->DrawBottomStuff (state);
-				StatusBar->Draw (state);
+				StatusBar->CallDraw (state);
 				StatusBar->DrawTopStuff (state);
 			}
 			else
 			{
 				StatusBar->DrawBottomStuff (HUD_StatusBar);
-				StatusBar->Draw (HUD_StatusBar);
+				StatusBar->CallDraw (HUD_StatusBar);
 				StatusBar->DrawTopStuff (HUD_StatusBar);
 			}
+			//stb.Unclock();
+			//Printf("Stbar = %f\n", stb.TimeMS());
 			CT_Drawer ();
 			break;
 
@@ -904,7 +903,6 @@ void D_Display ()
 		NetUpdate ();			// send out any new accumulation
 		// normal update
 		// draw ZScript UI stuff
-		//E_RenderOverlay();
 		C_DrawConsole (hw2d);	// draw console
 		M_Drawer ();			// menu is drawn even on top of everything
 		FStat::PrintStat ();
@@ -942,7 +940,7 @@ void D_Display ()
 		I_FreezeTime(false);
 		GSnd->SetSfxPaused(false, 1);
 	}
-
+	screen->End2D();
 	cycles.Unclock();
 	FrameCycles = cycles;
 }
@@ -973,6 +971,7 @@ void D_ErrorCleanup ()
 	{
 		menuactive = MENU_Off;
 	}
+	if (gamestate == GS_INTERMISSION) gamestate = GS_DEMOSCREEN;
 	insave = false;
 	Renderer->ErrorCleanup();
 }
@@ -1689,7 +1688,7 @@ static void D_AddDirectory (TArray<FString> &wadfiles, const char *dir)
 //
 //==========================================================================
 
-static const char *BaseFileSearch (const char *file, const char *ext, bool lookfirstinprogdir)
+const char *BaseFileSearch (const char *file, const char *ext, bool lookfirstinprogdir)
 {
 	static char wad[PATH_MAX];
 
@@ -1778,7 +1777,7 @@ bool ConsiderPatches (const char *arg)
 //
 //==========================================================================
 
-FExecList *D_MultiExec (DArgs *list, FExecList *exec)
+FExecList *D_MultiExec (FArgs *list, FExecList *exec)
 {
 	for (int i = 0; i < list->NumArgs(); ++i)
 	{
@@ -1988,7 +1987,8 @@ static void SetMapxxFlag()
 
 static void FinalGC()
 {
-	Args = NULL;
+	delete Args;
+	Args = nullptr;
 	GC::FinalGC = true;
 	GC::FullGC();
 	GC::DelSoftRootHead();	// the soft root head will not be collected by a GC so we have to do it explicitly
@@ -2047,7 +2047,8 @@ static void D_DoomInit()
 		rngseed = I_MakeRNGSeed();
 		use_staticrng = false;
 	}
-		
+	srand(rngseed);
+
 	FRandom::StaticClearRandom ();
 
 	if (!batchrun) Printf ("M_LoadDefaults: Load system defaults.\n");
@@ -2255,7 +2256,6 @@ void D_DoomMain (void)
 	int p;
 	const char *v;
 	const char *wad;
-	DArgs *execFiles;
 	TArray<FString> pwads;
 	FString *args;
 	int argcount;	
@@ -2378,14 +2378,16 @@ void D_DoomMain (void)
 
 		// Process automatically executed files
 		FExecList *exec;
-		execFiles = new DArgs;
+		FArgs *execFiles = new FArgs;
 		if (!(Args->CheckParm("-noautoexec")))
 			GameConfig->AddAutoexec(execFiles, gameinfo.ConfigName);
 		exec = D_MultiExec(execFiles, NULL);
+		delete execFiles;
 
 		// Process .cfg files at the start of the command line.
 		execFiles = Args->GatherFiles ("-exec");
 		exec = D_MultiExec(execFiles, exec);
+		delete execFiles;
 
 		// [RH] process all + commands on the command line
 		exec = C_ParseCmdLineParams(exec);
@@ -2570,7 +2572,7 @@ void D_DoomMain (void)
 
 		P_SetupWeapons_ntohton();
 
-		//SBarInfo support.
+		//SBarInfo support. Note that the first SBARINFO lump contains the mugshot definition so it even needs to be read when a regular status bar is being used.
 		SBarInfo::Load();
 		HUD_InitHud();
 
@@ -2755,10 +2757,7 @@ void D_DoomMain (void)
 
 		GC::FullGC();					// perform one final garbage collection after shutdown
 
-		for (DObject *obj = GC::Root; obj; obj = obj->ObjNext)
-		{
-			obj->ClearClass();	// Delete the Class pointer because the data it points to has been deleted. This will automatically be reset if needed.
-		}
+		assert(GC::Root == nullptr);
 
 		restart++;
 		PClass::bShutdown = false;

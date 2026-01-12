@@ -97,10 +97,10 @@ TArray<size_t>	InterestingDrawsegs;
 FWallCoords		WallC;
 FWallTmapVals	WallT;
 
-static BYTE		FakeSide;
+static uint8_t		FakeSide;
 
 int WindowLeft, WindowRight;
-WORD MirrorFlags;
+uint16_t MirrorFlags;
 TArray<PortalDrawseg> WallPortals(1000);	// note: this array needs to go away as reallocation can cause crashes.
 
 
@@ -355,7 +355,7 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec,
 			{
 				if (underwater)
 				{
-					tempsec->ColorMap = s->ColorMap;
+					tempsec->Colormap = s->Colormap;
 					if (!(s->MoreFlags & SECF_NOFAKELIGHT))
 					{
 						tempsec->lightlevel = s->lightlevel;
@@ -429,7 +429,7 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec,
 			tempsec->ceilingplane = s->floorplane;
 			tempsec->ceilingplane.FlipVert ();
 			tempsec->ceilingplane.ChangeHeight(-1 / 65536.);
-			tempsec->ColorMap = s->ColorMap;
+			tempsec->Colormap = s->Colormap;
 		}
 
 		// killough 11/98: prevent sudden light changes from non-water sectors:
@@ -478,8 +478,7 @@ sector_t *R_FakeFlat(sector_t *sec, sector_t *tempsec,
 			tempsec->floorplane			= s->ceilingplane;
 			tempsec->floorplane.FlipVert ();
 			tempsec->floorplane.ChangeHeight (+1 / 65536.);
-			tempsec->ColorMap			= s->ColorMap;
-			tempsec->ColorMap			= s->ColorMap;
+			tempsec->Colormap			= s->Colormap;
 
 			tempsec->SetTexture(sector_t::ceiling, diffTex ? sec->GetTexture(sector_t::ceiling) : s->GetTexture(sector_t::ceiling), false);
 			tempsec->SetTexture(sector_t::floor, s->GetTexture(sector_t::ceiling), false);
@@ -546,7 +545,7 @@ void R_AddLine (seg_t *line)
 	curline = line;
 
 	// [RH] Color if not texturing line
-	dc_color = (((int)(line - segs) * 8) + 4) & 255;
+	dc_color = (((int)(line->Index()) * 8) + 4) & 255;
 
 	pt1 = line->v1->fPos() - ViewPos;
 	pt2 = line->v2->fPos() - ViewPos;
@@ -706,7 +705,7 @@ void R_AddLine (seg_t *line)
 			|| backsector->GetVisFlags(sector_t::ceiling) != frontsector->GetVisFlags(sector_t::ceiling)
 
 			// [RH] Also consider colormaps
-			|| backsector->ColorMap != frontsector->ColorMap
+			|| backsector->Colormap != frontsector->Colormap
 
 
 
@@ -1063,8 +1062,8 @@ void R_Subsector (subsector_t *sub)
 	}
 
 #ifdef RANGECHECK
-	if (outersubsector && sub - subsectors >= (ptrdiff_t)numsubsectors)
-		I_Error ("R_Subsector: ss %ti with numss = %i", sub - subsectors, numsubsectors);
+	if (outersubsector && (unsigned)sub->Index() >= level.subsectors.Size())
+		I_Error ("R_Subsector: ss %ti with numss = %u", sub->Index(), level.subsectors.Size());
 #endif
 
 	assert(sub->sector != NULL);
@@ -1092,14 +1091,14 @@ void R_Subsector (subsector_t *sub)
 	cll = ceilinglightlevel;
 
 	// [RH] set foggy flag
-	foggy = level.fadeto || frontsector->ColorMap->Fade || (level.flags & LEVEL_HASFADETABLE);
+	foggy = level.fadeto || frontsector->Colormap.FadeColor || (level.flags & LEVEL_HASFADETABLE);
 	r_actualextralight = foggy ? 0 : extralight << 4;
 
 	// kg3D - fake lights
 	if (fixedlightlev < 0 && frontsector->e && frontsector->e->XFloor.lightlist.Size())
 	{
 		light = P_GetPlaneLight(frontsector, &frontsector->ceilingplane, false);
-		basecolormap = light->extra_colormap;
+		basecolormap = GetColorTable(light->extra_colormap);
 		// If this is the real ceiling, don't discard plane lighting R_FakeFlat()
 		// accounted for.
 		if (light->p_lightlevel != &frontsector->lightlevel)
@@ -1109,7 +1108,7 @@ void R_Subsector (subsector_t *sub)
 	}
 	else
 	{
-		basecolormap = (r_fullbrightignoresectorcolor && fixedlightlev >= 0) ? &FullNormalLight : frontsector->ColorMap;
+		basecolormap = (r_fullbrightignoresectorcolor && fixedlightlev >= 0) ? &FullNormalLight : GetColorTable(frontsector->Colormap);
 	}
 
 	portal = frontsector->ValidatePortal(sector_t::ceiling);
@@ -1133,7 +1132,7 @@ void R_Subsector (subsector_t *sub)
 	if (fixedlightlev < 0 && frontsector->e && frontsector->e->XFloor.lightlist.Size())
 	{
 		light = P_GetPlaneLight(frontsector, &frontsector->floorplane, false);
-		basecolormap = light->extra_colormap;
+		basecolormap = GetColorTable(light->extra_colormap);
 		// If this is the real floor, don't discard plane lighting R_FakeFlat()
 		// accounted for.
 		if (light->p_lightlevel != &frontsector->lightlevel)
@@ -1143,7 +1142,7 @@ void R_Subsector (subsector_t *sub)
 	}
 	else
 	{
-		basecolormap = (r_fullbrightignoresectorcolor && fixedlightlev >= 0) ? &FullNormalLight : frontsector->ColorMap;
+		basecolormap = (r_fullbrightignoresectorcolor && fixedlightlev >= 0) ? &FullNormalLight : GetColorTable(frontsector->Colormap);
 	}
 
 	// killough 3/7/98: Add (x,y) offsets to flats, add deep water check
@@ -1210,7 +1209,7 @@ void R_Subsector (subsector_t *sub)
 				if (fixedlightlev < 0 && sub->sector->e->XFloor.lightlist.Size())
 				{
 					light = P_GetPlaneLight(sub->sector, &frontsector->floorplane, false);
-					basecolormap = light->extra_colormap;
+					basecolormap = GetColorTable(light->extra_colormap);
 					floorlightlevel = *light->p_lightlevel;
 				}
 
@@ -1270,7 +1269,7 @@ void R_Subsector (subsector_t *sub)
 				if (fixedlightlev < 0 && sub->sector->e->XFloor.lightlist.Size())
 				{
 					light = P_GetPlaneLight(sub->sector, &frontsector->ceilingplane, false);
-					basecolormap = light->extra_colormap;
+					basecolormap = GetColorTable(light->extra_colormap);
 					ceilinglightlevel = *light->p_lightlevel;
 				}
 				tempsec.ceilingplane.ChangeHeight(1 / 65536.);
@@ -1295,7 +1294,7 @@ void R_Subsector (subsector_t *sub)
 		ceilingplane = backupcp;
 	}
 
-	basecolormap = frontsector->ColorMap;
+	basecolormap = GetColorTable(frontsector->Colormap);
 	floorlightlevel = fll;
 	ceilinglightlevel = cll;
 
@@ -1308,12 +1307,12 @@ void R_Subsector (subsector_t *sub)
 		ceilinglightlevel : floorlightlevel, FakeSide);
 
 	// [RH] Add particles
-	if ((unsigned int)(sub - subsectors) < (unsigned int)numsubsectors)
+	if ((unsigned int)(sub->Index()) < level.subsectors.Size())
 	{ // Only do it for the main BSP.
 		int shade = LIGHT2SHADE((floorlightlevel + ceilinglightlevel)/2 + r_actualextralight);
-		for (WORD i = ParticlesInSubsec[(unsigned int)(sub-subsectors)]; i != NO_PARTICLE; i = Particles[i].snext)
+		for (uint16_t i = ParticlesInSubsec[sub->Index()]; i != NO_PARTICLE; i = Particles[i].snext)
 		{
-			R_ProjectParticle (Particles + i, subsectors[sub-subsectors].sector, shade, FakeSide);
+			R_ProjectParticle (Particles + i, sub->sector, shade, FakeSide);
 		}
 	}
 
@@ -1372,9 +1371,9 @@ void R_Subsector (subsector_t *sub)
 
 void R_RenderBSPNode (void *node)
 {
-	if (numnodes == 0)
+	if (level.nodes.Size() == 0)
 	{
-		R_Subsector (subsectors);
+		R_Subsector (&level.subsectors[0]);
 		return;
 	}
 	while (!((size_t)node & 1))  // Keep going until found a subsector
@@ -1394,7 +1393,7 @@ void R_RenderBSPNode (void *node)
 
 		node = bsp->children[side];
 	}
-	R_Subsector ((subsector_t *)((BYTE *)node - 1));
+	R_Subsector ((subsector_t *)((uint8_t *)node - 1));
 }
 
 }

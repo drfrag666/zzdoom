@@ -81,6 +81,9 @@
 #include "g_levellocals.h"
 #include "r_utility.h"
 #include "sbar.h"
+#include "actorinlines.h"
+#include "vm.h"
+#include "types.h"
 
 AActor *SingleActorFromTID(int tid, AActor *defactor);
 
@@ -129,8 +132,7 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 	{
 		if (!(state->UseFlags & SUF_ITEM))
 		{
-			auto so = FState::StaticFindStateOwner(state);
-			Printf(TEXTCOLOR_RED "State %s.%d not flagged for use in CustomInventory state chains.\n", so->TypeName.GetChars(), int(state - so->OwnedStates));
+			Printf(TEXTCOLOR_RED "State %s not flagged for use in CustomInventory state chains.\n", FState::StaticGetStateName(state).GetChars());
 			return false;
 		}
 
@@ -143,8 +145,8 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 			{
 				// If an unsafe function (i.e. one that accesses user variables) is being detected, print a warning once and remove the bogus function. We may not call it because that would inevitably crash.
 				auto owner = FState::StaticFindStateOwner(state);
-				Printf(TEXTCOLOR_RED "Unsafe state call in state %s.%d to %s which accesses user variables. The action function has been removed from this state\n",
-					owner->TypeName.GetChars(), int(state - owner->OwnedStates), state->ActionFunc->PrintableName.GetChars());
+				Printf(TEXTCOLOR_RED "Unsafe state call in state %s to %s which accesses user variables. The action function has been removed from this state\n",
+					FState::StaticGetStateName(state).GetChars(), state->ActionFunc->PrintableName.GetChars());
 				state->ActionFunc = nullptr;
 			}
 
@@ -152,7 +154,7 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 			VMReturn *wantret;
 			FStateParamInfo stp = { state, STATE_StateChain, PSP_WEAPON };
 
-			params[2] = VMValue(&stp, ATAG_GENERIC);
+			params[2] = VMValue(&stp);
 			retval = true;		// assume success
 			wantret = NULL;		// assume no return value wanted
 			numret = 0;
@@ -182,14 +184,12 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 			}
 			try
 			{
-				GlobalVMStack.Call(state->ActionFunc, params, state->ActionFunc->ImplicitArgs, wantret, numret);
+				VMCall(state->ActionFunc, params, state->ActionFunc->ImplicitArgs, wantret, numret);
 			}
 			catch (CVMAbortException &err)
 			{
 				err.MaybePrintMessage();
-				auto owner = FState::StaticFindStateOwner(state);
-				int offs = int(state - owner->OwnedStates);
-				err.stacktrace.AppendFormat("Called from state %s.%d in inventory state chain in %s\n", owner->TypeName.GetChars(), offs, GetClass()->TypeName.GetChars());
+				err.stacktrace.AppendFormat("Called from state %s in inventory state chain in %s\n", FState::StaticGetStateName(state).GetChars(), GetClass()->TypeName.GetChars());
 				throw;
 			}
 
@@ -647,6 +647,36 @@ DEFINE_ACTION_FUNCTION(AActor, GetCVar)
 		else
 		{
 			ret->SetFloat(cvar->GetGenericRep(CVAR_Float).Float);
+		}
+		return 1;
+	}
+	return 0;
+}
+
+//==========================================================================
+//
+// GetCVar
+//
+// NON-ACTION function that works like ACS's GetCVar.
+//
+//==========================================================================
+
+DEFINE_ACTION_FUNCTION(AActor, GetCVarString)
+{
+	if (numret > 0)
+	{
+		assert(ret != nullptr);
+		PARAM_SELF_PROLOGUE(AActor);
+		PARAM_STRING(cvarname);
+
+		FBaseCVar *cvar = GetCVar(self, cvarname);
+		if (cvar == nullptr)
+		{
+			ret->SetString("");
+		}
+		else
+		{
+			ret->SetString(cvar->GetGenericRep(CVAR_String).String);
 		}
 		return 1;
 	}
@@ -2395,63 +2425,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetInventory)
 	{
 		mobj = mobj->player->mo;
 	}
-
-	AInventory *item = mobj->FindInventory(itemtype);
-
-	if (item != nullptr)
-	{
-		// A_SetInventory sets the absolute amount. 
-		// Subtract or set the appropriate amount as necessary.
-
-		if (amount == item->Amount)
-		{
-			// Nothing was changed.
-			ACTION_RETURN_BOOL(false);
-		}
-		else if (amount <= 0)
-		{
-			//Remove it all.
-			res = (mobj->TakeInventory(itemtype, item->Amount, true, false));
-			ACTION_RETURN_BOOL(res);
-		}
-		else if (amount < item->Amount)
-		{
-			int amt = abs(item->Amount - amount);
-			res = (mobj->TakeInventory(itemtype, amt, true, false));
-			ACTION_RETURN_BOOL(res);
-		}
-		else
-		{
-			item->Amount = (beyondMax ? amount : clamp(amount, 0, item->MaxAmount));
-			ACTION_RETURN_BOOL(true);
-		}
-	}
-	else
-	{
-		if (amount <= 0)
-		{
-			ACTION_RETURN_BOOL(false);
-		}
-		item = static_cast<AInventory *>(Spawn(itemtype));
-		if (item == nullptr)
-		{
-			ACTION_RETURN_BOOL(false);
-		}
-		else
-		{
-			item->Amount = amount;
-			item->flags |= MF_DROPPED;
-			item->ItemFlags |= IF_IGNORESKILL;
-			item->ClearCounters();
-			if (!item->CallTryPickup(mobj))
-			{
-				item->Destroy();
-				ACTION_RETURN_BOOL(false);
-			}
-			ACTION_RETURN_BOOL(true);
-		}
-	}
-	ACTION_RETURN_BOOL(false);
+	ACTION_RETURN_BOOL(mobj->SetInventory(itemtype, amount, beyondMax));
 }
 
 //===========================================================================
@@ -2762,7 +2736,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnItem)
 	PARAM_BOOL_DEF	(useammo)				
 	PARAM_BOOL_DEF	(transfer_translation);
 		
-	if (numret > 1) ret[1].SetPointer(nullptr, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetObject(nullptr);
 
 	if (missile == NULL)
 	{
@@ -2799,7 +2773,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnItem)
 	int flags = (transfer_translation ? SIXF_TRANSFERTRANSLATION : 0) + (useammo ? SIXF_SETMASTER : 0);
 	bool res = InitSpawnedItem(self, mo, flags);	// for an inventory item's use state
 	if (numret > 0) ret[0].SetInt(res);
-	if (numret > 1) ret[1].SetPointer(mo, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetObject(mo);
 	return MIN(numret, 2);
 
 }
@@ -2826,7 +2800,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnItemEx)
 	PARAM_INT_DEF	(chance)	
 	PARAM_INT_DEF	(tid)		
 
-	if (numret > 1) ret[1].SetPointer(nullptr, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetObject(nullptr);
 
 	if (missile == NULL) 
 	{
@@ -2891,7 +2865,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnItemEx)
 		mo->Angles.Yaw = angle;
 	}
 	if (numret > 0) ret[0].SetInt(res);
-	if (numret > 1) ret[1].SetPointer(mo, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetObject(mo);
 	return MIN(numret, 2);
 }
 
@@ -2911,7 +2885,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_ThrowGrenade)
 		PARAM_FLOAT_DEF	(zvel)		
 		PARAM_BOOL_DEF	(useammo)	
 
-	if (numret > 1) ret[1].SetPointer(nullptr, ATAG_OBJECT);
+	if (numret > 1) ret[1].SetObject(nullptr);
 
 	if (missile == NULL)
 	{
@@ -2973,7 +2947,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_ThrowGrenade)
 		if (!P_CheckMissileSpawn(bo, self->radius)) bo = nullptr;
 
 		if (numret > 0) ret[0].SetInt(true);
-		if (numret > 1) ret[1].SetPointer(bo, ATAG_OBJECT);
+		if (numret > 1) ret[1].SetObject(bo);
 		return MIN(numret, 2);
 	} 
 	else
@@ -3359,9 +3333,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnDebris)
 			{
 				mo->Translation = self->Translation;
 			}
-			if (i < mo->GetClass()->NumOwnedStates)
+			if (i < mo->GetInfo()->NumOwnedStates)
 			{
-				mo->SetState (mo->GetClass()->OwnedStates + i);
+				mo->SetState (mo->GetInfo()->OwnedStates + i);
 			}
 			mo->Vel.X = mult_h * pr_spawndebris.Random2() / 64.;
 			mo->Vel.Y = mult_h * pr_spawndebris.Random2() / 64.;
@@ -3614,8 +3588,8 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetBlend)
 	if (color2.a == 0)
 		color2 = color;
 
-	new DFlashFader(color.r/255.f, color.g/255.f, color.b/255.f, float(alpha),
-					color2.r/255.f, color2.g/255.f, color2.b/255.f, 0,
+	Create<DFlashFader>(color.r/255.f, color.g/255.f, color.b/255.f, float(alpha),
+					color2.r/255.f, color2.g/255.f, color2.b/255.f, 0.f,
 					float(tics)/TICRATE, self);
 	return 0;
 }
@@ -4403,7 +4377,7 @@ DEFINE_ACTION_FUNCTION(AStateProvider, A_CheckForReload)
 
 	if (numret > 0)
 	{
-		ret->SetPointer(NULL, ATAG_STATE);
+		ret->SetPointer(NULL);
 		numret = 1;
 	}
 
@@ -4421,7 +4395,7 @@ DEFINE_ACTION_FUNCTION(AStateProvider, A_CheckForReload)
 		// Go back to the refire frames, instead of continuing on to the reload frames.
 		if (numret != 0)
 		{
-			ret->SetPointer(jump, ATAG_STATE);
+			ret->SetPointer(jump);
 		}
 	}
 	else
@@ -4792,9 +4766,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_ChangeVelocity)
 
 static PField *GetVar(DObject *self, FName varname)
 {
-	PField *var = dyn_cast<PField>(self->GetClass()->Symbols.FindSymbol(varname, true));
+	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
-	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static)) || !var->Type->IsKindOf(RUNTIME_CLASS(PBasicType)))
+	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static)) || !var->Type->isScalar())
 	{
 		Printf("%s is not a user variable in class %s\n", varname.GetChars(),
 			self->GetClass()->TypeName.GetChars());
@@ -4841,11 +4815,10 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserVarFloat)
 
 static PField *GetArrayVar(DObject *self, FName varname, int pos)
 {
-	PField *var = dyn_cast<PField>(self->GetClass()->Symbols.FindSymbol(varname, true));
+	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
 	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static)) ||
-		!var->Type->IsKindOf(RUNTIME_CLASS(PArray)) ||
-		!static_cast<PArray *>(var->Type)->ElementType->IsKindOf(RUNTIME_CLASS(PBasicType)))
+		!var->Type->isArray() || !static_cast<PArray *>(var->Type)->ElementType->isScalar())
 	{
 		Printf("%s is not a user array in class %s\n", varname.GetChars(),
 			self->GetClass()->TypeName.GetChars());
@@ -4943,7 +4916,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Teleport)
 	}
 	if (numret > 0)
 	{
-		ret[0].SetPointer(NULL, ATAG_STATE);
+		ret[0].SetPointer(NULL);
 	}
 
 	if (!ref)
@@ -5079,7 +5052,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Teleport)
 			}
 			if (numret > 0)
 			{
-				ret[0].SetPointer(teleport_state, ATAG_STATE);
+				ret[0].SetPointer(teleport_state);
 			}
 			return numret;
 		}
@@ -5377,7 +5350,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Warp)
 	}
 	if (numret > 0)
 	{
-		ret[0].SetPointer(NULL, ATAG_STATE);
+		ret[0].SetPointer(NULL);
 	}
 
 	if ((flags & WARPF_USETID))
@@ -5403,7 +5376,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Warp)
 			// in this case, you have the statejump to help you handle all the success anyway.
 			if (numret > 0)
 			{
-				ret[0].SetPointer(success_state, ATAG_STATE);
+				ret[0].SetPointer(success_state);
 			}
 		}
 		else if (numret > 1)
@@ -6855,7 +6828,8 @@ DEFINE_ACTION_FUNCTION(AActor, A_SprayDecal)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_STRING(name);
-	SprayDecal(self, name);
+	PARAM_FLOAT_DEF(dist);
+	SprayDecal(self, name, dist);
 	return 0;
 }
 

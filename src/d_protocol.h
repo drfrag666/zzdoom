@@ -160,7 +160,8 @@ enum EDemoCommand
 	DEM_REMOVE,			// 68
 	DEM_FINISHGAME,		// 69
 	DEM_NETEVENT,		// 70 String: Event name, Byte: Arg count; each arg is a 4-byte int
-	DEM_MDK				// 71 String: Damage type
+	DEM_MDK,			// 71 String: Damage type
+	DEM_SETINV,			// 72 SetInventory
 };
 
 // The following are implemented by cht_DoCheat in m_cheat.cpp
@@ -230,7 +231,15 @@ int UnpackUserCmd (usercmd_t *ucmd, const usercmd_t *basis, uint8_t **stream);
 int PackUserCmd (const usercmd_t *ucmd, const usercmd_t *basis, uint8_t **stream);
 int WriteUserCmdMessage (usercmd_t *ucmd, const usercmd_t *basis, uint8_t **stream);
 
-struct ticcmd_t;
+// The data sampled per tick (single player)
+// and transmitted to other peers (multiplayer).
+// Mainly movements/button commands per game tick,
+// plus a checksum for internal state consistency.
+struct ticcmd_t
+{
+	usercmd_t	ucmd;
+	int16_t		consistancy;	// checks for net game
+};
 
 int SkipTicCmd (uint8_t **stream, int count);
 void ReadTicCmd (uint8_t **stream, int player, int tic);

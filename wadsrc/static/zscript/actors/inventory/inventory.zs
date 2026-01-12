@@ -25,10 +25,19 @@ class Inventory : Actor native
 	native bool bInitEffectFailed;
 	meta String PickupMsg;
 	meta int GiveQuest;
+	meta array<class<Actor> > ForbiddenToPlayerClass;
+	meta array<class<Actor> > RestrictedToPlayerClass;
 	
-	Property PickupMessage: PickupMsg;
-	Property GiveQuest: GiveQuest;
-	
+	property PickupMessage: PickupMsg;
+	property GiveQuest: GiveQuest;
+	property Amount: Amount;
+	property InterHubAmount: InterHubAmount;
+	property MaxAmount: MaxAmount;
+	property PickupFlash: PickupFlash;
+	property PickupSound: PickupSound;
+	property UseSound: UseSound;
+	property RespawnTics: RespawnTics;
+		
 	Default
 	{
 		Inventory.Amount 1;
@@ -39,14 +48,13 @@ class Inventory : Actor native
 		Inventory.PickupMessage "$TXT_DEFAULTPICKUPMSG";
 	}
 	
-	native bool CanPickup(Actor toucher);
 	native bool DoRespawn();
 	native void BecomeItem();
 	native void BecomePickup();
 	native void ModifyDropAmount(int dropamount);
 	native static void PrintPickupMessage (bool localview, String str);
 
-	States(Actor, Overlay, Weapon, Item)
+	States(Actor)
 	{
 	HideDoomish:
 		TNT1 A 1050;
@@ -321,6 +329,36 @@ class Inventory : Actor native
 				toucher.GiveInventoryType (type);
 			}
 		}
+	}
+
+	//===========================================================================
+	//
+	// AInventory :: CanPickup
+	//
+	//===========================================================================
+	
+	virtual bool CanPickup(Actor toucher)
+	{
+		if (toucher == null) return false;
+
+		int rsize = RestrictedToPlayerClass.Size();
+		if (rsize > 0)
+		{
+			for (int i=0; i < rsize; i++)
+			{
+				if (toucher is RestrictedToPlayerClass[i]) return true;
+			}
+			return false;
+		}
+		rsize = ForbiddenToPlayerClass.Size();
+		if (rsize > 0)
+		{
+			for (int i=0; i < rsize; i++)
+			{
+				if (toucher is ForbiddenToPlayerClass[i]) return false;
+			}
+		}
+		return true;
 	}
 
 	//===========================================================================
@@ -817,8 +855,8 @@ class Inventory : Actor native
 	//
 	// AInventory :: DrawPowerup
 	//
-	// Gives self item a chance to draw a special status indicator on the screen.
-	// Returns false if it didn't draw anything.
+	// This has been deprecated because it is not how this should be done
+	// Use GetPowerupIcon instead!
 	//
 	//===========================================================================
 
@@ -850,6 +888,25 @@ class Inventory : Actor native
 	virtual bool SpecialDropAction (Actor dropper)
 	{
 		return false;
+	}
+
+	//===========================================================================
+	//
+	// AInventory :: NextInv
+	//
+	// Returns the next item with IF_INVBAR set.
+	//
+	//===========================================================================
+
+	clearscope Inventory NextInv () const
+	{
+		Inventory item = Inv;
+
+		while (item != NULL && !item.bInvBar)
+		{
+			item = item.Inv;
+		}
+		return item;
 	}
 
 	
