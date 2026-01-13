@@ -1219,7 +1219,7 @@ void V_UpdateModeSize (int width, int height)
 	CleanWidth = width / CleanXfac;
 	CleanHeight = height / CleanYfac;
 	assert(CleanWidth >= 320);
-	assert(CleanHeight >= 200);
+	assert(CleanHeight >= 180);
 
 	if (width < 800 || width >= 960)
 	{
