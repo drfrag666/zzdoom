@@ -1969,7 +1969,7 @@ void G_DoLoadGame ()
 		return;
 	}
 
-	if (SaveVersion < MINSAVEVER || SaveVersion > SAVEVER)
+	if (SaveVersion < MINSAVEVER || SaveVersion > MAXSAVEVER) // this is actually unused
 	{
 		Printf("Savegame is from an incompatible version");
 		if (SaveVersion < MINSAVEVER)
@@ -1978,7 +1978,7 @@ void G_DoLoadGame ()
 		}
 		else
 		{
-			Printf(": %d (%d is the highest supported)", SaveVersion, SAVEVER);
+			Printf(": %d (%d is the highest supported)", SaveVersion, MAXSAVEVER);
 		}
 		Printf("\n");
 		return;

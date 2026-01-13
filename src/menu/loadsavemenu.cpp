@@ -200,7 +200,7 @@ void FSavegameManager::ReadSaveStrings()
 						arc("Game WAD", iwad);
 						arc("Title", title);
 
-						if ((engine.Compare(GAMESIG) != 0 && engine.CompareNoCase("GZDOOM") != 0) || savever > SAVEVER)
+						if ((engine.Compare(GAMESIG) != 0 && engine.CompareNoCase("GZDOOM") != 0) || savever > MAXSAVEVER)
 						{
 							// different engine or newer version:
 							// not our business. Leave it alone.

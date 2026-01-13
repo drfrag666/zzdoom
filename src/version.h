@@ -85,6 +85,9 @@ const char *GetVersionString();
 // SVN revision ever got.
 #define SAVEVER 4551
 
+// MAXSAVEVER is the maximum level snapshot version that can be loaded.
+#define MAXSAVEVER 4554
+
 // This is so that derivates can use the same savegame versions without worrying about engine compatibility
 #define GAMESIG "ZZDOOM"
 #define BASEWAD "zzdoom.pk3"
