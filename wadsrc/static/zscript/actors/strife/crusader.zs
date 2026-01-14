@@ -102,21 +102,27 @@ class Crusader : Actor
 
 	void A_CrusaderSweepLeft ()
 	{
-		angle += 90./16;
-		Actor misl = SpawnMissileZAimed (pos.z + 48, target, "FastFlameMissile");
-		if (misl != null)
+		if (target != null)
 		{
-			misl.Vel.Z += 1;
+			angle += 90./16;
+			Actor misl = SpawnMissileZAimed (pos.z + 48, target, "FastFlameMissile");
+			if (misl != null)
+			{
+				misl.Vel.Z += 1;
+			}
 		}
 	}
 
 	void A_CrusaderSweepRight ()
 	{
-		angle -= 90./16;
-		Actor misl = SpawnMissileZAimed (pos.z + 48, target, "FastFlameMissile");
-		if (misl != null)
+		if (target != null)
 		{
-			misl.Vel.Z += 1;
+			angle -= 90./16;
+			Actor misl = SpawnMissileZAimed (pos.z + 48, target, "FastFlameMissile");
+			if (misl != null)
+			{
+				misl.Vel.Z += 1;
+			}
 		}
 	}
 
