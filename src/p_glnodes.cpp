@@ -661,6 +661,8 @@ static bool LoadNodes (FileReader * lump)
 
 static bool DoLoadGLNodes(FileReader ** lumps)
 {
+	int missing = CheckForMissingSegs();
+
 	if (!LoadGLVertexes(lumps[0]) ||
 		!LoadGLSegs(lumps[1]) ||
 		!LoadGLSubsectors(lumps[2]) ||
@@ -683,7 +685,6 @@ static bool DoLoadGLNodes(FileReader ** lumps)
 	}
 
 	// check whether the BSP covers all sidedefs completely.
-	int missing = CheckForMissingSegs();
 	if (missing > 0)
 	{
 		Printf("%d missing segs counted in GL nodes.\nThe BSP has to be rebuilt.\n", missing);
