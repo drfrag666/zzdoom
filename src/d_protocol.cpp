@@ -426,6 +426,7 @@ void ReadTicCmd (uint8_t **stream, int player, int tic)
 	while ((type = ReadByte (stream)) != DEM_USERCMD && type != DEM_EMPTYUSERCMD)
 		Net_SkipCommand (type, stream);
 
+	NetSpecs[player][ticmod].SetData (NULL, 0);
 	NetSpecs[player][ticmod].SetData (start, int(*stream - start - 1));
 
 	if (type == DEM_USERCMD)
@@ -465,8 +466,6 @@ void RunNetSpecs (int player, int buf)
 				int type = ReadByte (&stream);
 				Net_DoCommand (type, &stream, player);
 			}
-			if (!demorecording)
-				NetSpecs[player][buf].SetData (NULL, 0);
 		}
 	}
 }
