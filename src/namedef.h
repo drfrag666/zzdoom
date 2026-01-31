@@ -721,6 +721,9 @@ xx(Switch)
 xx(Playerdisplay)
 xx(Controlmessage)
 xx(Crosshairs)
+
+xx(Handler)
+
 xx(Colorpickermenu)
 xx(Mididevices)
 xx(Aldevices)
