@@ -1341,6 +1341,8 @@ OptionValue CompatModes
 	6, "$OPTVAL_BOOMSTRICT"
 	5, "$OPTVAL_MBF"
 	7, "$OPTVAL_MBFSTRICT"
+	8, "$OPTVAL_MBF21"
+	9, "$OPTVAL_MBF21STRICT"
 	4, "$OPTVAL_ZDOOM2063"
 }
 
@@ -1380,6 +1382,7 @@ OptionMenu "CompatibilityOptions"
 	Option "$CMPTMNU_TELEPORT",						"compat_teleport", "YesNo"
 	Option "$CMPTMNU_PUSHWINDOW",					"compat_pushwindow", "YesNo"
 	Option "$CMPTMNU_CHECKSWITCHRANGE",				"compat_checkswitchrange", "YesNo"
+	Option "$CMPTMNU_NOMBF21",						"compat_nombf21", "YesNo"
 
 	StaticText " "
 	StaticText "$CMPTMNU_PHYSICSBEHAVIOR",1

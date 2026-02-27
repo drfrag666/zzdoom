@@ -337,6 +337,9 @@ void HandleDeprecatedFlags(AActor *defaults, PClassActor *info, bool set, int in
 	case DEPF_INTERHUBSTRIP: // Old system was 0 or 1, so if the flag is cleared, assume 1.
 		static_cast<AInventory*>(defaults)->InterHubAmount = set ? 0 : 1;
 		break;
+	case DEPF_HIGHERMPROB:
+		defaults->MinMissileChance = set ? 160 : 200;
+		break;
 	case DEPF_NOTRAIL:
 	{
 		FString propname = "@property@powerspeed.notrail";
@@ -413,6 +416,9 @@ bool CheckDeprecatedFlags(const AActor *actor, PClassActor *info, int index)
 
 	case DEPF_INTERHUBSTRIP:
 		return !(static_cast<const AInventory*>(actor)->InterHubAmount);
+
+	case DEPF_HIGHERMPROB:
+		return actor->MinMissileChance <= 160;
 	}
 
 	return false; // Any entirely unknown flag is not set
@@ -1044,6 +1050,45 @@ DEFINE_PROPERTY(designatedteam, I, Actor)
 	if(val < 0 || (val >= (signed) Teams.Size() && val != TEAM_NONE))
 		I_Error("Invalid team designation.\n");
 	defaults->DesignatedTeam = val;
+}
+
+//==========================================================================
+// MBF21
+//==========================================================================
+DEFINE_PROPERTY(infightinggroup, I, Actor)
+{
+	PROP_INT_PARM(i, 0);
+	if (i < 0)
+	{
+		I_Error("Infighting groups must be >= 0.");
+	}
+	info->ActorInfo()->infighting_group = i;
+}
+
+//==========================================================================
+// MBF21
+//==========================================================================
+DEFINE_PROPERTY(projectilegroup, I, Actor)
+{
+	PROP_INT_PARM(i, 0);
+	if (i < -1)
+	{
+		I_Error("Projectile groups must be >= -1.");
+	}
+	info->ActorInfo()->projectile_group = i;
+}
+
+//==========================================================================
+// MBF21
+//==========================================================================
+DEFINE_PROPERTY(splashgroup, I, Actor)
+{
+	PROP_INT_PARM(i, 0);
+	if (i < 0)
+	{
+		I_Error("Splash groups must be >= 0.");
+	}
+	info->ActorInfo()->splash_group = i;
 }
 
 //==========================================================================

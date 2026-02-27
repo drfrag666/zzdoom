@@ -184,7 +184,7 @@ PFunction *CreateAnonymousFunction(PContainerType *containingclass, PType *retur
 //
 //==========================================================================
 
-PFunction *FindClassMemberFunction(PContainerType *selfcls, PContainerType *funccls, FName name, FScriptPosition &sc, bool *error)
+PFunction *FindClassMemberFunction(PContainerType *selfcls, PContainerType *funccls, FName name, FScriptPosition &sc, bool *error, const VersionInfo &version)
 {
 	// Skip ACS_NamedExecuteWithResult. Anything calling this should use the builtin instead.
 	if (name == NAME_ACS_NamedExecuteWithResult) return nullptr;
@@ -210,7 +210,7 @@ PFunction *FindClassMemberFunction(PContainerType *selfcls, PContainerType *func
 		{
 			sc.Message(MSG_ERROR, "%s is declared protected and not accessible", symbol->SymbolName.GetChars());
 		}
-		else if (funcsym->Variants[0].Flags & VARF_Deprecated)
+		else if ((funcsym->Variants[0].Flags & VARF_Deprecated) && funcsym->mVersion <= version)
 		{
 			sc.Message(MSG_WARNING, "Call to deprecated function %s", symbol->SymbolName.GetChars());
 		}
@@ -305,10 +305,16 @@ static void CheckLabel(PClassActor *obj, FStateLabel *slb, int useflag, FName st
 	auto state = slb->State;
 	if (state != nullptr)
 	{
+		if (intptr_t(state) <= 0xffff)
+		{
+			// can't do much here aside from printing a message and aborting.
+			I_Error("Bad state label %s in actor %s", slb->Label.GetChars(), obj->TypeName.GetChars());
+		}
+
 		if (!(state->UseFlags & useflag))
 		{
 			GetStateSource(state).Message(MSG_ERROR, TEXTCOLOR_RED "%s references state %s as %s state, but this state is not flagged for use as %s.\n",
-				obj->TypeName.GetChars(), FState::StaticGetStateName(state).GetChars(), statename.GetChars(), descript);
+				obj->TypeName.GetChars(), FState::StaticGetStateName(state, obj).GetChars(), statename.GetChars(), descript);
 		}
 	}
 	if (slb->Children != nullptr)
@@ -359,7 +365,7 @@ static void CheckStates(PClassActor *obj)
 		if (state->NextState && (state->UseFlags & state->NextState->UseFlags) != state->UseFlags)
 		{
 			GetStateSource(state).Message(MSG_ERROR, TEXTCOLOR_RED "State %s links to a state with incompatible restrictions.\n",
-				FState::StaticGetStateName(state).GetChars());
+				FState::StaticGetStateName(state, obj).GetChars());
 		}
 	}
 }

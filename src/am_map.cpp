@@ -2952,6 +2952,11 @@ static void DrawMarker (FTexture *tex, double x, double y, int yadjust,
 	{
 		return;
 	}
+	if (xscale < 0)
+	{
+		flip = !flip;
+		xscale = -xscale;
+	}
 	if (am_rotate == 1 || (am_rotate == 2 && viewactive))
 	{
 		AM_rotatePoint (&x, &y);

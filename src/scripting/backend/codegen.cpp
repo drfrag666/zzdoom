@@ -56,8 +56,6 @@
 #include "w_wad.h"
 #include "math/cmath.h"
 
-inline PClass *PObjectPointer::PointedClass() const { return static_cast<PClassType*>(PointedType)->Descriptor; }
-
 extern FRandom pr_exrandom;
 FMemArena FxAlloc(65536);
 int utf8_decode(const char *src, int *size);
@@ -398,7 +396,11 @@ void FxExpression::EmitCompare(VMFunctionBuilder *build, bool invert, TArray<siz
 {
 	ExpEmit op = Emit(build);
 	ExpEmit i;
-	assert(op.RegType != REGT_NIL && op.RegCount == 1 && !op.Konst);
+	assert(op.RegType != REGT_NIL && op.RegCount == 1);
+	if (op.Konst)
+	{
+		ScriptPosition.Message(MSG_WARNING, "Conditional expression is constant");
+	}
 	switch (op.RegType)
 	{
 	case REGT_INT:
@@ -1077,6 +1079,7 @@ FxExpression *FxFloatCast::Resolve(FCompileContext &ctx)
 	if (basex->IsFloat())
 	{
 		FxExpression *x = basex;
+		x->ValueType = ValueType;
 		basex = nullptr;
 		delete this;
 		return x;
@@ -2501,6 +2504,12 @@ FxExpression *FxAssign::Resolve(FCompileContext &ctx)
 			delete this;
 			return nullptr;
 		}
+		else if (Base->IsDynamicArray())
+		{
+			ScriptPosition.Message(MSG_ERROR, "Cannot assign dynamic arrays, use Copy() or Move() function instead");
+			delete this;
+			return nullptr;
+		}
 		if (!Base->IsVector() && Base->ValueType->isStruct())
 		{
 			ScriptPosition.Message(MSG_ERROR, "Struct assignment not implemented yet");
@@ -2697,6 +2706,12 @@ FxExpression *FxMultiAssign::Resolve(FCompileContext &ctx)
 	}
 	auto VMRight = static_cast<FxVMFunctionCall *>(Right);
 	auto rets = VMRight->GetReturnTypes();
+	if (Base.Size() == 1)
+	{
+		Right->ScriptPosition.Message(MSG_ERROR, "Multi-assignment with only one element", VMRight->Function->SymbolName.GetChars());
+		delete this;
+		return nullptr;
+	}
 	if (rets.Size() < Base.Size())
 	{
 		Right->ScriptPosition.Message(MSG_ERROR, "Insufficient returns in function %s", VMRight->Function->SymbolName.GetChars());
@@ -5959,7 +5974,7 @@ FxRandomSeed::~FxRandomSeed()
 FxExpression *FxRandomSeed::Resolve(FCompileContext &ctx)
 {
 	CHECKRESOLVED();
-	RESOLVE(seed, ctx);
+	SAFE_RESOLVE(seed, ctx);
 	return this;
 };
 
@@ -6479,6 +6494,12 @@ FxExpression *FxMemberIdentifier::Resolve(FCompileContext& ctx)
 						return nullptr;
 					}
 				}
+			}
+			else
+			{
+				ScriptPosition.Message(MSG_ERROR, "%s is not a member of %s", Identifier.GetChars(), ccls->TypeName.GetChars());
+				delete this;
+				return nullptr;
 			}
 		}
 	}
@@ -7715,7 +7736,7 @@ FxExpression *FxFunctionCall::Resolve(FCompileContext& ctx)
 
 	if (ctx.Class != nullptr)
 	{
-		PFunction *afd = FindClassMemberFunction(ctx.Class, ctx.Class, MethodName, ScriptPosition, &error);
+		PFunction *afd = FindClassMemberFunction(ctx.Class, ctx.Class, MethodName, ScriptPosition, &error, ctx.Version);
 
 		if (afd != nullptr)
 		{
@@ -8117,7 +8138,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 					if (novirtual)
 					{
 						bool error;
-						PFunction *afd = FindClassMemberFunction(ccls, ctx.Class, MethodName, ScriptPosition, &error);
+						PFunction *afd = FindClassMemberFunction(ccls, ctx.Class, MethodName, ScriptPosition, &error, ctx.Version);
 						if ((nullptr != afd) && (afd->Variants[0].Flags & VARF_Method) && (afd->Variants[0].Flags & VARF_Virtual))
 						{
 							staticonly = false;
@@ -8406,7 +8427,7 @@ FxExpression *FxMemberFunctionCall::Resolve(FCompileContext& ctx)
 
 isresolved:
 	bool error = false;
-	PFunction *afd = FindClassMemberFunction(cls, ctx.Class, MethodName, ScriptPosition, &error);
+	PFunction *afd = FindClassMemberFunction(cls, ctx.Class, MethodName, ScriptPosition, &error, ctx.Version);
 	if (error)
 	{
 		delete this;
@@ -8962,7 +8983,7 @@ FxExpression *FxVMFunctionCall::Resolve(FCompileContext& ctx)
 			else
 			{
 				bool writable;
-				ArgList[i] = ArgList[i]->Resolve(ctx);	// nust be resolved before the address is requested.
+				ArgList[i] = ArgList[i]->Resolve(ctx);	// must be resolved before the address is requested.
 				if (ArgList[i] != nullptr && ArgList[i]->ValueType != TypeNullPtr)
 				{
 					if (type == ArgList[i]->ValueType && type->isRealPointer() && type->toPointer()->PointedType->isStruct())
@@ -9074,7 +9095,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 	{
 		assert(Self != nullptr);
 		selfemit = Self->Emit(build);
-		assert((selfemit.RegType == REGT_POINTER) || (selfemit.Fixed && selfemit.Target));
+		assert(selfemit.RegType == REGT_POINTER || selfemit.RegType == REGT_STRING || (selfemit.Fixed && selfemit.Target));
 
 		int innerside = FScopeBarrier::SideFromFlags(Function->Variants[0].Flags);
 
@@ -9094,7 +9115,7 @@ ExpEmit FxVMFunctionCall::Emit(VMFunctionBuilder *build)
 			}
 		}
 
-		if (selfemit.Fixed && selfemit.Target)
+		if ((selfemit.Fixed && selfemit.Target) || selfemit.RegType == REGT_STRING)
 		{
 			// Address of a local variable.
 			build->Emit(OP_PARAM, 0, selfemit.RegType | REGT_ADDROF, selfemit.RegNum);

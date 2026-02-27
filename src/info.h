@@ -74,6 +74,7 @@ enum EStateFlags
 	STF_SAMEFRAME = 16,	// Ignore Frame (except when spawning actor)
 	STF_CANRAISE = 32,	// Allows a monster to be resurrected without waiting for an infinate frame
 	STF_DEHACKED = 64,	// Modified by Dehacked
+	STF_CONSUMEAMMO = 128,	// Needed by the Dehacked parser.
 };
 
 enum EStateUseFlags
@@ -121,6 +122,7 @@ struct FState
 	uint8_t		DefineFlags;	// Unused byte so let's use it during state creation.
 	int32_t		Misc1;			// Was changed to int8_t, reverted to long for MBF compat
 	int32_t		Misc2;			// Was changed to uint8_t, reverted to long for MBF compat
+	int32_t		DehIndex;		// we need this to resolve offsets in P_SetSafeFlash.
 public:
 	inline int GetFrame() const
 	{
@@ -180,9 +182,11 @@ public:
 	bool CallAction(AActor *self, AActor *stateowner, FStateParamInfo *stateinfo, FState **stateret);
 	static PClassActor *StaticFindStateOwner (const FState *state);
 	static PClassActor *StaticFindStateOwner (const FState *state, PClassActor *info);
-	static FString StaticGetStateName(const FState *state);
+	static FString StaticGetStateName(const FState *state, PClassActor *info = nullptr);
 	static FRandom pr_statetics;
 };
+
+extern TMap<int, FState*> dehExtStates;
 
 struct FStateLabels;
 struct FStateLabel
@@ -251,6 +255,9 @@ struct FActorInfo
 	uint16_t SpawnID = 0;
 	uint16_t ConversationID = 0;
 	int16_t DoomEdNum = -1;
+	int infighting_group = 0;
+	int projectile_group = 0;
+	int splash_group = 0;
 
 	FStateLabels *StateList = nullptr;
 	DmgFactors DamageFactors;

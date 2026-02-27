@@ -932,6 +932,13 @@ FUNC(LS_Generic_Crusher2)
 						 SPEED(arg2), 0, arg4, arg3 ? 2 : 0, 0, DCeiling::ECrushMode::crushHexen);
 }
 
+FUNC(LS_Generic_CrusherDist)
+// Generic_CrusherDist (tag, dnspeed, upspeed, silent, damage)
+{
+	return EV_DoCeiling(DCeiling::ceilCrushAndRaise, ln, arg0, SPEED(arg1),
+		SPEED(arg2), 8, arg4, arg3 ? 2 : 0, 0, (arg1 <= 24 && arg2 <= 24) ? DCeiling::ECrushMode::crushSlowdown : DCeiling::ECrushMode::crushDoom);
+}
+
 FUNC(LS_Plat_PerpetualRaise)
 // Plat_PerpetualRaise (tag, speed, delay)
 {
@@ -3645,7 +3652,7 @@ static lnSpecFunc LineSpecials[] =
 	/* 276 */ LS_Ceiling_Stop,
 	/* 279 */ LS_Floor_MoveToValueAndCrush,
 	/* 280 */ LS_Ceiling_MoveToValueAndCrush,
-
+	/* 284 */ LS_Generic_CrusherDist
 };
 
 #define DEFINE_SPECIAL(name, num, min, max, mmax) {#name, num, min, max, mmax},

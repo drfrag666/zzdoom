@@ -394,6 +394,18 @@ void P_PlayerInSpecialSector (player_t *player, sector_t * sector)
 	if (sector->damageinterval <= 0)
 		sector->damageinterval = 32;
 
+	if (sector->Flags & (SECF_EXIT1 | SECF_EXIT2))
+	{
+		for (int i = 0; i < MAXPLAYERS; i++)
+			if (playeringame[i])
+				P_DamageMobj(players[i].mo, nullptr, nullptr, TELEFRAG_DAMAGE, NAME_InstantDeath);
+		if (sector->Flags & SECF_EXIT2)
+			G_SecretExitLevel(0);
+		else 
+			G_ExitLevel(0, false);
+		return;
+	}
+
 	// [RH] Apply any customizable damage
 	if (sector->damageamount > 0)
 	{
@@ -1063,7 +1075,7 @@ void P_SpawnSkybox(AActor *origin)
 static void P_SetupSectorDamage(sector_t *sector, int damage, int interval, int leakchance, FName type, int flags)
 {
 	// Only set if damage is not yet initialized. This ensures that UDMF takes precedence over sector specials.
-	if (sector->damageamount == 0)
+	if (sector->damageamount == 0 && !(sector->Flags & (SECF_EXIT1|SECF_EXIT2)))
 	{
 		sector->damageamount = damage;
 		sector->damageinterval = MAX(1, interval);
@@ -1097,17 +1109,44 @@ void P_InitSectorSpecial(sector_t *sector, int special)
 	{
 		sector->Flags |= SECF_PUSH;
 	}
-	if ((sector->special & DAMAGE_MASK) == 0x100)
+	// Non MBF21 compatibility needs to be checked here, because after this point there is no longer any context in which it can be done.
+	if ((sector->special & KILL_MONSTERS_MASK) && level.MBF21Enabled())
 	{
-		P_SetupSectorDamage(sector, 5, 32, 0, NAME_Fire, 0);
+		sector->Flags |= SECF_KILLMONSTERS;
 	}
-	else if ((sector->special & DAMAGE_MASK) == 0x200)
+	if (!(sector->special & DEATH_MASK) || !level.MBF21Enabled())
 	{
-		P_SetupSectorDamage(sector, 10, 32, 0, NAME_Slime, 0);
+		if ((sector->special & DAMAGE_MASK) == 0x100)
+		{
+			P_SetupSectorDamage(sector, 5, 32, 0, NAME_Fire, 0);
+		}
+		else if ((sector->special & DAMAGE_MASK) == 0x200)
+		{
+			P_SetupSectorDamage(sector, 10, 32, 0, NAME_Slime, 0);
+		}
+		else if ((sector->special & DAMAGE_MASK) == 0x300)
+		{
+			P_SetupSectorDamage(sector, 20, 32, 5, NAME_Slime, 0);
+		}
 	}
-	else if ((sector->special & DAMAGE_MASK) == 0x300)
+	else
 	{
-		P_SetupSectorDamage(sector, 20, 32, 5, NAME_Slime, 0);
+		if ((sector->special & DAMAGE_MASK) == 0x100)
+		{
+			P_SetupSectorDamage(sector, TELEFRAG_DAMAGE, 1, 256, NAME_InstantDeath, 0);
+		}
+		else if ((sector->special & DAMAGE_MASK) == 0x200)
+		{
+			sector->Flags |= SECF_EXIT1;
+		}
+		else if ((sector->special & DAMAGE_MASK) == 0x300)
+		{
+			sector->Flags |= SECF_EXIT2;
+		}
+		else // 0
+		{
+			P_SetupSectorDamage(sector, TELEFRAG_DAMAGE-1, 0, 0, NAME_InstantDeath, 0);
+		}
 	}
 	sector->special &= 0xff;
 
@@ -1371,6 +1410,27 @@ void P_SpawnSpecials (void)
 
 		case Line_SetPortal:
 			P_SpawnLinePortal(&line);
+			break;
+
+			// partial support for MBF's stay-on-lift feature.
+			// Unlike MBF we cannot scan all lines for a proper special each time because it'd take too long.
+			// So instead, set the info here, but only for repeatable lifts to keep things simple. 
+			// This also cannot consider lifts triggered by scripts etc.
+		case Generic_Lift:
+			if (line.args[3] != 1) continue;
+		case Plat_DownWaitUpStay:
+		case Plat_DownWaitUpStayLip:
+		case Plat_UpWaitDownStay:
+		case Plat_UpNearestWaitDownStay:
+			if (line.flags & ML_REPEAT_SPECIAL)
+			{
+				FSectorTagIterator it(line.args[0], &line);
+				int secno;
+				while ((secno = it.Next()) != -1)
+				{
+					level.sectors[secno].MoreFlags |= SECMF_LIFT;
+				}
+			}
 			break;
 
 		// [RH] ZDoom Static_Init settings

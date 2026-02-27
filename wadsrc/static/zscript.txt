@@ -257,3 +257,5 @@ version "3.1"
 #include "zscript/actors/chex/chexitems.zs"
 #include "zscript/actors/chex/chexdecorations.zs"
 #include "zscript/actors/chex/chexplayer.zs"
+
+#include "zscript/actors/mbf21.zs"

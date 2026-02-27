@@ -132,7 +132,7 @@ enum ActorFlag
 	MF_DROPOFF			= 0x00000400,	// allow jumps from high places
 	MF_PICKUP			= 0x00000800,	// for players to pick up items
 	MF_NOCLIP			= 0x00001000,	// player cheat
-	MF_INCHASE			= 0x00002000,	// [RH] used by A_Chase and A_Look to avoid recursion
+	MF_SLIDE			= 0x00002000,	// Not used anymore but needed for MBF21 flag checkers.
 	MF_FLOAT			= 0x00004000,	// allow moves to any height, no gravity
 	MF_TELEPORT			= 0x00008000,	// don't cross lines or look at heights
 	MF_MISSILE			= 0x00010000,	// don't hit same species, explode on block
@@ -157,9 +157,6 @@ enum ActorFlag
 	MF_NOLIFTDROP		= 0x20000000,	// [RH] Used with MF_NOGRAVITY to avoid dropping with lifts
 	MF_STEALTH			= 0x40000000,	// [RH] Andy Baker's stealth monsters
 	MF_ICECORPSE		= 0x80000000,	// a frozen corpse (for blasting) [RH] was 0x800000
-
-	// --- dummies for unknown/unimplemented Strife flags ---
-	MF_STRIFEx8000000 = 0,		// seems related to MF_SHADOW
 };
 
 // --- mobj.flags2 ---
@@ -389,14 +386,24 @@ enum ActorFlag7
 	MF7_FORCEZERORADIUSDMG = 0x10000000,	// passes zero radius damage on to P_DamageMobj, this is necessary in some cases where DoSpecialDamage gets overrideen.
 	MF7_NOINFIGHTSPECIES = 0x20000000,	// don't start infights with one's own species.
 	MF7_FORCEINFIGHTING	= 0x40000000,	// overrides a map setting of 'no infighting'.
-	MF7_SPRITEFLIP		= 0x80000000,	// sprite flipped on x-axis
+	MF7_INCHASE			= 0x80000000,	// [RH] used by A_Chase and A_Look to avoid recursion
 };
 
 enum ActorFlag8
 {
 	MF8_FRIGHTENING		= 0x00000001,	// for those moments when halloween just won't do
 	MF8_INSCROLLSEC		= 0x00000002,	// actor is partially inside a scrolling sector
-	MF8_RETARGETAFTERSLAM	= 0x00000080	// Forces jumping to the idle state after slamming into something
+	MF8_RETARGETAFTERSLAM	= 0x00000080,	// Forces jumping to the idle state after slamming into something
+	MF8_FULLVOLSEE		= 0x00010000,	// Play see sound at full volume
+	MF8_E1M8BOSS		= 0x00020000,	// MBF21 boss death.
+	MF8_E2M8BOSS		= 0x00040000,	// MBF21 boss death.
+	MF8_E3M8BOSS		= 0x00080000,	// MBF21 boss death.
+	MF8_E4M8BOSS		= 0x00100000,	// MBF21 boss death.
+	MF8_E4M6BOSS		= 0x00200000,	// MBF21 boss death.
+	MF8_MAP07BOSS1		= 0x00400000,	// MBF21 boss death.
+	MF8_MAP07BOSS2		= 0x00800000,	// MBF21 boss death.
+	MF8_AVOIDHAZARDS	= 0x01000000,	// MBF AI enhancement.
+	MF8_STAYONLIFT		= 0x02000000,	// MBF AI enhancement.
 };
 
 // --- mobj.renderflags ---
@@ -438,6 +445,8 @@ enum ActorRenderFlag
 	RF_INTERPOLATEANGLES		= 0x01000000, // [MC] Allow interpolation of the actor's angle, pitch and roll.
 	RF_MAYBEINVISIBLE	= 0x02000000,
 	RF_DONTINTERPOLATE	= 0x04000000,	// no render interpolation ever!
+
+	RF_SPRITEFLIP		= 0x08000000,	// sprite flipped on x-axis
 };
 
 // This translucency value produces the closest match to Heretic's TINTTAB.
@@ -476,6 +485,9 @@ enum ActorBounceFlag
 	BOUNCE_AutoOffFloorOnly = 1<<13,		// like BOUNCE_AutoOff, but only on floors
 	BOUNCE_UseBounceState = 1<<14,	// Use Bounce[.*] states
 	BOUNCE_NotOnShootables = 1<<15,	// do not bounce off shootable actors if we are a projectile. Explode instead.
+	BOUNCE_BounceOnUnrips = 1<<16,	// projectile bounces on actors with DONTRIP
+	BOUNCE_NotOnSky = 1<<17,		// Don't bounce on sky floors / ceilings / walls
+	BOUNCE_DEH = 1<<18,				// Flag was set through Dehacked.
 
 	BOUNCE_TypeMask = BOUNCE_Walls | BOUNCE_Floors | BOUNCE_Ceilings | BOUNCE_Actors | BOUNCE_AutoOff | BOUNCE_HereticType | BOUNCE_MBF,
 
@@ -519,7 +531,7 @@ typedef TFlags<ActorFlag6> ActorFlags6;
 typedef TFlags<ActorFlag7> ActorFlags7;
 typedef TFlags<ActorFlag8> ActorFlags8;
 typedef TFlags<ActorRenderFlag> ActorRenderFlags;
-typedef TFlags<ActorBounceFlag, uint16_t> ActorBounceFlags;
+typedef TFlags<ActorBounceFlag> ActorBounceFlags;
 DEFINE_TFLAGS_OPERATORS (ActorFlags)
 DEFINE_TFLAGS_OPERATORS (ActorFlags2)
 DEFINE_TFLAGS_OPERATORS (ActorFlags3)
@@ -628,17 +640,11 @@ public:
 
 	FDropItem *GetDropItems() const;
 
-	// Return true if the monster should use a missile attack, false for melee
-	bool SuggestMissileAttack (double dist);
-
 	// Adjusts the angle for deflection/reflection of incoming missiles
 	// Returns true if the missile should be allowed to explode anyway
 	bool AdjustReflectionAngle (AActor *thing, DAngle &angle);
 	int AbsorbDamage(int damage, FName dmgtype);
 	void AlterWeaponSprite(visstyle_t *vis);
-
-	// Returns true if this actor is within melee range of its target
-	bool CheckMeleeRange();
 
 	bool CheckNoDelay();
 
@@ -1314,7 +1320,7 @@ public:
 	DVector3 PosRelative(int grp) const;
 	DVector3 PosRelative(const AActor *other) const;
 	DVector3 PosRelative(sector_t *sec) const;
-	DVector3 PosRelative(line_t *line) const;
+	DVector3 PosRelative(const line_t *line) const;
 
 	FVector3 SoundPos() const
 	{

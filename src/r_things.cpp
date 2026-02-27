@@ -996,7 +996,7 @@ void R_ProjectSprite (AActor *thing, int fakeside, F3DFloor *fakefloor, F3DFloor
 		renderflags ^= MirrorFlags & RF_XFLIP;
 
 		// [SP] SpriteFlip
-		if (thing->flags7 & MF7_SPRITEFLIP)
+		if (thing->renderflags & RF_SPRITEFLIP)
 			renderflags ^= RF_XFLIP;
 
 		// calculate edges of the shape
@@ -1309,7 +1309,7 @@ void R_AddSprites (sector_t *sec, int lightlevel, int fakeside)
 				if(rover->bottom.plane->ZatPoint(0., 0.) >= thing->Top()) fakeceiling = rover;
 			}
 		}	
-		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec, !!(thing->flags7 & MF7_SPRITEFLIP));
+		R_ProjectSprite (thing, fakeside, fakefloor, fakeceiling, sec, !!(thing->renderflags & RF_SPRITEFLIP));
 		fakeceiling = NULL;
 		fakefloor = NULL;
 	}

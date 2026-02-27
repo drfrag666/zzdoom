@@ -86,7 +86,7 @@ extern float			BackbuttonAlpha;
 // internal flags. These do not get exposed to actor definitions but scripts need to be able to access them as variables.
 static FFlagDef InternalActorFlagDefs[]=
 {
-	DEFINE_FLAG(MF, INCHASE, AActor, flags),
+	DEFINE_FLAG(MF7, INCHASE, AActor, flags7),
 	DEFINE_FLAG(MF, UNMORPHED, AActor, flags),
 	DEFINE_FLAG(MF2, FLY, AActor, flags2),
 	DEFINE_FLAG(MF2, ONMOBJ, AActor, flags2),
@@ -321,10 +321,19 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(MF7, FORCEZERORADIUSDMG, AActor, flags7),
 	DEFINE_FLAG(MF7, NOINFIGHTSPECIES, AActor, flags7),
 	DEFINE_FLAG(MF7, FORCEINFIGHTING, AActor, flags7),
-	DEFINE_FLAG(MF7, SPRITEFLIP, AActor, flags7),
 
 	DEFINE_FLAG(MF8, FRIGHTENING, AActor, flags8),
 	DEFINE_FLAG(MF8, RETARGETAFTERSLAM, AActor, flags8),
+	DEFINE_FLAG(MF8, FULLVOLSEE, AActor, flags8),
+	DEFINE_FLAG(MF8, E1M8BOSS, AActor, flags8),
+	DEFINE_FLAG(MF8, E2M8BOSS, AActor, flags8),
+	DEFINE_FLAG(MF8, E3M8BOSS, AActor, flags8),
+	DEFINE_FLAG(MF8, E4M8BOSS, AActor, flags8),
+	DEFINE_FLAG(MF8, E4M6BOSS, AActor, flags8),
+	DEFINE_FLAG(MF8, MAP07BOSS1, AActor, flags8),
+	DEFINE_FLAG(MF8, MAP07BOSS2, AActor, flags8),
+	DEFINE_FLAG(MF8, AVOIDHAZARDS, AActor, flags8),
+	DEFINE_FLAG(MF8, STAYONLIFT, AActor, flags8),
 
 	DEFINE_FLAG(MF8, FRIGHTENING, AActor, flags8),
 
@@ -348,6 +357,7 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG(RF, YFLIP, AActor, renderflags),
 	DEFINE_FLAG(RF, INTERPOLATEANGLES, AActor, renderflags),
 	DEFINE_FLAG(RF, DONTINTERPOLATE, AActor, renderflags),
+	DEFINE_FLAG(RF, SPRITEFLIP, AActor, renderflags),
 
 	// Bounce flags
 	DEFINE_FLAG2(BOUNCE_Walls, BOUNCEONWALLS, AActor, BounceFlags),
@@ -365,6 +375,8 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG2(BOUNCE_AutoOffFloorOnly, BOUNCEAUTOOFFFLOORONLY, AActor, BounceFlags),
 	DEFINE_FLAG2(BOUNCE_UseBounceState, USEBOUNCESTATE, AActor, BounceFlags),
 	DEFINE_FLAG2(BOUNCE_NotOnShootables, DONTBOUNCEONSHOOTABLES, AActor, BounceFlags),
+	DEFINE_FLAG2(BOUNCE_BounceOnUnrips, BOUNCEONUNRIPPABLES, AActor, BounceFlags),
+	DEFINE_FLAG2(BOUNCE_NotOnSky, DONTBOUNCEONSKY, AActor, BounceFlags),
 };
 
 // These won't be accessible through bitfield variables
@@ -382,6 +394,7 @@ static FFlagDef MoreFlagDefs[] =
 	DEFINE_DEPRECATED_FLAG(HERETICBOUNCE),
 	DEFINE_DEPRECATED_FLAG(HEXENBOUNCE),
 	DEFINE_DEPRECATED_FLAG(DOOMBOUNCE),
+	DEFINE_DEPRECATED_FLAG(HIGHERMPROB),
 
 	// Deprecated flags with no more existing functionality.
 	DEFINE_DUMMY_FLAG(FASTER, true),				// obsolete, replaced by 'Fast' state flag
@@ -471,6 +484,7 @@ static FFlagDef WeaponFlagDefs[] =
 	DEFINE_FLAG(WIF, NODEATHDESELECT, AWeapon, WeaponFlags),
 	DEFINE_FLAG(WIF, NODEATHINPUT, AWeapon, WeaponFlags),
 	DEFINE_FLAG(WIF, ALT_USES_BOTH, AWeapon, WeaponFlags),
+	DEFINE_FLAG(WIF, NOAUTOSWITCHTO, AWeapon, WeaponFlags),
 
 	DEFINE_DUMMY_FLAG(NOLMS, false),
 	DEFINE_DUMMY_FLAG(ALLOW_WITH_RESPAWN_INVUL, false),
@@ -1240,4 +1254,3 @@ DEFINE_ACTION_FUNCTION(FStringStruct, Filter)
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	ACTION_RETURN_STRING(strbin1(*self));
 }
-

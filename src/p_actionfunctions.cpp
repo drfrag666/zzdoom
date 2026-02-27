@@ -144,7 +144,6 @@ bool AStateProvider::CallStateChain (AActor *actor, FState *state)
 			if (state->ActionFunc->Unsafe)
 			{
 				// If an unsafe function (i.e. one that accesses user variables) is being detected, print a warning once and remove the bogus function. We may not call it because that would inevitably crash.
-				auto owner = FState::StaticFindStateOwner(state);
 				Printf(TEXTCOLOR_RED "Unsafe state call in state %s to %s which accesses user variables. The action function has been removed from this state\n",
 					FState::StaticGetStateName(state).GetChars(), state->ActionFunc->PrintableName.GetChars());
 				state->ActionFunc = nullptr;
@@ -1637,7 +1636,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CustomMeleeAttack)
 		return 0;
 				
 	A_FaceTarget (self);
-	if (self->CheckMeleeRange ())
+	if (P_CheckMeleeRange(self))
 	{
 		if (meleesound)
 			S_Sound (self, CHAN_WEAPON, meleesound, 1, ATTN_NORM);
@@ -1672,7 +1671,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CustomComboAttack)
 		return 0;
 				
 	A_FaceTarget (self);
-	if (self->CheckMeleeRange())
+	if (P_CheckMeleeRange(self))
 	{
 		if (damagetype == NAME_None)
 			damagetype = NAME_Melee;	// Melee is the default type
@@ -4571,7 +4570,30 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseSiblings)
 	}
 	return 0;
 }
- 
+
+//===========================================================================
+//
+// A_RaiseSelf
+//
+//===========================================================================
+DEFINE_ACTION_FUNCTION(AActor, A_RaiseSelf)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT_DEF(flags);
+	ACTION_RETURN_BOOL(P_Thing_Raise(self, NULL, (flags & RF_NOCHECKPOSITION)));
+}
+
+//===========================================================================
+//
+// CanRaise
+//
+//===========================================================================
+DEFINE_ACTION_FUNCTION(AActor, CanRaise)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(P_Thing_CanRaise(self));
+}
+
 //===========================================================================
 //
 // A_MonsterRefire

@@ -47,6 +47,7 @@ class Actor : Thinker native
 	const LARGE_MASS = 10000000;	// not INT_MAX on purpose
 	const ORIG_FRICTION = (0xE800/65536.);	// original value
 	const ORIG_FRICTION_FACTOR = (2048/65536.);	// original value
+	const MELEEDELTA = 20;
 
 
 	// flags are not defined here, the native fields for those get synthesized from the internal tables.
@@ -215,9 +216,15 @@ class Actor : Thinker native
 	meta int ExplosionDamage;
 	meta int MeleeDamage;
 	meta Sound MeleeSound;
+	meta Sound RipSound;
 	meta double MissileHeight;
 	meta Name MissileName;
 	meta double FastSpeed;		// speed in fast mode
+
+	// todo: implement access to native meta properties.
+	// native meta int infighting_group;
+	// native meta int projectile_group;
+	// native meta int splash_group;
 
 	Property prefix: none;
 	Property Obituary: Obituary;
@@ -286,6 +293,7 @@ class Actor : Thinker native
 	property Ripperlevel: RipperLevel;
 	property RipLevelMin: RipLevelMin;
 	property RipLevelMax: RipLevelMax;
+	property RipSound: RipSound;
 	
 	// need some definition work first
 	//FRenderStyle RenderStyle;
@@ -319,7 +327,7 @@ class Actor : Thinker native
 		RenderStyle 'Normal';
 		Alpha 1;
 		MinMissileChance 200;
-		MeleeRange 64 - 20;
+		MeleeRange 64 - MELEEDELTA;
 		MaxDropoffHeight 24;
 		MaxStepHeight 24;
 		BounceFactor 0.7;
@@ -343,6 +351,7 @@ class Actor : Thinker native
 		RipperLevel 0;
 		RipLevelMin 0;
 		RipLevelMax 0;
+		RipSound "misc/ripslop";
 		DefThreshold 100;
 		BloodType "Blood", "BloodSplatter", "AxeBlood";
 		ExplosionDamage 128;
@@ -560,10 +569,11 @@ class Actor : Thinker native
 	native Actor SpawnSubMissile(Class<Actor> type, Actor target);
 	native Actor, Actor SpawnPlayerMissile(class<Actor> type, double angle = 0, double x = 0, double y = 0, double z = 0, out FTranslatedLineTarget pLineTarget = null, bool nofreeaim = false, bool noautoaim = false, int aimflags = 0);
 	native void SpawnTeleportFog(Vector3 pos, bool beforeTele, bool setTarget);
-	native Actor RoughMonsterSearch(int distance, bool onlyseekable = false, bool frontonly = false);
+	native Actor RoughMonsterSearch(int distance, bool onlyseekable = false, bool frontonly = false, double fov = 0);
 	native int ApplyDamageFactor(Name damagetype, int damage);
 	native int GetModifiedDamage(Name damagetype, int damage, bool passive);
 	native bool CheckBossDeath();
+	native bool CheckFov(Actor target, double fov);
 
 	void A_Light(int extralight) { if (player) player.extralight = clamp(extralight, -20, 20); }
 	void A_Light0() { if (player) player.extralight = 0; }
@@ -584,7 +594,7 @@ class Actor : Thinker native
 	native void TraceBleedAngle(int damage, double angle, double pitch);
 
 	native void SetIdle(bool nofunction = false);
-	native bool CheckMeleeRange();
+	native bool CheckMeleeRange(double range = -1);
 	native bool CheckMeleeRange2();
 	native virtual int DamageMobj(Actor inflictor, Actor source, int damage, Name mod, int flags = 0, double angle = 0);
 	native void PoisonMobj (Actor inflictor, Actor source, int damage, int duration, int period, Name type);
@@ -635,6 +645,7 @@ class Actor : Thinker native
 	native clearscope vector2 Vec2Angle(double length, double angle, bool absolute = false) const;
 	native clearscope vector2 Vec2Offset(double x, double y, bool absolute = false) const;
 	native clearscope vector3 Vec2OffsetZ(double x, double y, double atz, bool absolute = false) const;
+	native double PitchFromVel();
 	native void VelFromAngle(double speed = 0, double angle = 0);
 	native void Vel3DFromAngle(double speed, double angle, double pitch);
 	native void Thrust(double speed = 0, double angle = 0);
@@ -968,6 +979,7 @@ class Actor : Thinker native
 	native void A_Chase(statelabel melee = null, statelabel missile = null, int flags = 0);
 	native void A_Scream();
 	native void A_VileChase();
+	native bool A_CheckForResurrection(State state = null, Sound snd = 0);
 	native void A_BossDeath();
 	native void A_Detonate();
 	bool A_CallSpecial(int special, int arg1=0, int arg2=0, int arg3=0, int arg4=0, int arg5=0)
@@ -990,7 +1002,7 @@ class Actor : Thinker native
 	deprecated("2.3") native void A_BulletAttack();
 	native void A_WolfAttack(int flags = 0, sound whattoplay = "weapons/pistol", double snipe = 1.0, int maxdamage = 64, int blocksize = 128, int pointblank = 2, int longrange = 4, double runspeed = 160.0, class<Actor> pufftype = "BulletPuff");
 	native void A_PlaySound(sound whattoplay = "weapons/pistol", int slot = CHAN_BODY, double volume = 1.0, bool looping = false, double attenuation = ATTN_NORM, bool local = false);
-	deprecated("2.3") void A_PlayWeaponSound(sound whattoplay) { A_PlaySound(whattoplay, CHAN_WEAPON); }
+	deprecated("2.3") void A_PlayWeaponSound(sound whattoplay, bool fullvol = false) { A_PlaySound(whattoplay, CHAN_WEAPON, 0, 1, fullvol? ATTN_NONE : ATTN_NORM); }
 	native void A_StopSound(int slot = CHAN_VOICE);	// Bad default but that's what is originally was...
 	deprecated("2.3") native void A_PlaySoundEx(sound whattoplay, name slot, bool looping = false, int attenuation = 0);
 	deprecated("2.3") native void A_StopSoundEx(name slot);
@@ -1024,6 +1036,9 @@ class Actor : Thinker native
 	native void A_RaiseMaster(int flags = 0);
 	native void A_RaiseChildren(int flags = 0);
 	native void A_RaiseSiblings(int flags = 0);
+	native bool A_RaiseSelf(int flags = 0);
+	native bool CanRaise();
+	native void Revive();
 	action native bool, Actor A_ThrowGrenade(class<Actor> itemtype, double zheight = 0, double xyvel = 0, double zvel = 0, bool useammo = true);
 	native void A_Weave(int xspeed, int yspeed, double xdist, double ydist);
 	native bool A_Morph(class<Actor> type, int duration = 0, int flags = 0, class<Actor> enter_flash = null, class<Actor> exit_flash = null);
@@ -1110,6 +1125,18 @@ class Actor : Thinker native
 	native void A_WeaponOffset(double wx = 0, double wy = 32, int flags = 0);
 	action native void A_OverlayOffset(int layer = PSP_WEAPON, double wx = 0, double wy = 32, int flags = 0);
 	action native void A_OverlayFlags(int layer, int flags, bool set);
+
+	deprecated("2.3")
+	void A_NailBomb()
+	{
+		A_Explode(nails:30);
+	}
+
+	deprecated("2.3")
+	void A_RadiusDamage(int dam, int dist)
+	{
+		A_Explode(dam, dist);
+	}
 
 	int ACS_NamedExecute(name script, int mapnum=0, int arg1=0, int arg2=0, int arg3=0)
 	{

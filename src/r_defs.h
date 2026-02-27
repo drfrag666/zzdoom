@@ -437,6 +437,7 @@ enum
 	SECF_UNDERWATERMASK	= 32+64,
 	SECF_DRAWN			= 128,	// sector has been drawn at least once
 	SECF_HIDDEN			= 256,	// Do not draw on textured automap
+	SECMF_LIFT			= 2048,	// For MBF monster AI
 };
 
 enum
@@ -453,13 +454,16 @@ enum
 	SECF_ENDLEVEL		= 512,	// ends level when health goes below 10
 	SECF_HAZARD			= 1024,	// Change to Strife's delayed damage handling.
 	SECF_NOATTACK		= 2048,	// monsters cannot start attacks in this sector.
+	SECF_EXIT1			= 4096,
+	SECF_EXIT2			= 8192,
+	SECF_KILLMONSTERS	= 16384,
 
 	SECF_WASSECRET		= 1 << 30,	// a secret that was discovered
 	SECF_SECRET			= 1 << 31,	// a secret sector
 
 	SECF_DAMAGEFLAGS = SECF_ENDGODMODE|SECF_ENDLEVEL|SECF_DMGTERRAINFX|SECF_HAZARD,
 	SECF_NOMODIFY = SECF_SECRET|SECF_WASSECRET,	// not modifiable by Sector_ChangeFlags
-	SECF_SPECIALFLAGS = SECF_DAMAGEFLAGS|SECF_FRICTION|SECF_PUSH,	// these flags originate from 'special and must be transferrable by floor thinkers
+	SECF_SPECIALFLAGS = SECF_DAMAGEFLAGS|SECF_FRICTION|SECF_PUSH|SECF_EXIT1|SECF_EXIT2|SECF_KILLMONSTERS,	// these flags originate from 'special' and must be transferrable by floor thinkers
 };
 
 enum
@@ -542,7 +546,7 @@ struct secspecial_t
 {
 	FNameNoInit damagetype;		// [RH] Means-of-death for applied damage
 	int damageamount;			// [RH] Damage to do while standing on floor
-	short special;
+	int special;
 	short damageinterval;	// Interval for damage application
 	short leakydamage;		// chance of leaking through radiation suit
 	int Flags;
@@ -913,7 +917,7 @@ public:
 
 	TObjPtr<AActor*> SoundTarget;
 
-	short		special;
+	int		special;
 	short		lightlevel;
 	short		seqType;		// this sector's sound sequence
 
@@ -1167,7 +1171,7 @@ struct line_t
 {
 	vertex_t	*v1, *v2;	// vertices, from v1 to v2
 	DVector2	delta;		// precalculated v2 - v1 for side checking
-	uint32_t	flags;
+	uint32_t	flags, flags2;
 	uint32_t	activation;	// activation type
 	int			special;
 	int			args[5];	// <--- hexen-style arguments (expanded to ZDoom's full width)
@@ -1199,6 +1203,7 @@ struct line_t
 	inline bool isVisualPortal() const;
 	inline line_t *getPortalDestination() const;
 	inline int getPortalAlignment() const;
+	inline bool hitSkyWall(AActor* mo) const;
 
 	int Index() const;
 };

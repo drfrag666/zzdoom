@@ -803,13 +803,12 @@ bool EV_DoDonut (int tag, line_t *line, double pillarspeed, double slimespeed)
 		if (!s2)								// note lowest numbered line around
 			continue;							// pillar must be two-sided
 
-		if (s2->PlaneMoving(sector_t::floor))
+		if (!(i_compatflags2 & COMPATF2_FLOORMOVE) && s2->PlaneMoving(sector_t::floor))
 			continue;
 
 		for (auto ln : s2->Lines)
 		{
-			if (!(ln->flags & ML_TWOSIDED) ||
-				(ln->backsector == s1))
+			if (ln->backsector == nullptr || ln->backsector == s1)
 				continue;
 			s3 = ln->backsector;
 			

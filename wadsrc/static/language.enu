@@ -2120,6 +2120,7 @@ CMPTMNU_SOUNDTARGET			= "Use original sound target handling";
 CMPTMNU_TELEPORT			= "Scripted teleports don't trigger sector actions";
 CMPTMNU_PUSHWINDOW			= "Non-blocking lines can be pushed";
 CMPTMNU_CHECKSWITCHRANGE	= "Enable buggy CheckSwitchRange behavior";
+CMPTMNU_NOMBF21				= "Disable MBF21 features";
 
 // Sound Options
 SNDMNU_TITLE			= "SOUND OPTIONS";
@@ -2330,6 +2331,8 @@ OPTVAL_BOOM					= "Boom";
 OPTVAL_BOOMSTRICT			= "Boom (strict)";
 OPTVAL_MBF					= "MBF";
 OPTVAL_MBFSTRICT			= "MBF (strict)";
+OPTVAL_MBF21				= "MBF21";
+OPTVAL_MBF21STRICT			= "MBF21 (strict)";
 OPTVAL_ZDOOM2063			= "ZDoom 2.0.63";
 OPTVAL_4000HZ				= "4000 Hz";
 OPTVAL_8000HZ				= "8000 Hz";

@@ -1,4 +1,4 @@
-﻿// Emacs style mode select	 -*- C++ -*- 
+// Emacs style mode select	 -*- C++ -*- 
 //-----------------------------------------------------------------------------
 //
 // $Id:$
@@ -1321,7 +1321,7 @@ DEFINE_ACTION_FUNCTION(AActor, ClearInventory)
 
 void AActor::CopyFriendliness (AActor *other, bool changeTarget, bool resetHealth)
 {
-	level.total_monsters -= CountsAsKill();
+	if (health > 0) level.total_monsters -= CountsAsKill();
 	TIDtoHate = other->TIDtoHate;
 	LastLookActor = other->LastLookActor;
 	LastLookPlayerNumber = other->LastLookPlayerNumber;
@@ -1336,7 +1336,7 @@ void AActor::CopyFriendliness (AActor *other, bool changeTarget, bool resetHealt
 		LastHeard = target = other->target;
 	}	
 	if (resetHealth) health = SpawnHealth();	
-	level.total_monsters += CountsAsKill();
+	if (health > 0) level.total_monsters += CountsAsKill();
 }
 
 DEFINE_ACTION_FUNCTION(AActor, CopyFriendliness)
@@ -2093,15 +2093,27 @@ bool AActor::FloorBounceMissile (secplane_t &plane)
 		}
 	}
 
+	bool onsky;
+
 	if (plane.fC() < 0)
 	{ // on ceiling
 		if (!(BounceFlags & BOUNCE_Ceilings))
 			return true;
+
+		onsky = ceilingpic == skyflatnum;
 	}
 	else
 	{ // on floor
 		if (!(BounceFlags & BOUNCE_Floors))
 			return true;
+
+		onsky = floorpic == skyflatnum;
+	}
+
+	if (onsky && (BounceFlags & BOUNCE_NotOnSky))
+	{
+		Destroy();
+		return true;
 	}
 
 	// The amount of bounces is limited
@@ -2127,7 +2139,7 @@ bool AActor::FloorBounceMissile (secplane_t &plane)
 			flags &= ~MF_INBOUNCE;
 			return false;
 		}
-		else Vel.Z *= bouncefactor;
+		else Vel.Z *= GetMBFBounceFactor(this);
 	}
 	else // Don't run through this for MBF-style bounces
 	{
@@ -2656,10 +2668,7 @@ double P_XYMovement (AActor *mo, DVector2 scroll)
 explode:
 				// explode a missile
 				bool onsky = false;
-					if (tm.ceilingline &&
-						tm.ceilingline->backsector &&
-						tm.ceilingline->backsector->GetTexture(sector_t::ceiling) == skyflatnum &&
-						mo->Z() >= tm.ceilingline->backsector->ceilingplane.ZatPoint(mo->PosRelative(tm.ceilingline)))
+					if (tm.ceilingline && tm.ceilingline->hitSkyWall(mo))
 					{
 						if (!(mo->flags3 & MF3_SKYEXPLODE))
 						{
@@ -3045,7 +3054,7 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 				if (mo->BounceFlags & BOUNCE_Floors)
 				{
 					mo->FloorBounceMissile (mo->floorsector->floorplane);
-					/* if (!(mo->flags6 & MF6_CANJUMP)) */ return;
+					/* if (!CanJump(mo)) */ return;
 				}
 				else if (mo->flags3 & MF3_NOEXPLODEFLOOR)
 				{
@@ -3151,7 +3160,7 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 			if (mo->BounceFlags & BOUNCE_Ceilings)
 			{	// ceiling bounce
 				mo->FloorBounceMissile (mo->ceilingsector->ceilingplane);
-				/*if (!(mo->flags6 & MF6_CANJUMP))*/ return;
+				/* if (!CanJump(mo)) */ return;
 			}
 			if (mo->flags & MF_SKULLFLY)
 			{	// the skull slammed into something
@@ -3813,7 +3822,7 @@ bool AActor::IsOkayToAttack (AActor *link)
 	// its target; and for a summoned minion, its tracer.
 	AActor * Friend;
 	if (flags5 & MF5_SUMMONEDMONSTER)					Friend = tracer;
-	else if (flags2 & MF2_SEEKERMISSILE)				Friend = target;
+	else if (flags & MF_MISSILE)						Friend = target;
 	else if ((flags & MF_FRIENDLY) && FriendPlayer)		Friend = players[FriendPlayer-1].mo;
 	else												Friend = this;
 
@@ -3832,7 +3841,7 @@ bool AActor::IsOkayToAttack (AActor *link)
 	if (P_CheckSight (this, link))
 	{
 		// AMageStaffFX2::IsOkayToAttack had an extra check here, generalized with a flag,
-		// to only allow the check to succeed if the enemy was in a ~84� FOV of the player
+		// to only allow the check to succeed if the enemy was in a ~84? FOV of the player
 		if (flags3 & MF3_SCREENSEEKER)
 		{
 			DAngle angle = absangle(Friend->AngleTo(link), Friend->Angles.Yaw);
@@ -4553,12 +4562,20 @@ void AActor::Tick ()
 	}
 	if (!CheckNoDelay())
 		return; // freed itself
-	// cycle through states, calling action functions at transitions
 
 	UpdateRenderSectorList();
 
+	if (Sector->Flags & SECF_KILLMONSTERS && Z() == floorz &&
+		player == nullptr && (flags & MF_SHOOTABLE) && !(flags & MF_FLOAT))
+	{
+		P_DamageMobj(this, nullptr, nullptr, TELEFRAG_DAMAGE, NAME_InstantDeath);
+		// must have been removed
+		if (ObjectFlags & OF_EuthanizeMe) return;
+	}
+
 	if (tics != -1)
 	{
+		// cycle through states, calling action functions at transitions
 		// [RH] Use tics <= 0 instead of == 0 so that spawnstates
 		// of 0 tics work as expected.
 		if (--tics <= 0)
@@ -7754,6 +7771,13 @@ void AActor::Revive()
 	E_WorldThingRevived(this);
 }
 
+DEFINE_ACTION_FUNCTION(AActor, Revive)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	self->Revive();
+	return 0;
+}
+
 int AActor::GetGibHealth() const
 {
 	IFVIRTUAL(AActor, GetGibHealth)
@@ -8127,6 +8151,17 @@ DEFINE_ACTION_FUNCTION(AActor, GetDefaultByType)
 	PARAM_PROLOGUE;
 	PARAM_CLASS(cls, AActor);
 	ACTION_RETURN_OBJECT(cls == nullptr? nullptr : GetDefaultByType(cls));
+}
+
+static double PitchFromVel(AActor* self)
+{
+	return self->Vel.Pitch().Degrees;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, PitchFromVel)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_FLOAT(PitchFromVel(self));
 }
 
 // This combines all 3 variations of the internal function
