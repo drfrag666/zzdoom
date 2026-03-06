@@ -275,8 +275,10 @@ bool FZipFile::Open(bool quiet)
 				// at least one of the more common definition lumps must be present.
 				if (name.IndexOf(name0 + "mapinfo") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "zmapinfo") == 0) foundspeciallump = true;
+				else if (name.IndexOf(name0 + "umapinfo") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "gameinfo") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "sndinfo") == 0) foundspeciallump = true;
+				else if (name.IndexOf(name0 + "sndseq") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "sbarinfo") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "menudef") == 0) foundspeciallump = true;
 				else if (name.IndexOf(name0 + "gldefs") == 0) foundspeciallump = true;
