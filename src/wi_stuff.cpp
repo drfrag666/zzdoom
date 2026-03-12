@@ -564,7 +564,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 							if (jsonReader.BeginObject(nullptr))
 							{
 								layers.Reserve(1);
-								auto& layer = layers.back();
+								auto& layer = layers.Last();
 								if (!jsonReader.IsKeyNull("conditions") && jsonReader.BeginArray("conditions"))
 								{
 									int condition_size = jsonReader.ArraySize();
@@ -601,7 +601,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 										if (jsonReader.BeginObject(nullptr))
 										{
 											layer.anims.Reserve(1);
-											auto& anim = layer.anims.back();
+											auto& anim = layer.anims.Last();
 
 											anim.Reset();
 											anim.type = ANIM_FRAME;
@@ -648,7 +648,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 														double duration = 0.0;
 														double maxduration = 0.0;
 														anim.frames.Reserve(1);
-														auto& frame = anim.frames.back();
+														auto& frame = anim.frames.Last();
 
 														::Serialize(jsonReader, "duration", duration, nullptr);
 														::Serialize(jsonReader, "maxduration", maxduration, nullptr);
