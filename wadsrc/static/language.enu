@@ -2717,7 +2717,7 @@ MSG_TALISMANGREEN = "Whatever it is, it doesn't belong in this world...";
 MSG_TALISMANBLUE = "It must do something...";
 MSG_TALISMANPOWER = "You have super strength!";
 
-// More Friendly names
+// More friendly names
 
 TAG_GAUNTLETS = "$$TXT_WPNGAUNTLETS";
 TAG_GAUNTLETSP = "$$TXT_WPNGAUNTLETS";
@@ -2765,3 +2765,26 @@ TAG_KEY_SWAMP = "$$TXT_KEY_SWAMP";
 TAG_KEY_CASTLE = "$$TXT_KEY_CASTLE";
 
 TAG_ITEMHEALTH = "$$TXT_ITEMHEALTH";
+
+// ID24 stuff
+
+ID24_GOTINCINERATOR = "You got the incinerator!";
+ID24_GOTCALAMITYBLADE = "You got the calamity blade!  Hot damn!";
+ID24_GOTFUELCAN = "Picked up a fuel can.";
+ID24_GOTFUELTANK = "Picked up a fuel tank.";
+TAG_ID24INCINERATOR = "Incinerator";
+TAG_ID24CALAMITYBLADE = "Calamity Blade";
+AMMO_ID24FUEL = "Fuel Can";
+AMMO_ID24FUELTANK = "Fuel Tank";
+ID24_CC_GHOUL = "Ghoul";
+ID24_CC_BANSHEE = "Banshee";
+ID24_CC_SHOCKTROOPER = "Shocktrooper";
+ID24_CC_MINDWEAVER = "Mindweaver";
+ID24_CC_VASSAGO = "Vassago";
+ID24_CC_TYRANT = "Tyrant";
+ID24_OB_GHOUL = "%o caught a ghoul's energy ball.";
+ID24_OB_BANSHEE = "%o was terminated by a banshee.";
+ID24_OB_SHOCKTROOPER = "%o was melted by a shocktrooper.";
+ID24_OB_MINDWEAVER = "%o was mowed down by a mindweaver.";
+ID24_OB_VASSAGO = "%o was scorched by a vassago.";
+ID24_OB_TYRANT = "%o was blown apart by a tyrant.";
