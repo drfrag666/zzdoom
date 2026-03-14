@@ -304,7 +304,7 @@ IWad
 		          "E3M1","E3M2","E3M3","E3M4","E3M5","E3M6","E3M7","E3M8","E3M9",
 		          "DPHOOF","BFGGA0","HEADA1","CYBRA1","SPIDA1D1", "E4M2",
 		          "DMENUPIC", "GAMECONF"
-	Load = "extras.wad"
+	Load = "extras.wad", "id24res.wad"
 	BannerColors = "00 7c 00", "a8 a8 a8"
 }
 
@@ -422,7 +422,7 @@ IWad
 	Compatibility = "Shorttex", "Stairs"
 	MustContain = "MAP01", "REDTNT2", "GAMECONF"
 	BannerColors = "a8 00 00", "a8 a8 a8"
-	Load = "extras.wad"
+	Load = "extras.wad", "id24res.wad"
 }
 
 IWad
@@ -459,7 +459,7 @@ IWad
 	Compatibility = "Shorttex"
 	MustContain = "MAP01", "CAMO1", "GAMECONF"
 	BannerColors = "a8 00 00", "a8 a8 a8"
-	Load = "extras.wad"
+	Load = "extras.wad", "id24res.wad"
 }
 
 IWad
@@ -525,7 +525,7 @@ IWad
 	Compatibility = "Shorttex"
 	MustContain = "MAP01", "DMENUPIC", "GAMECONF"
 	BannerColors = "00 7c 00", "a8 a8 a8"
-	Load = "extras.wad"
+	Load = "extras.wad", "id24res.wad"
 }
 
 IWad
