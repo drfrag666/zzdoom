@@ -212,7 +212,8 @@ PFunction *FindClassMemberFunction(PContainerType *selfcls, PContainerType *func
 		}
 		else if ((funcsym->Variants[0].Flags & VARF_Deprecated) && funcsym->mVersion <= version)
 		{
-			sc.Message(MSG_WARNING, "Call to deprecated function %s", symbol->SymbolName.GetChars());
+			const bool ismbf21 = strstr(symbol->SymbolName.GetChars(), "MBF21") || strstr(symbol->SymbolName.GetChars(), "A_RadiusDamage");
+			sc.Message(ismbf21 ? MSG_DEBUGMSG : MSG_WARNING, "Call to deprecated function %s", symbol->SymbolName.GetChars());
 		}
 	}
 	// return nullptr if the name cannot be found in the symbol table so that the calling code can do other checks.

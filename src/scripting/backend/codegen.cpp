@@ -8785,7 +8785,10 @@ bool FxVMFunctionCall::CheckAccessibility(const VersionInfo &ver)
 	}
 	if ((Function->Variants[0].Flags & VARF_Deprecated) && Function->mVersion <= ver)
 	{
-		ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
+		const bool ismbf21 = strstr(Function->SymbolName.GetChars(), "MBF21") || strstr(Function->SymbolName.GetChars(), "A_RadiusDamage");
+		ScriptPosition.Message(ismbf21 ? MSG_DEBUGMSG : MSG_WARNING,
+			"Accessing deprecated function %s - deprecated since %d.%d.%d",
+			Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
 	}
 	return true;
 }
