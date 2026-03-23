@@ -204,10 +204,19 @@ public:
 	double GetScaledHeightDouble () { return Height / Scale.Y; }
 	double GetScaleY() const { return Scale.Y; }
 
+	int GetLeftOffset() { return LeftOffset; }
+	int GetTopOffset() { return TopOffset; }
 	int GetScaledLeftOffset () { int foo = int((LeftOffset * 2) / Scale.X); return (foo >> 1) + (foo & 1); }
 	int GetScaledTopOffset () { int foo = int((TopOffset * 2) / Scale.Y); return (foo >> 1) + (foo & 1); }
 	double GetScaledLeftOffsetDouble() { return LeftOffset / Scale.X; }
 	double GetScaledTopOffsetDouble() { return TopOffset / Scale.Y; }
+
+	void SetOffsets(int x, int y)
+	{
+		LeftOffset = x;
+		TopOffset = y;
+	}
+
 	virtual void ResolvePatches() {}
 
 	virtual void SetFrontSkyLayer();

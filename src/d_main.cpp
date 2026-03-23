@@ -2271,6 +2271,18 @@ static void CheckCmdLine()
 	}
 }
 
+static void FixWideStatusBar()
+{
+	FTexture* sbartex = TexMan.FindTexture("stbar", FTexture::TEX_MiscPatch);
+
+	// only adjust offsets if none already exist
+	if (sbartex && sbartex->GetWidth() > 320 &&
+		!sbartex->GetLeftOffset() && !sbartex->GetTopOffset())
+	{
+		sbartex->SetOffsets((sbartex->GetWidth() - 320) / 2, 0);
+	}
+}
+
 //==========================================================================
 //
 // D_DoomMain
@@ -2510,6 +2522,8 @@ void D_DoomMain (void)
 		if (!batchrun) Printf ("Texman.Init: Init texture manager.\n");
 		TexMan.Init();
 		C_InitConback();
+
+		FixWideStatusBar();
 
 		StartScreen->Progress();
 		V_InitFonts();
