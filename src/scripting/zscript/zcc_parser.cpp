@@ -501,12 +501,14 @@ void ParseScripts()
 	while ((lump = Wads.FindLump("ZSCRIPT", &lastlump)) != -1)
 	{
 		DoParse(lump);
-		if (Args->CheckParm("-nozscript"))
+		if (!Args->CheckParm("-zscript"))
 		{
-			Printf(TEXTCOLOR_PURPLE "WARNING! ZScript disabled!\n");
+			Printf(TEXTCOLOR_PURPLE "WARNING! To enable ZScript use the -zscript parameter!\n");
 			return;
 		}
 	}
+	Printf(TEXTCOLOR_PURPLE "WARNING! ZScript version is %d.%d!\n",VER_MAJOR, VER_MINOR);
+	Printf(TEXTCOLOR_PURPLE "Use at your own risk!\n");
 }
 
 static FString ZCCTokenName(int terminal)
