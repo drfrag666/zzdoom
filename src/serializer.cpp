@@ -2009,10 +2009,17 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FState *&state, FState
 				assert(cls.IsString() && ndx.IsUint());
 				if (cls.IsString() && ndx.IsUint())
 				{
-					PClassActor *clas = PClass::FindActor(UnicodeToString(cls.GetString()));
+					auto str = UnicodeToString(cls.GetString());
+					PClassActor *clas = PClass::FindActor(str);
 					if (clas && ndx.GetUint() < (unsigned)clas->GetStateCount())
 					{
 						state = clas->GetStates() + ndx.GetUint();
+					}
+					else if (!strcmp(str, "@DehExtraState@"))
+					{
+						state = nullptr;
+						auto pState = dehExtStates.CheckKey(ndx.GetInt());
+						if (pState) state = *pState;
 					}
 					else
 					{
