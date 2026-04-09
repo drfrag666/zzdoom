@@ -302,7 +302,8 @@ static TArray<MBFParamState> MBFParamStates;
 struct CodePointerAlias
 {
 	FName name;
-	FString alias;
+	char alias[20];
+	uint8_t params;
 };
 static TArray<CodePointerAlias> MBFCodePointers;
 
@@ -2751,7 +2752,7 @@ static int PatchCodePtrs (int dummy)
 					if (!symname.CompareNoCase(MBFCodePointers[i].alias))
 					{
 						symname = MBFCodePointers[i].name;
-						DPrintf(DMSG_SPAMMY, "%s --> %s\n", MBFCodePointers[i].alias.GetChars(), MBFCodePointers[i].name.GetChars());
+						DPrintf(DMSG_SPAMMY, "%s --> %s\n", MBFCodePointers[i].alias, MBFCodePointers[i].name.GetChars());
 						ismbfcp = true;
 						break;
 					}
@@ -3661,10 +3662,14 @@ bool LoadDehSupp ()
 				{
 					CodePointerAlias temp;
 					sc.MustGetString();
-					temp.alias = sc.String;
+					strncpy(temp.alias, sc.String, 19);
+					temp.alias[19]=0;
 					sc.MustGetStringName(",");
 					sc.MustGetString();
 					temp.name = sc.String;
+					sc.MustGetStringName(",");
+					sc.MustGetNumber();
+					temp.params = sc.Number;
 					MBFCodePointers.Push(temp);
 					if (sc.CheckString("}")) break;
 					sc.MustGetStringName(",");
