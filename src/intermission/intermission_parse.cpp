@@ -135,7 +135,7 @@ bool FIntermissionAction::ParseKey(FScanner &sc)
 			if (sc.CheckToken(','))
 			{
 				sc.MustGetToken(TK_StringConst);
-				sc.ScriptMessage("Palette override will be ignored");
+				mPalette = sc.String;
 			}
 		}
 		return true;

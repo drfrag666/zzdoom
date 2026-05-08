@@ -39,8 +39,10 @@
 #include "swrenderer/viewport/r_viewport.h"
 #include "swrenderer/r_swcolormaps.h"
 
+EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Int, screenblocks)
 EXTERN_CVAR(Float, r_visibility)
+void InitGLRMapinfoData();
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -54,12 +56,12 @@ PolyRenderer::PolyRenderer()
 {
 }
 
-void PolyRenderer::RenderView(player_t *player, DCanvas *target)
+void PolyRenderer::RenderView(player_t *player)
 {
 	using namespace swrenderer;
 	
-	RenderTarget = target;
-	RenderToCanvas = false;
+	RenderTarget = screen;
+
 	int width = SCREENWIDTH;
 	int height = SCREENHEIGHT;
 	float trueratio;
@@ -68,6 +70,13 @@ void PolyRenderer::RenderView(player_t *player, DCanvas *target)
 
 	RenderActorView(player->mo, false);
 
+	// Apply special colormap if the target cannot do it
+	CameraLight *cameraLight = CameraLight::Instance();
+	if (cameraLight->ShaderColormap() && RenderTarget->IsBgra() && !(r_shadercolormaps && screen->Accel2D))
+	{
+		Threads.MainThread()->DrawQueue->Push<ApplySpecialColormapRGBACommand>(cameraLight->ShaderColormap(), screen);
+	}
+	
 	Threads.MainThread()->FlushDrawQueue();
 	DrawerThreads::WaitForWorkers();
 }
@@ -78,19 +87,21 @@ void PolyRenderer::RenderViewToCanvas(AActor *actor, DCanvas *canvas, int x, int
 
 	viewwidth = width;
 	RenderTarget = canvas;
-	RenderToCanvas = true;
 	R_SetWindow(Viewpoint, Viewwindow, 12, width, height, height, true);
 	//viewport->SetViewport(&Thread, width, height, Viewwindow.WidescreenRatio);
 	viewwindowx = x;
 	viewwindowy = y;
 	viewactive = true;
 	
+	canvas->Lock(true);
+	
 	RenderActorView(actor, dontmaplines);
 	Threads.MainThread()->FlushDrawQueue();
 	DrawerThreads::WaitForWorkers();
+	
+	canvas->Unlock();
 
-	RenderTarget = nullptr;
-	RenderToCanvas = false;
+	RenderTarget = screen;
 	R_ExecuteSetViewSize(Viewpoint, Viewwindow);
 	float trueratio;
 	ActiveRatio(width, height, &trueratio);
@@ -157,7 +168,7 @@ void PolyRenderer::SetSceneViewport()
 {
 	using namespace swrenderer;
 	
-	if (!RenderToCanvas) // Rendering to screen
+	if (RenderTarget == screen) // Rendering to screen
 	{
 		int height;
 		if (screenblocks >= 10)
@@ -180,6 +191,7 @@ void PolyRenderer::SetupPerspectiveMatrix()
 
 	if (!bDidSetup)
 	{
+		InitGLRMapinfoData();
 		bDidSetup = true;
 	}
 

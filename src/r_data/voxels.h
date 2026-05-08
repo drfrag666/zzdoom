@@ -23,8 +23,6 @@ struct kvxslab_bgra_t
 	uint32_t	col[1/*zleng*/];// color data from top to bottom
 };
 
-struct FVoxel;
-
 struct FVoxelMipLevel
 {
 	FVoxelMipLevel();
@@ -36,27 +34,17 @@ struct FVoxelMipLevel
 	DVector3	Pivot;
 	int			*OffsetX;
 	short		*OffsetXY;
-private:
-	uint8_t	*SlabData;
-	TArray<uint8_t> SlabDataRemapped;
-public:
+	uint8_t		*SlabData;
 	TArray<uint32_t> SlabDataBgra;
-
-	uint8_t *GetSlabData(bool wantpaletted) const;
-
-	friend FVoxel *R_LoadKVX(int lumpnum);
-	friend struct FVoxel;
 };
 
 struct FVoxel
 {
 	int LumpNum;
 	int NumMips;
-	int VoxelIndex;
+	int VoxelIndex;			// Needed by GZDoom
 	uint8_t *Palette;
 	FVoxelMipLevel Mips[MAXVOXMIPS];
-	bool Remapped = false;
-	bool Bgramade = false;
 
 	FVoxel();
 	~FVoxel();

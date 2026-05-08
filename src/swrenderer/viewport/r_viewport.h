@@ -27,7 +27,6 @@ namespace swrenderer
 		TriMatrix WorldToClip;
 
 		DCanvas *RenderTarget = nullptr;
-		bool RenderingToCanvas = false;
 
 		FViewWindow viewwindow;
 		FRenderViewpoint viewpoint;
@@ -52,6 +51,8 @@ namespace swrenderer
 		angle_t xtoviewangle[MAXWIDTH + 1];
 
 		uint8_t *GetDest(int x, int y);
+
+		bool RenderingToCanvas() const { return RenderTarget != screen; }
 
 		DVector3 PointWorldToView(const DVector3 &worldPos) const;
 		DVector3 PointWorldToScreen(const DVector3 &worldPos) const;

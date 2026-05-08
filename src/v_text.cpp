@@ -132,7 +132,7 @@ int GetCharFromString(const uint8_t *&string)
 //
 //==========================================================================
 
-void DFrameBuffer::DrawChar (FFont *font, int normalcolor, double x, double y, int character, int tag_first, ...)
+void DCanvas::DrawChar (FFont *font, int normalcolor, double x, double y, int character, int tag_first, ...)
 {
 	if (font == NULL)
 		return;
@@ -161,7 +161,7 @@ void DFrameBuffer::DrawChar (FFont *font, int normalcolor, double x, double y, i
 	}
 }
 
-void DFrameBuffer::DrawChar(FFont *font, int normalcolor, double x, double y, int character, VMVa_List &args)
+void DCanvas::DrawChar(FFont *font, int normalcolor, double x, double y, int character, VMVa_List &args)
 {
 	if (font == NULL)
 		return;
@@ -208,7 +208,7 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawChar)
 //
 //==========================================================================
 
-void DFrameBuffer::DrawTextCommon(FFont *font, int normalcolor, double x, double y, const char *string, DrawParms &parms)
+void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, const char *string, DrawParms &parms)
 {
 	int 		w;
 	const uint8_t *ch;
@@ -281,7 +281,7 @@ void DFrameBuffer::DrawTextCommon(FFont *font, int normalcolor, double x, double
 	}
 }
 
-void DFrameBuffer::DrawText(FFont *font, int normalcolor, double x, double y, const char *string, int tag_first, ...)
+void DCanvas::DrawText(FFont *font, int normalcolor, double x, double y, const char *string, int tag_first, ...)
 {
 	Va_List tags;
 	DrawParms parms;
@@ -299,7 +299,7 @@ void DFrameBuffer::DrawText(FFont *font, int normalcolor, double x, double y, co
 	DrawTextCommon(font, normalcolor, x, y, string, parms);
 }
 
-void DFrameBuffer::DrawText(FFont *font, int normalcolor, double x, double y, const char *string, VMVa_List &args)
+void DCanvas::DrawText(FFont *font, int normalcolor, double x, double y, const char *string, VMVa_List &args)
 {
 	DrawParms parms;
 

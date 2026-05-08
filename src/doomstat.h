@@ -192,6 +192,9 @@ extern	bool	 		precache;
 extern bool setsizeneeded;
 extern bool setmodeneeded;
 
+extern int BorderNeedRefresh;
+extern int BorderTopRefresh;
+
 
 EXTERN_CVAR (Float, mouse_sensitivity)
 //?

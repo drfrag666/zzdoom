@@ -36,6 +36,7 @@
 #include <windows.h>
 
 #include "hardware.h"
+#include "win32iface.h"
 #include "i_video.h"
 #include "i_system.h"
 #include "c_console.h"
@@ -49,7 +50,9 @@
 
 EXTERN_CVAR (Bool, ticker)
 EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, swtruecolor)
 EXTERN_CVAR (Float, vid_winscale)
+EXTERN_CVAR (Bool, vid_forceddraw)
 EXTERN_CVAR (Bool, win_borderless)
 
 CVAR(Int, win_x, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -64,8 +67,10 @@ IVideo *Video;
 
 // do not include GL headers here, only declare the necessary functions.
 IVideo *gl_CreateVideo();
+FRenderer *gl_CreateInterface();
 
 void I_RestartRenderer();
+int currentrenderer = -1;
 int currentcanvas = -1;
 int currentgpuswitch = -1;
 bool changerenderer;
@@ -95,6 +100,38 @@ CUSTOM_CVAR(Int, vid_gpuswitch, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINI
 	}
 }
 
+// Software OpenGL canvas
+CUSTOM_CVAR(Bool, vid_glswfb, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+{
+	if ((self ? 1 : 0) != currentcanvas)
+		Printf("You must restart " GAMENAME " for this change to take effect.\n");
+}
+
+// [ZDoomGL]
+CUSTOM_CVAR (Int, vid_renderer, 1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+{
+	// 0: Software renderer
+	// 1: OpenGL renderer
+
+	if (self != currentrenderer)
+	{
+		switch (self)
+		{
+		case 0:
+			Printf("Switching to software renderer...\n");
+			break;
+		case 1:
+			Printf("Switching to OpenGL renderer...\n");
+			break;
+		default:
+			Printf("Unknown renderer (%d).  Falling back to software renderer...\n", *vid_renderer);
+			self = 0; // make sure to actually switch to the software renderer
+			break;
+		}
+		//changerenderer = true;
+		Printf("You must restart " GAMENAME " to switch the renderer\n");
+	}
+}
 
 CCMD (vid_restart)
 {
@@ -142,7 +179,13 @@ void I_InitGraphics ()
 	val.Bool = !!Args->CheckParm ("-devparm");
 	ticker.SetGenericRepDefault (val, CVAR_Bool);
 
-	Video = gl_CreateVideo();
+	if (currentcanvas == 0) // Software Canvas: 0 = D3D or DirectDraw, 1 = OpenGL
+		if (currentrenderer == 1)
+			Video = gl_CreateVideo();
+		else
+			Video = new Win32Video(0);
+	else
+		Video = gl_CreateVideo();
 
 	if (Video == NULL)
 		I_FatalError ("Failed to initialize display");
@@ -150,6 +193,33 @@ void I_InitGraphics ()
 	atterm (I_ShutdownGraphics);
 	
 	Video->SetWindowedScale (vid_winscale);
+}
+
+static void I_DeleteRenderer()
+{
+	if (Renderer != NULL) delete Renderer;
+}
+
+void I_CreateRenderer()
+{
+	currentrenderer = vid_renderer;
+	currentcanvas = vid_glswfb;
+	if (currentrenderer == 1)
+		Printf("Renderer: OpenGL\n");
+	else if (currentcanvas == 1)
+		Printf("Renderer: Software on OpenGL\n");
+	else if (currentcanvas == 0 && vid_forceddraw == false)
+		Printf("Renderer: Software on Direct3D\n");
+	else if (currentcanvas == 0)
+		Printf("Renderer: Software on DirectDraw\n");
+	else
+		Printf("Renderer: Unknown\n");
+	if (Renderer == NULL)
+	{
+		if (currentrenderer==1) Renderer = gl_CreateInterface();
+		else Renderer = new FSoftwareRenderer;
+		atterm(I_DeleteRenderer);
+	}
 }
 
 /** Remaining code is common to Win32 and Linux **/
@@ -178,7 +248,7 @@ DFrameBuffer *I_SetMode (int &width, int &height, DFrameBuffer *old)
 		}
 		break;
 	}
-	DFrameBuffer *res = Video->CreateFrameBuffer (width, height, false, fs, old);
+	DFrameBuffer *res = Video->CreateFrameBuffer (width, height, swtruecolor, fs, old);
 
 	//* Right now, CreateFrameBuffer cannot return NULL
 	if (res == NULL)
@@ -356,6 +426,19 @@ void I_RestoreWindowedPos ()
 }
 
 extern int NewWidth, NewHeight, NewBits, DisplayBits;
+
+CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
+{
+	// Strictly speaking this doesn't require a mode switch, but it is the easiest
+	// way to force a CreateFramebuffer call without a lot of refactoring.
+	if (currentrenderer == 0)
+	{
+		NewWidth = screen->VideoWidth;
+		NewHeight = screen->VideoHeight;
+		NewBits = DisplayBits;
+		setmodeneeded = true;
+	}
+}
 
 CUSTOM_CVAR(Bool, win_borderless, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {

@@ -42,6 +42,7 @@
 #include "swrenderer/scene/r_light.h"
 #include "swrenderer/viewport/r_viewport.h"
 
+CVAR(Bool, r_shadercolormaps, true, CVAR_ARCHIVE)
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor)
 
 namespace swrenderer
@@ -68,10 +69,17 @@ namespace swrenderer
 			if (player->fixedcolormap >= 0 && player->fixedcolormap < (int)SpecialColormaps.Size())
 			{
 				realfixedcolormap = &SpecialColormaps[player->fixedcolormap];
-				// Render everything fullbright. The copy to video memory will
-				// apply the special colormap, so it won't be restricted to the
-				// palette.
-				fixedcolormap = &realcolormaps;
+				if (renderTarget == screen && (renderTarget->IsBgra() || ((DFrameBuffer *)screen->Accel2D && r_shadercolormaps)))
+				{
+					// Render everything fullbright. The copy to video memory will
+					// apply the special colormap, so it won't be restricted to the
+					// palette.
+					fixedcolormap = &realcolormaps;
+				}
+				else
+				{
+					fixedcolormap = &SpecialSWColormaps[player->fixedcolormap];
+				}
 			}
 			else if (player->fixedlightlevel >= 0 && player->fixedlightlevel < NUMCOLORMAPS)
 			{

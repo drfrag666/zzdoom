@@ -176,7 +176,6 @@ extern bool gameisdead;
 extern bool demorecording;
 extern bool M_DemoNoPlay;	// [RH] if true, then skip any demos in the loop
 extern bool insave;
-extern TDeletingArray<FLightDefaults *> LightDefaults;
 
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
@@ -670,6 +669,7 @@ CVAR (Flag, compat_pushwindow,			compatflags2, COMPATF2_PUSHWINDOW);
 void D_Display ()
 {
 	bool wipe;
+	bool hw2d;
 
 	if (nodrawers || screen == NULL)
 		return; 				// for comparative timing / profiling
@@ -680,7 +680,7 @@ void D_Display ()
 	cycles.Clock();
 
 	r_UseVanillaTransparency = UseVanillaTransparency(); // [SP] Cache UseVanillaTransparency() call
-	r_renderercaps = screen->GetCaps(); // [SP] Get the current capabilities of the renderer
+	r_renderercaps = Renderer->GetCaps(); // [SP] Get the current capabilities of the renderer
 
 	if (players[consoleplayer].camera == NULL)
 	{
@@ -703,6 +703,13 @@ void D_Display ()
 	// [RH] change the screen mode if needed
 	if (setmodeneeded)
 	{
+		int oldrenderer;
+		extern int currentrenderer;
+		EXTERN_CVAR(Int, vid_renderer)
+		oldrenderer = vid_renderer; // [SP] Save pending vid_renderer setting (hack)
+		if (currentrenderer != vid_renderer)
+			vid_renderer = currentrenderer;
+
 		// Change screen mode.
 		if (Video->SetResolution (NewWidth, NewHeight, NewBits))
 		{
@@ -721,6 +728,7 @@ void D_Display ()
 			// Reset the mouse cursor in case the bit depth changed
 			vid_cursor.Callback();
 		}
+		vid_renderer = oldrenderer; // [SP] Restore pending vid_renderer setting
 	}
 
 	// change the view size if needed
@@ -730,15 +738,22 @@ void D_Display ()
 	}
 	setmodeneeded = false;
 
+	if (screen->Lock (false))
+	{
+		V_SetBorderNeedRefresh();
+	}
+
 	// [RH] Allow temporarily disabling wipes
 	if (NoWipe)
 	{
+		V_SetBorderNeedRefresh();
 		NoWipe--;
 		wipe = false;
 		wipegamestate = gamestate;
 	}
 	else if (gamestate != wipegamestate && gamestate != GS_FULLCONSOLE && gamestate != GS_TITLELEVEL)
 	{ // save the current screen if about to wipe
+		V_SetBorderNeedRefresh();
 		switch (wipegamestate)
 		{
 		default:
@@ -764,6 +779,9 @@ void D_Display ()
 		wipe = false;
 	}
 
+	hw2d = false;
+
+
 	{
 		screen->FrameTime = I_msTimeFS();
 		TexMan.UpdateAnimations(screen->FrameTime);
@@ -772,8 +790,8 @@ void D_Display ()
 		{
 		case GS_FULLCONSOLE:
 			screen->SetBlendingRect(0,0,0,0);
-			screen->Begin2D(false);
-			C_DrawConsole ();
+			hw2d = screen->Begin2D(false);
+			C_DrawConsole (false);
 			M_Drawer ();
 			screen->Update ();
 			return;
@@ -782,22 +800,40 @@ void D_Display ()
 		case GS_TITLELEVEL:
 			if (!gametic)
 			{
-				screen->Begin2D(false);
+				if (!screen->HasBegun2D())
+				{
+					screen->Begin2D(false);
+				}
 				break;
 			}
+
+			if (StatusBar != NULL)
+			{
+				float blend[4] = { 0, 0, 0, 0 };
+				StatusBar->BlendView (blend);
+			}
+			screen->SetBlendingRect(viewwindowx, viewwindowy,
+				viewwindowx + viewwidth, viewwindowy + viewheight);
 
 			// [ZZ] execute event hook that we just started the frame
 			//E_RenderFrame();
 			//
-			screen->RenderView(&players[consoleplayer]);
-			// returns with 2S mode set.
+			Renderer->RenderView(&players[consoleplayer]);
+
+			if ((hw2d = screen->Begin2D(viewactive)))
+			{
+				// Redraw everything every frame when using 2D accel
+				V_SetBorderNeedRefresh();
+			}
+			Renderer->DrawRemainingPlayerSprites();
+			screen->DrawBlendingRect();
 			if (automapactive)
 			{
 				AM_Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
 			}
 			if (!automapactive || viewactive)
 			{
-				screen->RefreshViewBorder ();
+				V_RefreshViewBorder ();
 			}
 
 			// for timing the statusbar code.
@@ -836,21 +872,21 @@ void D_Display ()
 
 		case GS_INTERMISSION:
 			screen->SetBlendingRect(0,0,0,0);
-			screen->Begin2D(false);
+			hw2d = screen->Begin2D(false);
 			WI_Drawer ();
 			CT_Drawer ();
 			break;
 
 		case GS_FINALE:
 			screen->SetBlendingRect(0,0,0,0);
-			screen->Begin2D(false);
+			hw2d = screen->Begin2D(false);
 			F_Drawer ();
 			CT_Drawer ();
 			break;
 
 		case GS_DEMOSCREEN:
 			screen->SetBlendingRect(0,0,0,0);
-			screen->Begin2D(false);
+			hw2d = screen->Begin2D(false);
 			D_PageDrawer ();
 			CT_Drawer ();
 			break;
@@ -868,7 +904,7 @@ void D_Display ()
 
 		tex = TexMan(gameinfo.PauseSign);
 		x = (SCREENWIDTH - tex->GetScaledWidth() * CleanXfac)/2 +
-			tex->GetScaledLeftOffset(0) * CleanXfac;
+			tex->GetScaledLeftOffset() * CleanXfac;
 		screen->DrawTexture (tex, x, 4, DTA_CleanNoMove, true, TAG_DONE);
 		if (paused && multiplayer)
 		{
@@ -904,7 +940,7 @@ void D_Display ()
 		NetUpdate ();			// send out any new accumulation
 		// normal update
 		// draw ZScript UI stuff
-		C_DrawConsole ();	// draw console
+		C_DrawConsole (hw2d);	// draw console
 		M_Drawer ();			// menu is drawn even on top of everything
 		FStat::PrintStat ();
 		screen->Update ();		// page flip or blit buffer
@@ -932,7 +968,7 @@ void D_Display ()
 			} while (diff < 1);
 			wipestart = nowtime;
 			done = screen->WipeDo (1);
-			C_DrawConsole ();	// console and
+			C_DrawConsole (hw2d);	// console and
 			M_Drawer ();			// menu are drawn even on top of wipes
 			screen->Update ();		// page flip or blit buffer
 			NetUpdate ();			// [RH] not sure this is needed anymore
@@ -956,6 +992,7 @@ void D_Display ()
 void D_ErrorCleanup ()
 {
 	savegamerestore = false;
+	screen->Unlock ();
 	bglobal.RemoveAllBots (true);
 	D_QuitNetGame ();
 	if (demorecording || demoplayback)
@@ -1289,6 +1326,7 @@ void D_DoAdvanceDemo (void)
 		Advisory = NULL;
 		if (!M_DemoNoPlay)
 		{
+			V_SetBorderNeedRefresh();
 			democount++;
 			mysnprintf (demoname + 4, countof(demoname) - 4, "%d", democount);
 			if (Wads.CheckNumForName (demoname) < 0)
@@ -2255,7 +2293,6 @@ static void CheckCmdLine()
 	}
 }
 
-
 //==========================================================================
 //
 // D_DoomMain
@@ -2440,6 +2477,7 @@ void D_DoomMain (void)
 		{
 			if (!batchrun) Printf ("I_Init: Setting up machine state.\n");
 			I_Init ();
+			I_CreateRenderer();
 		}
 
 		if (!batchrun) Printf ("V_Init: allocate screen.\n");
@@ -2637,7 +2675,7 @@ void D_DoomMain (void)
 			}
 
 			V_Init2();
-			gl_PatchMenu();	// removes unapplicable entries for old hardware. This cannot be done in MENUDEF because at the point it gets parsed it doesn't have the needed info.
+			gl_PatchMenu();
 			UpdateJoystickMenu(NULL);
 
 			v = Args->CheckValue ("-loadgame");
@@ -2706,6 +2744,7 @@ void D_DoomMain (void)
 			// These calls from inside V_Init2 are still necessary
 			C_NewModeAdjust();
 			M_InitVideoModesMenu();
+			Renderer->RemapVoxels();
 			D_StartTitle ();				// start up intro loop
 			setmodeneeded = false;			// This may be set to true here, but isn't needed for a restart
 		}
@@ -2738,7 +2777,6 @@ void D_DoomMain (void)
 		M_SaveDefaults(NULL);			// save config before the restart
 
 		// delete all data that cannot be left until reinitialization
-		screen->CleanForRestart();
 		V_ClearFonts();					// must clear global font pointers
 		ColorSets.Clear();
 		PainFlashes.Clear();
@@ -2750,7 +2788,6 @@ void D_DoomMain (void)
 		DestroyCVarsFlagged(CVAR_MOD);	// Delete any cvar left by mods
 		FS_Close();						// destroy the global FraggleScript.
 		DeinitMenus();
-		LightDefaults.Clear();			// this can leak heap memory if it isn't cleared.
 
 		// delete DoomStartupInfo data
 		DoomStartupInfo.Name = (const char*)0;

@@ -68,6 +68,7 @@
 
 EXTERN_CVAR(Bool, r_drawplayersprites)
 EXTERN_CVAR(Bool, r_deathcamera)
+EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Bool, r_fullbrightignoresectorcolor)
 
 namespace swrenderer
@@ -264,7 +265,7 @@ namespace swrenderer
 		double pspriteyscale = pspritexscale * viewport->BaseYaspectMul * ((double)SCREENHEIGHT / SCREENWIDTH) * r_viewwindow.WidescreenRatio;
 		double pspritexiscale = 1 / pspritexscale;
 
-		int tleft = tex->GetScaledLeftOffset(0);
+		int tleft = tex->GetScaledLeftOffset();
 		int twidth = tex->GetScaledWidth();
 
 		// calculate edges of the shape
@@ -287,19 +288,16 @@ namespace swrenderer
 
 		vis.renderflags = owner->renderflags;
 
-		vis.texturemid = (BASEYCENTER - sy) * tex->Scale.Y + tex->GetTopOffset(0);
+		vis.texturemid = (BASEYCENTER - sy) * tex->Scale.Y + tex->TopOffset;
 
-		// Force it to use software rendering when drawing to a canvas texture.
-		bool renderToCanvas = viewport->RenderingToCanvas;
-
-		if (Thread->Viewport->viewpoint.camera->player && (renderToCanvas ||
+		if (Thread->Viewport->viewpoint.camera->player && (viewport->RenderTarget != screen ||
 			viewheight == viewport->RenderTarget->GetHeight() ||
 			(viewport->RenderTarget->GetWidth() > (BASEXCENTER * 2))))
 		{	// Adjust PSprite for fullscreen views
 			AWeapon *weapon = dyn_cast<AWeapon>(pspr->GetCaller());
 			if (weapon != nullptr && weapon->YAdjust != 0)
 			{
-				if (renderToCanvas || viewheight == viewport->RenderTarget->GetHeight())
+				if (viewport->RenderTarget != screen || viewheight == viewport->RenderTarget->GetHeight())
 				{
 					vis.texturemid -= weapon->YAdjust;
 				}
@@ -390,7 +388,13 @@ namespace swrenderer
 					noaccel = true;
 				}
 			}
-
+			// If we're drawing with a special colormap, but shaders for them are disabled, do
+			// not accelerate.
+			if (!r_shadercolormaps && (vis.Light.BaseColormap >= &SpecialSWColormaps[0] &&
+				vis.Light.BaseColormap <= &SpecialSWColormaps.Last()))
+			{
+				noaccel = true;
+			}
 			// If drawing with a BOOM colormap, disable acceleration.
 			if (vis.Light.BaseColormap == &NormalLight && NormalLight.Maps != realcolormaps.Maps)
 			{
@@ -416,7 +420,7 @@ namespace swrenderer
 
 		// Check for hardware-assisted 2D. If it's available, and this sprite is not
 		// fuzzy, don't draw it until after the switch to 2D mode.
-		if (!noaccel && !renderToCanvas)
+		if (!noaccel && viewport->RenderTarget == screen && (DFrameBuffer *)screen->Accel2D)
 		{
 			FRenderStyle style = vis.RenderStyle;
 			style.CheckFuzz();
@@ -447,12 +451,19 @@ namespace swrenderer
 				{
 					accelSprite.special = CameraLight::Instance()->ShaderColormap();
 				}
-				else 
+				else if (colormap_to_use->Color == PalEntry(255, 255, 255) &&
+					colormap_to_use->Desaturate == 0)
 				{
 					accelSprite.overlay = colormap_to_use->Fade;
 					accelSprite.overlay.a = uint8_t(vis.Light.ColormapNum * 255 / NUMCOLORMAPS);
-					accelSprite.LightColor = colormap_to_use->Color;
-					accelSprite.Desaturate = (uint8_t)clamp(colormap_to_use->Desaturate, 0, 255);
+				}
+				else
+				{
+					accelSprite.usecolormapstyle = true;
+					accelSprite.colormapstyle.Color = colormap_to_use->Color;
+					accelSprite.colormapstyle.Fade = colormap_to_use->Fade;
+					accelSprite.colormapstyle.Desaturate = colormap_to_use->Desaturate;
+					accelSprite.colormapstyle.FadeLevel = vis.Light.ColormapNum / float(NUMCOLORMAPS);
 				}
 
 				AcceleratedSprites.Push(accelSprite);
@@ -485,8 +496,7 @@ namespace swrenderer
 				DTA_FillColor, sprite.FillColor,
 				DTA_SpecialColormap, sprite.special,
 				DTA_ColorOverlay, sprite.overlay.d,
-				DTA_Color, sprite.LightColor | 0xff000000,	// the color here does not have a valid alpha component.
-				DTA_Desaturate, sprite.Desaturate,
+				DTA_ColormapStyle, sprite.usecolormapstyle ? &sprite.colormapstyle : nullptr,
 				TAG_DONE);
 		}
 

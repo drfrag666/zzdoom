@@ -39,9 +39,12 @@
 #include "gl/system/gl_framebuffer.h"
 #include "gl/system/gl_cvars.h"
 #include "gl/shaders/gl_shader.h"
+#include "gl/textures/gl_translate.h"
 #include "gl/textures/gl_material.h"
 #include "gl/textures/gl_samplers.h"
+#include "gl/utility/gl_templates.h"
 #include "gl/data/gl_vertexbuffer.h"
+#include "gl/renderer/gl_2ddrawer.h"
 
 
 //===========================================================================
@@ -120,7 +123,7 @@ bool OpenGLFrameBuffer::WipeStartScreen(int type)
 	}
 
 	const auto &viewport = GLRenderer->mScreenViewport;
-	wipestartscreen = new FHardwareTexture(true);
+	wipestartscreen = new FHardwareTexture(viewport.width, viewport.height, true);
 	wipestartscreen->CreateTexture(NULL, viewport.width, viewport.height, 0, false, 0, "WipeStartScreen");
 	GLRenderer->mSamplerManager->Bind(0, CLAMP_NOFILTER, -1);
 	GLRenderer->mSamplerManager->Bind(1, CLAMP_NONE, -1);
@@ -166,9 +169,11 @@ bool OpenGLFrameBuffer::WipeStartScreen(int type)
 
 void OpenGLFrameBuffer::WipeEndScreen()
 {
-	GLRenderer->Flush();
+	GLRenderer->m2DDrawer->Draw();
+	GLRenderer->m2DDrawer->Clear();
+
 	const auto &viewport = GLRenderer->mScreenViewport;
-	wipeendscreen = new FHardwareTexture(true);
+	wipeendscreen = new FHardwareTexture(viewport.width, viewport.height, true);
 	wipeendscreen->CreateTexture(NULL, viewport.width, viewport.height, 0, false, 0, "WipeEndScreen");
 	GLRenderer->mSamplerManager->Bind(0, CLAMP_NOFILTER, -1);
 	glFinish();
@@ -182,6 +187,7 @@ void OpenGLFrameBuffer::WipeEndScreen()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	Unlock();
 }
 
 //==========================================================================
@@ -202,6 +208,8 @@ bool OpenGLFrameBuffer::WipeDo(int ticks)
 	// Sanity checks.
 	if (wipestartscreen != nullptr && wipeendscreen != nullptr)
 	{
+		Lock(true);
+
 		gl_RenderState.EnableTexture(true);
 		gl_RenderState.EnableFog(false);
 		glDisable(GL_DEPTH_TEST);
@@ -512,7 +520,7 @@ bool OpenGLFrameBuffer::Wiper_Burn::Run(int ticks, OpenGLFrameBuffer *fb)
 	}
 
 	if (BurnTexture != NULL) delete BurnTexture;
-	BurnTexture = new FHardwareTexture(true);
+	BurnTexture = new FHardwareTexture(WIDTH, HEIGHT, true);
 
 	// Update the burn texture with the new burn data
 	uint8_t rgb_buffer[WIDTH*HEIGHT*4];

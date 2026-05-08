@@ -943,6 +943,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 	}
 	arc("saveversion", SaveVersion);
 
+	Renderer->StartSerialize(arc);
 	if (arc.isReading())
 	{
 		DThinker::DestroyAllThinkers();
@@ -992,7 +993,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 	arc("sidedefs", level.sides, level.loadsides);
 	arc("sectors", level.sectors, level.loadsectors);
 	arc("zones", level.Zones);
-	arc("lineportals", level.linePortals);
+	arc("lineportals", linePortals);
 	arc("sectorportals", level.sectorPortals);
 	if (arc.isReading()) P_CollectLinkedPortals();
 
@@ -1023,5 +1024,6 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		}
 	}
 	AActor::RecreateAllAttachedLights();
-	InitPortalGroups();
+	Renderer->EndSerialize(arc);
+
 }

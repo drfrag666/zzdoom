@@ -46,7 +46,7 @@
 #include "c_cvars.h"
 #include "doomdef.h"
 #include "doomstat.h"
-#include "hardware.h"
+#include "win32iface.h"
 #include "rawinput.h"
 
 // MACROS ------------------------------------------------------------------

@@ -50,6 +50,8 @@
 #include "g_levellocals.h"
 #include "actorinlines.h"
 
+extern int currentrenderer;
+
 //==========================================================================
 //
 //  3D Floors
@@ -195,7 +197,7 @@ static void P_Add3DFloor(sector_t* sec, sector_t* sec2, line_t* master, int flag
 
 	// kg3D - software renderer only hack
 	// this is really required because of ceilingclip and floorclip
-	if(flags & FF_BOTHPLANES)
+	if((currentrenderer == 0) && (flags & FF_BOTHPLANES))
 	{
 		P_Add3DFloor(sec, sec2, master, FF_EXISTS | FF_THISINSIDE | FF_RENDERPLANES | FF_NOSHADE | FF_SEETHROUGH | FF_SHOOTTHROUGH |
 			(flags & (FF_INVERTSECTOR | FF_TRANSLUCENT | FF_ADDITIVETRANS)), alpha);

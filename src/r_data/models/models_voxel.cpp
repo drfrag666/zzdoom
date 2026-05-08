@@ -80,7 +80,8 @@ FVoxelTexture::FVoxelTexture(FVoxel *vox)
 	WidthBits = 4;
 	HeightBits = 4;
 	WidthMask = 15;
-	bNoCompress = true;
+	gl_info.bNoFilter = true;
+	gl_info.bNoCompress = true;
 }
 
 //===========================================================================
@@ -306,7 +307,7 @@ void FVoxelModel::Initialize()
 	FVoxelMipLevel *mip = &mVoxel->Mips[0];
 	for (int x = 0; x < mip->SizeX; x++)
 	{
-		uint8_t *slabxoffs = &mip->GetSlabData(false)[mip->OffsetX[x]];
+		uint8_t *slabxoffs = &mip->SlabData[mip->OffsetX[x]];
 		short *xyoffs = &mip->OffsetXY[x * (mip->SizeY + 1)];
 		for (int y = 0; y < mip->SizeY; y++)
 		{

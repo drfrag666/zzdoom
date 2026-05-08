@@ -37,7 +37,6 @@
 #include "swrenderer/things/r_playersprite.h"
 #include "swrenderer/scene/r_scene.h"
 #include "swrenderer/scene/r_light.h"
-#include "swrenderer/r_swcolormaps.h"
 #include "v_palette.h"
 #include "v_video.h"
 #include "m_png.h"
@@ -60,8 +59,23 @@ CUSTOM_CVAR (Bool, cl_oldfreelooklimit, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG 
 		players[consoleplayer].SendPitchLimits();
 }
 
+EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Float, maxviewpitch)	// [SP] CVAR from OpenGL Renderer
 EXTERN_CVAR(Bool, r_drawvoxels)
+
+CUSTOM_CVAR(Bool, r_polyrenderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
+{
+	if (self == 1 && !hasglnodes)
+	{
+		Printf("No GL BSP detected. You must restart the map before rendering will be correct\n");
+	}
+
+	if (usergame)
+	{
+		// [SP] Update pitch limits to the netgame/gamesim.
+		players[consoleplayer].SendPitchLimits();
+	}
+}
 
 using namespace swrenderer;
 
@@ -69,20 +83,19 @@ FSoftwareRenderer::FSoftwareRenderer()
 {
 }
 
-void FSoftwareRenderer::Init()
+FSoftwareRenderer::~FSoftwareRenderer()
 {
-	R_InitShadeMaps();
-	InitSWColorMaps();
 }
 
-FRenderer *CreateSWRenderer()
+void FSoftwareRenderer::Init()
 {
-	return new FSoftwareRenderer;
+	mScene.Init();
+	InitSWColorMaps();		
 }
 
 void FSoftwareRenderer::PrecacheTexture(FTexture *tex, int cache)
 {
-	bool isbgra = V_IsTrueColor();
+	bool isbgra = screen->IsBgra();
 
 	if (tex != NULL)
 	{
@@ -157,13 +170,13 @@ void FSoftwareRenderer::Precache(uint8_t *texhitlist, TMap<PClassActor*, bool> &
 	}
 }
 
-void FSoftwareRenderer::RenderView(player_t *player, DCanvas *target)
+void FSoftwareRenderer::RenderView(player_t *player)
 {
-	if (V_IsPolyRenderer())
+	if (r_polyrenderer)
 	{
 		PolyRenderer::Instance()->Viewpoint = r_viewpoint;
 		PolyRenderer::Instance()->Viewwindow = r_viewwindow;
-		PolyRenderer::Instance()->RenderView(player, target);
+		PolyRenderer::Instance()->RenderView(player);
 		r_viewpoint = PolyRenderer::Instance()->Viewpoint;
 		r_viewwindow = PolyRenderer::Instance()->Viewwindow;
 	}
@@ -171,12 +184,21 @@ void FSoftwareRenderer::RenderView(player_t *player, DCanvas *target)
 	{
 		mScene.MainThread()->Viewport->viewpoint = r_viewpoint;
 		mScene.MainThread()->Viewport->viewwindow = r_viewwindow;
-		mScene.RenderView(player, target);
+		mScene.RenderView(player);
 		r_viewpoint = mScene.MainThread()->Viewport->viewpoint;
 		r_viewwindow = mScene.MainThread()->Viewport->viewwindow;
 	}
 
 	FCanvasTextureInfo::UpdateAll();
+}
+
+void FSoftwareRenderer::RemapVoxels()
+{
+	for (unsigned i=0; i<Voxels.Size(); i++)
+	{
+		Voxels[i]->CreateBgraSlabData();
+		Voxels[i]->Remap();
+	}
 }
 
 void FSoftwareRenderer::WriteSavePic (player_t *player, FileWriter *file, int width, int height)
@@ -185,7 +207,8 @@ void FSoftwareRenderer::WriteSavePic (player_t *player, FileWriter *file, int wi
 	PalEntry palette[256];
 
 	// Take a snapshot of the player's view
-	if (V_IsPolyRenderer())
+	pic->Lock ();
+	if (r_polyrenderer)
 	{
 		PolyRenderer::Instance()->Viewpoint = r_viewpoint;
 		PolyRenderer::Instance()->Viewwindow = r_viewwindow;
@@ -202,13 +225,14 @@ void FSoftwareRenderer::WriteSavePic (player_t *player, FileWriter *file, int wi
 		r_viewwindow = mScene.MainThread()->Viewport->viewwindow;
 	}
 	screen->GetFlashedPalette (palette);
-	M_CreatePNG (file, pic->GetPixels(), palette, SS_PAL, width, height, pic->GetPitch(), Gamma);
+	M_CreatePNG (file, pic->GetBuffer(), palette, SS_PAL, width, height, pic->GetPitch(), Gamma);
+	pic->Unlock ();
 	delete pic;
 }
 
 void FSoftwareRenderer::DrawRemainingPlayerSprites()
 {
-	if (!V_IsPolyRenderer())
+	if (!r_polyrenderer)
 	{
 		mScene.MainThread()->Viewport->viewpoint = r_viewpoint;
 		mScene.MainThread()->Viewport->viewwindow = r_viewwindow;
@@ -226,11 +250,21 @@ void FSoftwareRenderer::DrawRemainingPlayerSprites()
 	}
 }
 
+int FSoftwareRenderer::GetMaxViewPitch(bool down)
+{
+	int MAX_DN_ANGLE = MIN(56, (int)maxviewpitch); // Max looking down angle
+	int MAX_UP_ANGLE = MIN(32, (int)maxviewpitch); // Max looking up angle
+	return (r_polyrenderer) ? int(maxviewpitch) : (down ? MAX_DN_ANGLE : ((cl_oldfreelooklimit) ? MAX_UP_ANGLE : MAX_DN_ANGLE));
+}
+
+bool FSoftwareRenderer::RequireGLNodes()
+{
+	return true;
+}
+
 void FSoftwareRenderer::OnModeSet ()
 {
-	// This does not work if the SW renderer is not in use.
-	if (!V_IsHardwareRenderer())
-		mScene.ScreenResized();
+	mScene.ScreenResized();
 }
 
 void FSoftwareRenderer::SetClearColor(int color)
@@ -240,9 +274,9 @@ void FSoftwareRenderer::SetClearColor(int color)
 
 void FSoftwareRenderer::RenderTextureView (FCanvasTexture *tex, AActor *viewpoint, double fov)
 {
-	auto renderTarget = V_IsPolyRenderer() ? PolyRenderer::Instance()->RenderTarget : mScene.MainThread()->Viewport->RenderTarget;
-	auto &cameraViewpoint = V_IsPolyRenderer() ? PolyRenderer::Instance()->Viewpoint : mScene.MainThread()->Viewport->viewpoint;
-	auto &cameraViewwindow = V_IsPolyRenderer() ? PolyRenderer::Instance()->Viewwindow : mScene.MainThread()->Viewport->viewwindow;
+	auto renderTarget = r_polyrenderer ? PolyRenderer::Instance()->RenderTarget : mScene.MainThread()->Viewport->RenderTarget;
+	auto &cameraViewpoint = r_polyrenderer ? PolyRenderer::Instance()->Viewpoint : mScene.MainThread()->Viewport->viewpoint;
+	auto &cameraViewwindow = r_polyrenderer ? PolyRenderer::Instance()->Viewwindow : mScene.MainThread()->Viewport->viewwindow;
 
 	// Grab global state shared with rest of zdoom
 	cameraViewpoint = r_viewpoint;
@@ -258,7 +292,7 @@ void FSoftwareRenderer::RenderTextureView (FCanvasTexture *tex, AActor *viewpoin
 	DAngle savedfov = cameraViewpoint.FieldOfView;
 	R_SetFOV (cameraViewpoint, fov);
 
-	if (V_IsPolyRenderer())
+	if (r_polyrenderer)
 		PolyRenderer::Instance()->RenderViewToCanvas(viewpoint, Canvas, 0, 0, tex->GetWidth(), tex->GetHeight(), tex->bFirstUpdate);
 	else
 		mScene.RenderViewToCanvas(viewpoint, Canvas, 0, 0, tex->GetWidth(), tex->GetHeight(), tex->bFirstUpdate);
@@ -267,24 +301,24 @@ void FSoftwareRenderer::RenderTextureView (FCanvasTexture *tex, AActor *viewpoin
 
 	if (Canvas->IsBgra())
 	{
-		if (Pixels == Canvas->GetPixels())
+		if (Pixels == Canvas->GetBuffer())
 		{
 			FTexture::FlipSquareBlockBgra((uint32_t*)Pixels, tex->GetWidth(), tex->GetHeight());
 		}
 		else
 		{
-			FTexture::FlipNonSquareBlockBgra((uint32_t*)Pixels, (const uint32_t*)Canvas->GetPixels(), tex->GetWidth(), tex->GetHeight(), Canvas->GetPitch());
+			FTexture::FlipNonSquareBlockBgra((uint32_t*)Pixels, (const uint32_t*)Canvas->GetBuffer(), tex->GetWidth(), tex->GetHeight(), Canvas->GetPitch());
 		}
 	}
 	else
 	{
-		if (Pixels == Canvas->GetPixels())
+		if (Pixels == Canvas->GetBuffer())
 		{
 			FTexture::FlipSquareBlockRemap(Pixels, tex->GetWidth(), tex->GetHeight(), GPalette.Remap);
 		}
 		else
 		{
-			FTexture::FlipNonSquareBlockRemap(Pixels, Canvas->GetPixels(), tex->GetWidth(), tex->GetHeight(), Canvas->GetPitch(), GPalette.Remap);
+			FTexture::FlipNonSquareBlockRemap(Pixels, Canvas->GetBuffer(), tex->GetWidth(), tex->GetHeight(), Canvas->GetPitch(), GPalette.Remap);
 		}
 	}
 
@@ -320,15 +354,49 @@ void FSoftwareRenderer::RenderTextureView (FCanvasTexture *tex, AActor *viewpoin
 	r_viewwindow = cameraViewwindow;
 }
 
-void FSoftwareRenderer::SetColormap()
+void FSoftwareRenderer::PreprocessLevel()
 {
 	// This just sets the default colormap for the spftware renderer.
 	NormalLight.Maps = realcolormaps.Maps;
 	NormalLight.ChangeColor(PalEntry(255, 255, 255), 0);
 	NormalLight.ChangeFade(level.fadeto);
+
 	if (level.fadeto == 0)
 	{
 		SetDefaultColormap(level.info->FadeTable);
+		if (level.flags & LEVEL_HASFADETABLE)
+		{
+			// This should really be done differently.
+			level.fadeto = 0xff939393; //[SP] Hexen True-color compatibility, just use gray.
+			for (auto &s : level.sectors)
+			{
+				s.Colormap.FadeColor = level.fadeto;
+			}
+		}
 	}
 }
 
+void FSoftwareRenderer::CleanLevelData()
+{
+}
+
+uint32_t FSoftwareRenderer::GetCaps()
+{
+	ActorRenderFeatureFlags FlagSet = 0;
+
+	if (r_polyrenderer)
+		FlagSet |= RFF_POLYGONAL | RFF_TILTPITCH | RFF_SLOPE3DFLOORS;
+	else
+	{
+		FlagSet |= RFF_UNCLIPPEDTEX;
+		if (r_drawvoxels)
+			FlagSet |= RFF_VOXELS;
+	}
+
+	if (screen && screen->IsBgra())
+		FlagSet |= RFF_TRUECOLOR;
+	else
+		FlagSet |= RFF_COLORMAP;
+
+	return (uint32_t)FlagSet;
+}

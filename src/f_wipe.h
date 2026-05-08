@@ -30,7 +30,6 @@
 //						 SCREEN WIPE PACKAGE
 //
 
-#if 0
 bool wipe_StartScreen (int type);
 void wipe_EndScreen (void);
 bool wipe_ScreenWipe (int ticks);
@@ -38,8 +37,7 @@ void wipe_Cleanup ();
 
 // The buffer must have an additional 5 rows not included in height
 // to use for a seeding area.
-#endif
-int wipe_CalcBurn(uint8_t *buffer, int width, int height, int density);
+int wipe_CalcBurn (uint8_t *buffer, int width, int height, int density);
 
 enum
 {

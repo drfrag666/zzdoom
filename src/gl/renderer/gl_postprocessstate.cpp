@@ -28,6 +28,7 @@
 #include "templates.h"
 #include "gl/system/gl_system.h"
 #include "gl/system/gl_interface.h"
+#include "gl/data/gl_data.h"
 #include "gl/data/gl_vertexbuffer.h"
 #include "gl/system/gl_cvars.h"
 #include "gl/shaders/gl_shader.h"

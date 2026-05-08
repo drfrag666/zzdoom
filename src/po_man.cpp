@@ -906,7 +906,7 @@ void FPolyObj::UpdateLinks()
 					{
 						processed[destgroup] = true;
 						DVector2 delta = port->mDisplacement - old;
-						level.Displacements.MoveGroup(destgroup, delta);
+						Displacements.MoveGroup(destgroup, delta);
 					}
 				}
 			}

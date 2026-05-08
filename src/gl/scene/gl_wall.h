@@ -20,9 +20,9 @@ class FMaterial;
 struct GLDrawList;
 struct GLSkyInfo;
 struct FTexCoordInfo;
-struct FSectorPortalGroup;
+struct FPortal;
 struct FFlatVertex;
-struct FLinePortalSpan;
+struct FGLLinePortal;
 class GLSceneDrawer;
 
 enum
@@ -171,9 +171,9 @@ public:
 		FSectorPortal *secportal;	// sector portal (formerly skybox)
 		GLSkyInfo * sky;			// for normal sky
 		GLHorizonInfo * horizon;	// for horizon information
-		FSectorPortalGroup * portal;			// stacked sector portals
+		FPortal * portal;			// stacked sector portals
 		secplane_t * planemirror;	// for plane mirrors
-		FLinePortalSpan *lineportal;	// line-to-line portals
+		FGLLinePortal *lineportal;	// line-to-line portals
 	};
 
 

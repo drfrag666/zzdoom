@@ -175,7 +175,6 @@ namespace swrenderer
 		FString DebugInfo() override;
 	};
 
-#if 0
 	class ApplySpecialColormapRGBACommand : public DrawerCommand
 	{
 		uint8_t *buffer;
@@ -194,7 +193,6 @@ namespace swrenderer
 		void Execute(DrawerThread *thread) override;
 		FString DebugInfo() override { return "ApplySpecialColormapRGBACommand"; }
 	};
-#endif
 
 	template<typename CommandType, typename BlendMode>
 	class DrawerBlendCommand : public CommandType

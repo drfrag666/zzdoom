@@ -36,6 +36,7 @@
 #include "g_levellocals.h"
 
 #include "gl/renderer/gl_renderer.h"
+#include "gl/data/gl_data.h"
 #include "gl/data/gl_vertexbuffer.h"
 #include "gl/scene/gl_scenedrawer.h"
 #include "gl/scene/gl_portal.h"
@@ -422,7 +423,7 @@ void GLSceneDrawer::DoSubsector(subsector_t * sub)
 	if (!sector) return;
 
 	// If the mapsections differ this subsector can't possibly be visible from the current view point
-	if (!CurrentMapSections[sub->mapsection]) return;
+	if (!(currentmapsection[sub->mapsection>>3] & (1 << (sub->mapsection & 7)))) return;
 	if (sub->flags & SSECF_POLYORG) return;	// never render polyobject origin subsectors because their vertices no longer are where one may expect.
 
 	if (gl_drawinfo->ss_renderflags[sub->Index()] & SSRF_SEEN)
@@ -519,16 +520,16 @@ void GLSceneDrawer::DoSubsector(subsector_t * sub)
 					(sub->numlines > 2) ? SSRF_PROCESSED|SSRF_RENDERALL : SSRF_PROCESSED;
 				if (sub->hacked & 1) gl_drawinfo->AddHackedSubsector(sub);
 
-				FSectorPortalGroup *portal;
+				FPortal *portal;
 
-				portal = fakesector->GetPortalGroup(sector_t::ceiling);
+				portal = fakesector->GetGLPortal(sector_t::ceiling);
 				if (portal != NULL)
 				{
 					GLSectorStackPortal *glportal = portal->GetRenderState();
 					glportal->AddSubsector(sub);
 				}
 
-				portal = fakesector->GetPortalGroup(sector_t::floor);
+				portal = fakesector->GetGLPortal(sector_t::floor);
 				if (portal != NULL)
 				{
 					GLSectorStackPortal *glportal = portal->GetRenderState();

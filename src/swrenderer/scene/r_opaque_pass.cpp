@@ -884,8 +884,9 @@ namespace swrenderer
 
 	void RenderOpaquePass::ClearClip()
 	{
+		// clip ceiling to console bottom
 		fillshort(floorclip, viewwidth, viewheight);
-		fillshort(ceilingclip, viewwidth, 0);
+		fillshort(ceilingclip, viewwidth, !screen->Accel2D && ConBottom > viewwindowy && !Thread->Viewport->RenderingToCanvas() ? (ConBottom - viewwindowy) : 0);
 	}
 
 	void RenderOpaquePass::AddSprites(sector_t *sec, int lightlevel, WaterFakeSide fakeside, bool foggy, FDynamicColormap *basecolormap)

@@ -719,7 +719,6 @@ namespace swrenderer
 
 	/////////////////////////////////////////////////////////////////////////////
 
-#if 0
 	ApplySpecialColormapRGBACommand::ApplySpecialColormapRGBACommand(FSpecialColormap *colormap, DFrameBuffer *screen)
 	{
 		buffer = screen->GetBuffer();
@@ -871,7 +870,6 @@ namespace swrenderer
 		}
 	}
 #endif
-#endif
 
 	/////////////////////////////////////////////////////////////////////////////
 
@@ -940,7 +938,7 @@ namespace swrenderer
 	void DrawVoxelBlocksRGBACommand::Execute(DrawerThread *thread)
 	{
 		int pitch = args.Viewport()->RenderTarget->GetPitch();
-		uint8_t *destorig = args.Viewport()->RenderTarget->GetPixels();
+		uint8_t *destorig = args.Viewport()->RenderTarget->GetBuffer();
 
 		DrawSprite32Command drawer(args);
 		drawer.args.dc_texturefracx = 0;

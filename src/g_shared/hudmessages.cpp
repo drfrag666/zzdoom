@@ -220,6 +220,10 @@ void DHUDMessage::OnDestroy()
 	{
 		V_FreeBrokenLines (Lines);
 		Lines = NULL;
+		if (screen != NULL)
+		{
+			V_SetBorderNeedRefresh();
+		}
 	}
 	if (SourceText != NULL)
 	{
@@ -614,6 +618,7 @@ void DHUDMessageFadeOut::DoDraw (int linenum, int x, int y, bool clean, int hudh
 				DTA_RenderStyle, Style,
 				TAG_DONE);
 		}
+		V_SetBorderNeedRefresh();
 	}
 }
 
@@ -703,6 +708,7 @@ void DHUDMessageFadeInOut::DoDraw (int linenum, int x, int y, bool clean, int hu
 				DTA_RenderStyle, Style,
 				TAG_DONE);
 		}
+		V_SetBorderNeedRefresh();
 	}
 	else
 	{

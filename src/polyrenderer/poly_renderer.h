@@ -45,7 +45,7 @@ class PolyRenderer
 public:
 	PolyRenderer();
 	
-	void RenderView(player_t *player, DCanvas *target);
+	void RenderView(player_t *player);
 	void RenderViewToCanvas(AActor *actor, DCanvas *canvas, int x, int y, int width, int height, bool dontmaplines);
 	void RenderRemainingPlayerSprites();
 
@@ -57,7 +57,6 @@ public:
 	
 	PolyRenderThreads Threads;
 	DCanvas *RenderTarget = nullptr;
-	bool RenderToCanvas = false;
 	FViewWindow Viewwindow;
 	FRenderViewpoint Viewpoint;
 	PolyLightVisibility Light;
