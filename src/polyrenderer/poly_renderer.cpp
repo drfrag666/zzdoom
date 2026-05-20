@@ -128,6 +128,13 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	P_FindParticleSubsectors();
 	PO_LinkToSubsectors();
 
+	static bool firstcall = true;
+	if (firstcall)
+	{
+		swrenderer::R_InitFuzzTable(RenderTarget->GetPitch());
+		firstcall = false;
+	}
+
 	swrenderer::R_UpdateFuzzPosFrameStart();
 
 	if (APART(R_OldBlend)) NormalLight.Maps = realcolormaps.Maps;
@@ -138,10 +145,15 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	PolyCameraLight::Instance()->SetCamera(Viewpoint, RenderTarget, actor);
 	//Viewport->SetupFreelook();
 
-	ActorRenderFlags savedflags = Viewpoint.camera->renderflags;
-	// Never draw the player unless in chasecam mode
-	if (!Viewpoint.showviewer)
-		Viewpoint.camera->renderflags |= RF_INVISIBLE;
+	ActorRenderFlags savedflags = 0;
+	if (Viewpoint.camera)
+	{
+		savedflags = Viewpoint.camera->renderflags;
+
+		// Never draw the player unless in chasecam mode
+		if (!Viewpoint.showviewer)
+			Viewpoint.camera->renderflags |= RF_INVISIBLE;
+	}
 
 	ScreenTriangle::FuzzStart = (ScreenTriangle::FuzzStart + 14) % FUZZTABLE;
 
@@ -159,7 +171,8 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	Scene.RenderTranslucent(&mainViewpoint);
 	PlayerSprites.Render(Threads.MainThread());
 
-	Viewpoint.camera->renderflags = savedflags;
+	if (Viewpoint.camera)
+		Viewpoint.camera->renderflags = savedflags;
 	interpolator.RestoreInterpolations ();
 	
 	NetUpdate();
