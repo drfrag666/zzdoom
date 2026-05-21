@@ -98,6 +98,7 @@ protected:
 };
 
 TArray<FLightAssociation> LightAssociations;
+static double lightSizeFactor = 1.;
 
 
 //==========================================================================
@@ -959,6 +960,7 @@ static const char *CoreKeywords[]=
    "detail",
    "#include",
    "material",
+   "lightsizefactor",
    nullptr
 };
 
@@ -981,7 +983,8 @@ enum
    TAG_HARDWARESHADER,
    TAG_DETAIL,
    TAG_INCLUDE,
-   TAG_MATERIAL
+   TAG_MATERIAL,
+   TAG_LIGHTSIZEFACTOR
 };
 
 
@@ -1347,6 +1350,9 @@ static void DoParseDefs(FScanner &sc, int workingLump)
 			break;
 		case TAG_DETAIL:
 			// gl_ParseDetailTexture(sc);
+			break;
+		case TAG_LIGHTSIZEFACTOR:
+			lightSizeFactor = ParseFloat(sc);
 			break;
 		case TAG_DISABLE_FB:
 			{
