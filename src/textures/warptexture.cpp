@@ -34,8 +34,6 @@
 */
 
 #include "doomtype.h"
-#include "files.h"
-#include "templates.h"
 #include "r_utility.h"
 #include "textures/textures.h"
 #include "warpbuffer.h"

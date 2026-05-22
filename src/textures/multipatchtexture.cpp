@@ -49,7 +49,6 @@
 #include "v_video.h"
 #include "v_text.h"
 #include "cmdlib.h"
-#include "m_fixed.h"
 #include "textures/textures.h"
 #include "r_data/colormaps.h"
 

@@ -38,7 +38,6 @@
 #include "w_wad.h"
 #include "templates.h"
 #include "bitmap.h"
-#include "colormatcher.h"
 #include "v_video.h"
 #include "textures/textures.h"
 

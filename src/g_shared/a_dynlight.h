@@ -132,7 +132,7 @@ public:
 	bool shadowmapped;
 	int bufferindex;
 	LightFlags lightflags;
-	DAngle SpotInnerAngle = 10.0;
-	DAngle SpotOuterAngle = 25.0;
+	DAngle SpotInnerAngle;
+	DAngle SpotOuterAngle;
 
 };
