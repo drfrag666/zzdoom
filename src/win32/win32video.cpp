@@ -95,7 +95,7 @@ static void StopFPSLimit();
 
 extern HWND Window;
 extern IVideo *Video;
-extern BOOL AppActive;
+extern bool AppActive;
 extern int SessionState;
 extern bool FullscreenReset;
 extern bool VidResizing;
