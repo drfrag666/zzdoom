@@ -8,8 +8,8 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
-#include "../version.h"
-#include "../gitinfo.h"
+#include "../version.h"
+#include "../gitinfo.h"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS

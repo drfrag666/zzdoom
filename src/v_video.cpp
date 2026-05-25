@@ -1145,6 +1145,16 @@ void DFrameBuffer::DrawBlendingRect()
 {
 }
 
+int DFrameBuffer::GetClientWidth()
+{
+	return 320;
+}
+
+int DFrameBuffer::GetClientHeight()
+{
+	return 200;
+}
+
 //==========================================================================
 //
 // DFrameBuffer :: CreateTexture
