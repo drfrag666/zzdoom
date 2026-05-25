@@ -742,7 +742,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 		// Check whether the amount of names reported is correct.
 		if ((signed)numpatches < 0)
 		{
-			Printf("Corrupt PNAMES lump found (negative amount of entries reported)");
+			Printf("Corrupt PNAMES lump found (negative amount of entries reported)\n");
 			return;
 		}
 
@@ -780,7 +780,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 
 	if (maxoff < uint32_t(numtextures+1)*4)
 	{
-		Printf ("Texture directory is too short");
+		Printf ("Texture directory is too short\n");
 		delete[] patchlookup;
 		return;
 	}
@@ -791,7 +791,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 		offset = LittleLong(directory[i]);
 		if (offset > maxoff)
 		{
-			Printf ("Bad texture directory");
+			Printf ("Bad texture directory\n");
 			delete[] patchlookup;
 			return;
 		}
@@ -827,7 +827,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 		offset = LittleLong(directory[i]);
 		if (offset > maxoff)
 		{
-			Printf ("Bad texture directory");
+			Printf ("Bad texture directory\n");
 			delete[] patchlookup;
 			return;
 		}

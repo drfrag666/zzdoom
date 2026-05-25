@@ -346,6 +346,7 @@ namespace swrenderer
 		draw_segment->x2 = stop;
 		draw_segment->curline = mLineSegment;
 		draw_segment->foggy = foggy;
+		draw_segment->SubsectorDepth = Thread->OpaquePass->GetSubsectorDepth(mSubsector->Index());
 
 		bool markportal = ShouldMarkPortal();
 
@@ -558,7 +559,7 @@ namespace swrenderer
 			Thread->Portal->AddLinePortal(mLineSegment->linedef, draw_segment->x1, draw_segment->x2, draw_segment->sprtopclip, draw_segment->sprbottomclip);
 		}
 
-		return m3DFloor.type == Fake3DOpaque::Normal;
+		return true;
 	}
 
 	bool SWRenderLine::ShouldMarkFloor() const
