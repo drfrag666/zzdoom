@@ -68,7 +68,9 @@ EXTERN_CVAR(Int, r_clearbuffer)
 EXTERN_CVAR(Int, r_debug_draw)
 
 CVAR(Bool, r_scene_multithreaded, false, 0);
-CVAR(Bool, r_models, false, 0);
+CVAR(Bool, r_models, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
+
+bool r_modelscene = false;
 
 namespace swrenderer
 {
@@ -99,8 +101,13 @@ namespace swrenderer
 		float trueratio;
 		ActiveRatio(width, height, &trueratio);
 		viewport->SetViewport(MainThread(), width, height, trueratio);
-		if (r_models)
-			PolyTriangleDrawer::ClearBuffers(viewport->RenderTarget);
+
+		r_modelscene = r_models && Models.Size() > 0;
+		if (r_modelscene)
+		{
+			PolyTriangleDrawer::ResizeBuffers(viewport->RenderTarget);
+			PolyTriangleDrawer::ClearStencil(MainThread()->DrawQueue, 0);
+		}
 
 		if (r_clearbuffer != 0 || r_debug_draw != 0)
 		{
@@ -161,8 +168,10 @@ namespace swrenderer
 
 		R_UpdateFuzzPosFrameStart();
 
-		if (r_models)
+		if (r_modelscene)
 			MainThread()->Viewport->SetupPolyViewport(MainThread());
+
+		FRenderViewpoint origviewpoint = MainThread()->Viewport->viewpoint;
 
 		ActorRenderFlags savedflags = MainThread()->Viewport->viewpoint.camera->renderflags;
 		// Never draw the player unless in chasecam mode
@@ -172,6 +181,12 @@ namespace swrenderer
 		}
 
 		RenderThreadSlices();
+
+		// Mirrors fail to restore the original viewpoint -- we need it for the HUD weapon to draw correctly.
+		MainThread()->Viewport->viewpoint = origviewpoint;
+		if (r_modelscene)
+			MainThread()->Viewport->SetupPolyViewport(MainThread());
+
 		RenderPSprites();
 
 		MainThread()->Viewport->viewpoint.camera->renderflags = savedflags;
@@ -271,6 +286,9 @@ namespace swrenderer
 		thread->OpaquePass->ResetFakingUnderwater(); // [RH] Hack to make windows into underwater areas possible
 		thread->Portal->SetMainPortal();
 
+		if (r_modelscene && thread->MainThread)
+			PolyTriangleDrawer::ClearStencil(MainThread()->DrawQueue, 0);
+
 		PolyTriangleDrawer::SetViewport(thread->DrawQueue, viewwindowx, viewwindowy, viewwidth, viewheight, thread->Viewport->RenderTarget);
 
 		// Cull things outside the range seen by this thread
@@ -367,8 +385,8 @@ namespace swrenderer
 		viewwindowy = y;
 		viewactive = true;
 		viewport->SetViewport(MainThread(), width, height, MainThread()->Viewport->viewwindow.WidescreenRatio);
-		if (r_models)
-			PolyTriangleDrawer::ClearBuffers(viewport->RenderTarget);
+		if (r_modelscene)
+			PolyTriangleDrawer::ResizeBuffers(viewport->RenderTarget);
 
 		RenderActorView(actor, dontmaplines);
 		DrawerWaitCycles.Clock();

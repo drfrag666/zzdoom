@@ -74,7 +74,7 @@ bool RenderPolySprite::GetLine(AActor *thing, DVector2 &left, DVector2 &right)
 
 void RenderPolySprite::Render(PolyRenderThread *thread, AActor *thing, subsector_t *sub, uint32_t stencilValue, float t1, float t2)
 {
-	if (r_models)
+	if (r_modelscene)
 	{
 		int spritenum = thing->sprite;
 		bool isPicnumOverride = thing->picnum.isValid();
@@ -168,7 +168,7 @@ void RenderPolySprite::Render(PolyRenderThread *thread, AActor *thing, subsector
 	args.SetDepthTest(true);
 	args.SetWriteDepth(false);
 	args.SetWriteStencil(false);
-	args.DrawArray(thread->DrawQueue, vertices, 4, PolyDrawMode::TriangleFan);
+	PolyTriangleDrawer::DrawArray(thread->DrawQueue, args, vertices, 4, PolyDrawMode::TriangleFan);
 }
 
 double RenderPolySprite::GetSpriteFloorZ(AActor *thing, const DVector2 &thingpos)

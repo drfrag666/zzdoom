@@ -27,6 +27,7 @@
 #include "st_stuff.h"
 #include "r_data/r_translate.h"
 #include "r_data/r_interpolate.h"
+#include "r_data/models/models.h"
 #include "poly_renderer.h"
 #include "d_net.h"
 #include "po_man.h"
@@ -42,6 +43,9 @@
 EXTERN_CVAR(Bool, r_shadercolormaps)
 EXTERN_CVAR(Int, screenblocks)
 EXTERN_CVAR(Float, r_visibility)
+EXTERN_CVAR(Bool, r_models)
+
+extern bool r_modelscene;
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -157,7 +161,16 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 
 	ScreenTriangle::FuzzStart = (ScreenTriangle::FuzzStart + 14) % FUZZTABLE;
 
-	ClearBuffers();
+	r_modelscene = r_models && Models.Size() > 0;
+
+	NextStencilValue = 0;
+	Threads.Clear();
+	Threads.MainThread()->SectorPortals.clear();
+	Threads.MainThread()->LinePortals.clear();
+	Threads.MainThread()->TranslucentObjects.clear();
+
+	PolyTriangleDrawer::ResizeBuffers(RenderTarget);
+	PolyTriangleDrawer::ClearStencil(Threads.MainThread()->DrawQueue, 0);
 	SetSceneViewport();
 
 	PolyPortalViewpoint mainViewpoint = SetupPerspectiveMatrix();
@@ -177,16 +190,6 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 void PolyRenderer::RenderRemainingPlayerSprites()
 {
 	PlayerSprites.RenderRemainingSprites();
-}
-
-void PolyRenderer::ClearBuffers()
-{
-	Threads.Clear();
-	PolyTriangleDrawer::ClearBuffers(RenderTarget);
-	NextStencilValue = 0;
-	Threads.MainThread()->SectorPortals.clear();
-	Threads.MainThread()->LinePortals.clear();
-	Threads.MainThread()->TranslucentObjects.clear();
 }
 
 void PolyRenderer::SetSceneViewport()

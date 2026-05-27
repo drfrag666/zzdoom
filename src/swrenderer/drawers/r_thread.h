@@ -95,10 +95,19 @@ public:
 	virtual ~DrawerCommand() { }
 
 	virtual void Execute(DrawerThread *thread) = 0;
-	virtual FString DebugInfo() = 0;
 };
 
-void VectoredTryCatch(void *data, void(*tryBlock)(void *data), void(*catchBlock)(void *data, const char *reason, bool fatal));
+// Wait for all worker threads before executing next command
+class GroupMemoryBarrierCommand : public DrawerCommand
+{
+public:
+	void Execute(DrawerThread *thread);
+
+private:
+	std::mutex mutex;
+	std::condition_variable condition;
+	size_t count = 0;
+};
 
 class DrawerCommandQueue;
 typedef std::shared_ptr<DrawerCommandQueue> DrawerCommandQueuePtr;
@@ -123,7 +132,6 @@ private:
 	void WorkerMain(DrawerThread *thread);
 
 	static DrawerThreads *Instance();
-	static void ReportDrawerError(DrawerCommand *command, bool worker_thread, const char *reason, bool fatal);
 	
 	std::vector<DrawerThread> threads;
 
