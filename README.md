@@ -1,8 +1,8 @@
-# Welcome to GZDoom!
+# Welcome to ZZDoom!
 
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/coelckers/gzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/coelckers/gzdoom) [![Build Status](https://travis-ci.org/coelckers/gzdoom.svg?branch=master)](https://travis-ci.org/coelckers/gzdoom)
 
-## GZDoom is a modder-friendly OpenGL source port based on the DOOM engine
+## ZZDoom is a modder-friendly source port based on the DOOM engine
 
 Copyright (c) 1998-2018 ZDoom + GZDoom teams, and contributors
 
@@ -12,7 +12,7 @@ Please see license files for individual contributor licenses
 
 Special thanks to Coraline of the 3DGE team for allowing us to use her README.md as a template for this one.
 
-### Licensed under the GPL v3 (or greater)
+### Licensed under the GPL v3
 ##### https://www.gnu.org/licenses/quick-guide-gplv3.en.html
 ---
 

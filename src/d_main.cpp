@@ -2739,6 +2739,7 @@ void D_DoomMain (void)
 		ST_Clear();
 		D_ErrorCleanup ();
 		DThinker::DestroyThinkersInList(STAT_STATIC);
+		E_Shutdown(false);
 		P_FreeLevelData();
 		P_FreeExtraLevelData();
 
@@ -2782,6 +2783,8 @@ void D_DoomMain (void)
 		restart++;
 		PClass::bShutdown = false;
 		PClass::bVMOperational = false;
+
+		gamestate = GS_STARTUP;
 	}
 	while (1);
 }

@@ -82,7 +82,7 @@ namespace swrenderer
 	{
 	}
 
-	void SWModelRenderer::BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix)
+	void SWModelRenderer::BeginDrawModel(AActor *actor, FSpriteModelFrame *smf, const VSMatrix &objectToWorldMatrix, bool mirrored)
 	{
 		ModelActor = actor;
 		const_cast<VSMatrix &>(objectToWorldMatrix).copy(ObjectToWorld.Matrix);
@@ -120,13 +120,17 @@ namespace swrenderer
 		}
 
 		SetTransform();
-		PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
+
+		if (actor->RenderStyle == LegacyRenderStyles[STYLE_Normal] || !!(smf->flags & MDL_DONTCULLBACKFACES))
+			PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
 	}
 
 	void SWModelRenderer::EndDrawModel(AActor *actor, FSpriteModelFrame *smf)
 	{
+		if (actor->RenderStyle == LegacyRenderStyles[STYLE_Normal] || !!(smf->flags & MDL_DONTCULLBACKFACES))
+			PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
+
 		ModelActor = nullptr;
-		PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
 	}
 
 	IModelVertexBuffer *SWModelRenderer::CreateVertexBuffer(bool needindex, bool singleframe)
@@ -177,7 +181,7 @@ namespace swrenderer
 		return objectToWorld;
 	}
 
-	void SWModelRenderer::BeginDrawHUDModel(AActor *actor, const VSMatrix &objectToWorldMatrix)
+	void SWModelRenderer::BeginDrawHUDModel(AActor *actor, const VSMatrix &objectToWorldMatrix, bool mirrored)
 	{
 		ModelActor = actor;
 		const_cast<VSMatrix &>(objectToWorldMatrix).copy(ObjectToWorld.Matrix);
@@ -185,14 +189,18 @@ namespace swrenderer
 		ClipBottom = {};
 		SetTransform();
 		PolyTriangleDrawer::SetWeaponScene(Thread->DrawQueue, true);
-		PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
+
+		if (actor->RenderStyle == LegacyRenderStyles[STYLE_Normal])
+			PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, true);
 	}
 
 	void SWModelRenderer::EndDrawHUDModel(AActor *actor)
 	{
 		ModelActor = nullptr;
 		PolyTriangleDrawer::SetWeaponScene(Thread->DrawQueue, false);
-		PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
+
+		if (actor->RenderStyle == LegacyRenderStyles[STYLE_Normal])
+			PolyTriangleDrawer::SetTwoSided(Thread->DrawQueue, false);
 	}
 
 	void SWModelRenderer::SetInterpolation(double interpolation)
@@ -229,13 +237,7 @@ namespace swrenderer
 
 		PolyDrawArgs args;
 		args.SetLight(GetColorTable(sector->Colormap, sector->SpecialColors[sector_t::sprites], true), lightlevel, Thread->Light->SpriteGlobVis(foggy), fullbrightSprite);
-		args.SetStyle(TriBlendMode::TextureOpaque);
-
-		if (Thread->Viewport->RenderTarget->IsBgra())
-			args.SetTexture((const uint8_t *)SkinTexture->GetPixelsBgra(), SkinTexture->GetWidth(), SkinTexture->GetHeight());
-		else
-			args.SetTexture(SkinTexture->GetPixels(DefaultRenderStyle()), SkinTexture->GetWidth(), SkinTexture->GetHeight());
-
+		args.SetStyle(ModelActor->RenderStyle, ModelActor->Alpha, ModelActor->fillcolor, ModelActor->Translation, SkinTexture, fullbrightSprite);
 		args.SetDepthTest(true);
 		args.SetWriteDepth(true);
 		args.SetWriteStencil(false);
@@ -259,13 +261,7 @@ namespace swrenderer
 
 		PolyDrawArgs args;
 		args.SetLight(GetColorTable(sector->Colormap, sector->SpecialColors[sector_t::sprites], true), lightlevel, Thread->Light->SpriteGlobVis(foggy), fullbrightSprite);
-		args.SetStyle(TriBlendMode::TextureOpaque);
-
-		if (Thread->Viewport->RenderTarget->IsBgra())
-			args.SetTexture((const uint8_t *)SkinTexture->GetPixelsBgra(), SkinTexture->GetWidth(), SkinTexture->GetHeight());
-		else
-			args.SetTexture(SkinTexture->GetPixels(DefaultRenderStyle()), SkinTexture->GetWidth(), SkinTexture->GetHeight());
-
+		args.SetStyle(ModelActor->RenderStyle, ModelActor->Alpha, ModelActor->fillcolor, ModelActor->Translation, SkinTexture, fullbrightSprite);
 		args.SetDepthTest(true);
 		args.SetWriteDepth(true);
 		args.SetWriteStencil(false);
