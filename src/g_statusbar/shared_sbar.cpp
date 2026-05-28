@@ -256,6 +256,31 @@ static void CreateBaseStatusBar()
 	StatusBar->SetSize(0);
 }
 
+static void CreateGameInfoStatusBar(bool &shouldWarn)
+{
+	auto cls = PClass::FindClass(gameinfo.statusbarclass);
+	if (cls == nullptr)
+	{
+		if (shouldWarn)
+		{
+			Printf(TEXTCOLOR_RED "Unknown status bar class \"%s\"\n", gameinfo.statusbarclass.GetChars());
+			shouldWarn = false;
+		}
+	}
+	else
+	{
+		if (cls->IsDescendantOf(RUNTIME_CLASS(DBaseStatusBar)))
+		{
+			StatusBar = (DBaseStatusBar *)cls->CreateNew();
+		}
+		else if (shouldWarn)
+		{
+			Printf(TEXTCOLOR_RED "Status bar class \"%s\" is not derived from BaseStatusBar\n", gameinfo.statusbarclass.GetChars());
+			shouldWarn = false;
+		}
+	}
+}
+
 void ST_CreateStatusBar(bool bTitleLevel)
 {
 	if (StatusBar != NULL)
@@ -263,6 +288,8 @@ void ST_CreateStatusBar(bool bTitleLevel)
 		StatusBar->Destroy();
 		StatusBar = NULL;
 	}
+
+	bool shouldWarn = true;
 
 	if (bTitleLevel)
 	{
@@ -277,11 +304,7 @@ void ST_CreateStatusBar(bool bTitleLevel)
 		int sbarinfofile = Wads.GetLumpFile(sbarinfolump);
 		if (gameinfo.statusbarclassfile >= gameinfo.statusbarfile && gameinfo.statusbarclassfile >= sbarinfofile)
 		{
-			auto cls = PClass::FindClass(gameinfo.statusbarclass);
-			if (cls != nullptr)
-			{
-				StatusBar = (DBaseStatusBar *)cls->CreateNew();
-			}
+			CreateGameInfoStatusBar(shouldWarn);
 		}
 	}
 	if (StatusBar == nullptr && SBarInfoScript[SCRIPT_CUSTOM] != nullptr)
@@ -300,11 +323,7 @@ void ST_CreateStatusBar(bool bTitleLevel)
 		// SBARINFO failed so try the current statusbarclass again.
 		if (StatusBar == nullptr)
 		{
-			auto cls = PClass::FindClass(gameinfo.statusbarclass);
-			if (cls != nullptr)
-			{
-				StatusBar = (DBaseStatusBar *)cls->CreateNew();
-			}
+			CreateGameInfoStatusBar(shouldWarn);
 		}
 	}
 	if (StatusBar == nullptr)
@@ -320,6 +339,7 @@ void ST_CreateStatusBar(bool bTitleLevel)
 			auto cls = PClass::FindClass(defname);
 			if (cls != nullptr)
 			{
+				assert(cls->IsDescendantOf(RUNTIME_CLASS(DBaseStatusBar)));
 				StatusBar = (DBaseStatusBar *)cls->CreateNew();
 			}
 		}

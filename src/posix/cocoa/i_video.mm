@@ -35,9 +35,6 @@
 
 #import <OpenGL/gl.h>
 
-// Avoid collision between DObject class and Objective-C
-#define Class ObjectClass
-
 #include "bitmap.h"
 #include "c_dispatch.h"
 #include "doomstat.h"
@@ -56,8 +53,6 @@
 #include "v_video.h"
 #include "version.h"
 #include "videomodes.h"
-
-#undef Class
 
 
 @implementation NSWindow(ExitAppOnClose)
