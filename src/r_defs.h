@@ -179,8 +179,6 @@ struct vertex_t
 	{
 		p.Zero();
 	}
-
-	angle_t GetClipAngle();
 };
 
 // Forward of LineDefs, for Sectors.

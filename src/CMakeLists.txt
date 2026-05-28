@@ -96,6 +96,11 @@ if( WIN32 )
 		find_library( DX_dinput8_LIBRARY dinput8
 			PATHS ENV DXSDK_DIR
 			PATH_SUFFIXES Lib Lib/${XBITS} )
+		if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
+			find_library( DX_dxguid_LIBRARY dxguid
+				PATHS ENV DXSDK_DIR
+				PATH_SUFFIXES Lib Lib/${XBITS} )
+		endif()
 
 		# Modern versions of the Windows SDK include dinput8.lib. Unfortunately,
 		# CMake cannot find these libraries via find_library.
@@ -104,6 +109,13 @@ if( WIN32 )
 			set( DX_dinput8_LIBRARY dinput8 )
 		endif()
 
+		if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
+			# Modern versions of the Windows SDK do NOT include dxguid.lib. Its contents
+			# were moved to dinput8.lib.
+			if( NOT DX_dxguid_LIBRARY )
+				message( STATUS "Could not find dxguid.lib. Build may fail on old Windows SDKs.")
+			endif()
+		endif()
 	endif()
 
 	set( ZDOOM_LIBS
@@ -123,6 +135,11 @@ if( WIN32 )
 		set( ZDOOM_LIBS ${ZDOOM_LIBS} DelayImp )
 	endif()
 
+	if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
+		if( DX_dxguid_LIBRARY )
+			list( APPEND ZDOOM_LIBS "${DX_dxguid_LIBRARY}" )
+		endif()
+	endif()
 else()
 	if( APPLE )
 		set( NO_GTK ON )
@@ -597,8 +614,8 @@ add_definitions(-DOPNMIDI_USE_LEGACY_EMULATOR)
 add_definitions(-DADLMIDI_DISABLE_MUS_SUPPORT -DADLMIDI_DISABLE_XMI_SUPPORT -DADLMIDI_DISABLE_MIDI_SEQUENCER)
 add_definitions(-DOPNMIDI_DISABLE_MUS_SUPPORT -DOPNMIDI_DISABLE_XMI_SUPPORT -DOPNMIDI_DISABLE_MIDI_SEQUENCER)
 
-# Disable ADLMIDI's MIDI Sequencer, MUS and XMI converters
-add_definitions(-DADLMIDI_DISABLE_MUS_SUPPORT -DADLMIDI_DISABLE_XMI_SUPPORT -DADLMIDI_DISABLE_MIDI_SEQUENCER)
+# Disable OPNMIDI's experimental yet emulator (using of it has some issues and missing notes in playback)
+add_definitions(-DOPNMIDI_DISABLE_GX_EMULATOR)
 
 # Project files should be aware of the header files. We can GLOB these since
 # there's generally a new cpp for every header so this file will get changed
@@ -763,14 +780,25 @@ set( FASTMATH_SOURCES
 	sound/adlmidi/adlmidi_midiplay.cpp
 	sound/adlmidi/adlmidi_opl3.cpp
 	sound/adlmidi/adlmidi_private.cpp
-	sound/adlmidi/dbopl.cpp
-	sound/adlmidi/nukedopl3.c
+	sound/adlmidi/chips/dosbox/dbopl.cpp
+	sound/adlmidi/chips/dosbox_opl3.cpp
+	sound/adlmidi/chips/nuked/nukedopl3_174.c
+	sound/adlmidi/chips/nuked/nukedopl3.c
+	sound/adlmidi/chips/nuked_opl3.cpp
+	sound/adlmidi/chips/nuked_opl3_v174.cpp
+	sound/adlmidi/wopl/wopl_file.c
+	sound/opnmidi/chips/gens_opn2.cpp
+	sound/opnmidi/chips/gens/Ym2612_Emu.cpp
+	sound/opnmidi/chips/mame/mame_ym2612fm.c
+	sound/opnmidi/chips/mame_opn2.cpp
+	sound/opnmidi/chips/nuked_opn2.cpp
+	sound/opnmidi/chips/nuked/ym3438.c
 	sound/opnmidi/opnmidi.cpp
 	sound/opnmidi/opnmidi_load.cpp
 	sound/opnmidi/opnmidi_midiplay.cpp
 	sound/opnmidi/opnmidi_opn2.cpp
 	sound/opnmidi/opnmidi_private.cpp
-	sound/opnmidi/Ym2612_ChipEmu.cpp
+
 )
 
 set (PCH_SOURCES
