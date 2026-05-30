@@ -129,6 +129,8 @@ enum
 
 	// New additions. 
 	DTA_Color,
+	DTA_LegacyRenderStyle,	// takes an old-style STYLE_* constant instead of an FRenderStyle
+
 };
 
 enum
