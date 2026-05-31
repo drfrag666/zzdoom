@@ -402,6 +402,7 @@ enum ActorFlag8
 	MF8_FRIGHTENING		= 0x00000001,	// for those moments when halloween just won't do
 	MF8_INSCROLLSEC		= 0x00000002,	// actor is partially inside a scrolling sector
 	MF8_BLOCKASPLAYER	= 0x00000004,	// actor is blocked by player-blocking lines even if not a player
+	MF8_DONTFACETALKER	= 0x00000008,	// don't alter the angle to face the player in conversations
 };
 
 // --- mobj.renderflags ---
@@ -690,8 +691,8 @@ public:
 	void CallDeactivate(AActor *activator);
 
 	// Called when actor dies
-	virtual void Die (AActor *source, AActor *inflictor, int dmgflags = 0);
-	void CallDie(AActor *source, AActor *inflictor, int dmgflags = 0);
+	virtual void Die (AActor *source, AActor *inflictor, int dmgflags = 0, FName MeansOfDeath = NAME_None);
+	void CallDie(AActor *source, AActor *inflictor, int dmgflags = 0, FName MeansOfDeath = NAME_None);
 
 	// Perform some special damage action. Returns the amount of damage to do.
 	// Returning -1 signals the damage routine to exit immediately

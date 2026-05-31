@@ -59,7 +59,6 @@ CVAR (Bool,  m_noprescale,			false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool,	 m_filter,				false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
-EXTERN_CVAR (Bool, fullscreen)
 
 extern int WaitingForKey, chatmodeon;
 extern constate_e ConsoleState;
