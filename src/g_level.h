@@ -264,9 +264,8 @@ struct level_info_t;
 
 struct FOptionalMapinfoData
 {
-	FOptionalMapinfoData *Next;
-	FName identifier;
-	FOptionalMapinfoData() { Next = NULL; identifier = NAME_None; }
+	FOptionalMapinfoData *Next = nullptr;
+	FName identifier = NAME_None;
 	virtual ~FOptionalMapinfoData() {}
 	virtual FOptionalMapinfoData *Clone() const = 0;
 };
@@ -508,7 +507,7 @@ void G_ChangeLevel(const char *levelname, int position, int flags, int nextSkill
 void G_StartTravel ();
 int G_FinishTravel ();
 
-void G_DoLoadLevel (int position, bool autosave);
+void G_DoLoadLevel (int position, bool autosave, bool newGame);
 
 void G_InitLevelLocals (void);
 
@@ -572,7 +571,7 @@ typedef TMap<FName, FName> SkillActorReplacement;
 
 struct FSkillInfo
 {
-	FName Name;
+	FName Name = NAME_None;
 	double AmmoFactor, DoubleAmmoFactor, DropAmmoFactor;
 	double DamageFactor;
 	double ArmorFactor;

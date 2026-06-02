@@ -711,7 +711,7 @@ bool P_Move (AActor *actor)
 				{
 					actor->floorsector->TriggerSectorActions(actor, SECSPAC_HitFloor);
 				}
-				P_CheckFor3DFloorHit(actor, actor->Z());
+				P_CheckFor3DFloorHit(actor, actor->Z(), true);
 			}
 		}
 	}
@@ -2969,6 +2969,12 @@ DEFINE_ACTION_FUNCTION(AActor, A_ExtChase)
 		domelee ? self->MeleeState : NULL, domissile ? self->MissileState : NULL,
 		playactive, nightmarefast, false, 0);
 	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, A_CheckForResurrection)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_BOOL(P_CheckForResurrection(self, false));
 }
 
 // for internal use

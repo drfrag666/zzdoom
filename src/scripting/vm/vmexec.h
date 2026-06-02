@@ -37,41 +37,28 @@
 #error vmexec.h must not be #included outside vmexec.cpp. Use vm.h instead.
 #endif
 
-static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
+static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 {
 #if COMPGOTO
 	static const void * const ops[256] =
 	{
-#define xx(op,sym,mode,alt,kreg,ktype) &&op
+#define xx(op,sym,mode,alt,kreg,ktype) &&op,
 #include "vmops.h"
 	};
 #endif
 	//const VMOP *exception_frames[MAX_TRY_DEPTH];
 	//int try_depth = 0;
 	VMFrame *f = stack->TopFrame();
-	VMScriptFunction *sfunc;
-	const VMRegisters reg(f);
-	const int *konstd;
-	const double *konstf;
-	const FString *konsts;
-	const FVoidObj *konsta;
+	VMScriptFunction *sfunc = static_cast<VMScriptFunction *>(f->Func);
+	const int *konstd = sfunc->KonstD;
+	const double *konstf = sfunc->KonstF;
+	const FString *konsts = sfunc->KonstS;
+	const FVoidObj *konsta = sfunc->KonstA;
+	const VMOP *pc = sfunc->Code;
 
-	if (f->Func != NULL && !(f->Func->VarFlags & VARF_Native))
-	{
-		sfunc = static_cast<VMScriptFunction *>(f->Func);
-		konstd = sfunc->KonstD;
-		konstf = sfunc->KonstF;
-		konsts = sfunc->KonstS;
-		konsta = sfunc->KonstA;
-	}
-	else
-	{
-		sfunc = NULL;
-		konstd = NULL;
-		konstf = NULL;
-		konsts = NULL;
-		konsta = NULL;
-	}
+	assert(!(f->Func->VarFlags & VARF_Native) && "Only script functions should ever reach VMExec");
+
+	const VMRegisters reg(f);
 
 	void *ptr;
 	double fb, fc;
@@ -582,77 +569,77 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 		assert(f->NumParam < sfunc->MaxParam);
 		{
 			VMValue *param = &reg.param[f->NumParam++];
-			b = B;
-			if (b == REGT_NIL)
+			b = BC;
+			if (a == REGT_NIL)
 			{
 				::new(param) VMValue();
 			}
 			else
 			{
-				switch(b)
+				switch(a)
 				{
 				case REGT_INT:
-					assert(C < f->NumRegD);
-					::new(param) VMValue(reg.d[C]);
+					assert(b < f->NumRegD);
+					::new(param) VMValue(reg.d[b]);
 					break;
 				case REGT_INT | REGT_ADDROF:
-					assert(C < f->NumRegD);
-					::new(param) VMValue(&reg.d[C]);
+					assert(b < f->NumRegD);
+					::new(param) VMValue(&reg.d[b]);
 					break;
 				case REGT_INT | REGT_KONST:
-					assert(C < sfunc->NumKonstD);
-					::new(param) VMValue(konstd[C]);
+					assert(b < sfunc->NumKonstD);
+					::new(param) VMValue(konstd[b]);
 					break;
 				case REGT_STRING:
-					assert(C < f->NumRegS);
-					::new(param) VMValue(&reg.s[C]);
+					assert(b < f->NumRegS);
+					::new(param) VMValue(&reg.s[b]);
 					break;
 				case REGT_STRING | REGT_ADDROF:
-					assert(C < f->NumRegS);
-					::new(param) VMValue((void*)&reg.s[C]);	// Note that this may not use the FString* version of the constructor!
+					assert(b < f->NumRegS);
+					::new(param) VMValue((void*)&reg.s[b]);	// Note that this may not use the FString* version of the constructor!
 					break;
 				case REGT_STRING | REGT_KONST:
-					assert(C < sfunc->NumKonstS);
-					::new(param) VMValue(&konsts[C]);
+					assert(b < sfunc->NumKonstS);
+					::new(param) VMValue(&konsts[b]);
 					break;
 				case REGT_POINTER:
-					assert(C < f->NumRegA);
-					::new(param) VMValue(reg.a[C]);
+					assert(b < f->NumRegA);
+					::new(param) VMValue(reg.a[b]);
 					break;
 				case REGT_POINTER | REGT_ADDROF:
-					assert(C < f->NumRegA);
-					::new(param) VMValue(&reg.a[C]);
+					assert(b < f->NumRegA);
+					::new(param) VMValue(&reg.a[b]);
 					break;
 				case REGT_POINTER | REGT_KONST:
-					assert(C < sfunc->NumKonstA);
-					::new(param) VMValue(konsta[C].v);
+					assert(b < sfunc->NumKonstA);
+					::new(param) VMValue(konsta[b].v);
 					break;
 				case REGT_FLOAT:
-					assert(C < f->NumRegF);
-					::new(param) VMValue(reg.f[C]);
+					assert(b < f->NumRegF);
+					::new(param) VMValue(reg.f[b]);
 					break;
 				case REGT_FLOAT | REGT_MULTIREG2:
-					assert(C < f->NumRegF - 1);
+					assert(b < f->NumRegF - 1);
 					assert(f->NumParam < sfunc->MaxParam);
-					::new(param) VMValue(reg.f[C]);
-					::new(param + 1) VMValue(reg.f[C + 1]);
+					::new(param) VMValue(reg.f[b]);
+					::new(param + 1) VMValue(reg.f[b + 1]);
 					f->NumParam++;
 					break;
 				case REGT_FLOAT | REGT_MULTIREG3:
-					assert(C < f->NumRegF - 2);
+					assert(b < f->NumRegF - 2);
 					assert(f->NumParam < sfunc->MaxParam - 1);
-					::new(param) VMValue(reg.f[C]);
-					::new(param + 1) VMValue(reg.f[C + 1]);
-					::new(param + 2) VMValue(reg.f[C + 2]);
+					::new(param) VMValue(reg.f[b]);
+					::new(param + 1) VMValue(reg.f[b + 1]);
+					::new(param + 2) VMValue(reg.f[b + 2]);
 					f->NumParam += 2;
 					break;
 				case REGT_FLOAT | REGT_ADDROF:
-					assert(C < f->NumRegF);
-					::new(param) VMValue(&reg.f[C]);
+					assert(b < f->NumRegF);
+					::new(param) VMValue(&reg.f[b]);
 					break;
 				case REGT_FLOAT | REGT_KONST:
-					assert(C < sfunc->NumKonstF);
-					::new(param) VMValue(konstf[C]);
+					assert(b < sfunc->NumKonstF);
+					::new(param) VMValue(konstf[b]);
 					break;
 				default:
 					assert(0);
@@ -723,20 +710,8 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 			}
 			else
 			{
-				VMCalls[0]++;
-				VMScriptFunction *script = static_cast<VMScriptFunction *>(call);
-				VMFrame *newf = stack->AllocFrame(script);
-				VMFillParams(reg.param + f->NumParam - b, newf, b);
-				try
-				{
-					numret = Exec(stack, script->Code, returns, C);
-				}
-				catch(...)
-				{
-					stack->PopFrame();
-					throw;
-				}
-				stack->PopFrame();
+				auto sfunc = static_cast<VMScriptFunction *>(call);
+				numret = sfunc->ScriptCall(sfunc, reg.param + f->NumParam - b, b, returns, C);
 			}
 			assert(numret == C && "Number of parameters returned differs from what was expected by the caller");
 			f->NumParam -= B;
@@ -777,21 +752,8 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 			}
 			else
 			{ // FIXME: Not a true tail call
-				VMCalls[0]++;
-				VMScriptFunction *script = static_cast<VMScriptFunction *>(call);
-				VMFrame *newf = stack->AllocFrame(script);
-				VMFillParams(reg.param + f->NumParam - B, newf, B);
-				try
-				{
-					numret = Exec(stack, script->Code, ret, numret);
-				}
-				catch(...)
-				{
-					stack->PopFrame();
-					throw;
-				}
-				stack->PopFrame();
-				return numret;
+				auto sfunc = static_cast<VMScriptFunction *>(call);
+				return sfunc->ScriptCall(sfunc, reg.param + f->NumParam - B, B, ret, numret);
 			}
 		}
 		NEXTOP;
@@ -1033,7 +995,7 @@ static int Exec(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret)
 		NEXTOP;
 	OP(SRL_KR):
 		ASSERTD(a); ASSERTKD(B); ASSERTD(C);
-		reg.d[a] = (unsigned)konstd[B] >> C;
+		reg.d[a] = (unsigned)konstd[B] >> reg.d[C];
 		NEXTOP;
 
 	OP(SRA_RR):
@@ -2080,4 +2042,23 @@ static void SetReturn(const VMRegisters &reg, VMFrame *frame, VMReturn *ret, VM_
 		}
 		break;
 	}
+}
+
+static int Exec(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret)
+{
+	VMCalls[0]++;
+	VMFrameStack *stack = &GlobalVMStack;
+	VMFrame *newf = stack->AllocFrame(static_cast<VMScriptFunction*>(func));
+	VMFillParams(params, newf, numparams);
+	try
+	{
+		numret = ExecScriptFunc(stack, ret, numret);
+	}
+	catch (...)
+	{
+		stack->PopFrame();
+		throw;
+	}
+	stack->PopFrame();
+	return numret;
 }

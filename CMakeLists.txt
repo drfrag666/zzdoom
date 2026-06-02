@@ -53,7 +53,7 @@ function( assort_pk3_source_folder FOLDER_NAME PK3_DIR )
 			assort_pk3_source_folder( ${FOLDER_NAME}\\${DIRNAME} ${PK3_SRC} )
 		endif()
 		# Assign IDE group for current top-level source files
-		source_group(${FOLDER_NAME} FILES ${PK3_SRCS}) 
+		source_group(${FOLDER_NAME} FILES ${PK3_SRCS})
 	endforeach()
 endfunction()
 
@@ -78,7 +78,7 @@ function( add_pk3 PK3_NAME PK3_DIR )
 			DEPENDS zipdir )
 	endif()
 	# Create a list of source files for this PK3, for use in the IDE
-	# Phase 1: Create a list of all source files for this PK3 archive, except 
+	# Phase 1: Create a list of all source files for this PK3 archive, except
 	#  for a couple of strife image file names that confuse CMake.
 	file(GLOB_RECURSE PK3_SRCS ${PK3_DIR}/*)
 	# Exclude from the source list some gzdoom .png files with brackets in the
@@ -163,6 +163,7 @@ option( NO_OPENAL "Disable OpenAL sound support" OFF )
 find_package( BZip2 )
 find_package( JPEG )
 find_package( ZLIB )
+find_package( asmjit )
 # GME
 find_path( GME_INCLUDE_DIR gme/gme.h )
 find_library( GME_LIBRARIES gme )
@@ -180,7 +181,7 @@ if( MSVC )
 	# Function-level linking
 	# Disable run-time type information
 	set( ALL_C_FLAGS "/GF /Gy /GR-" )
-	
+
 	# Use SSE 2 as minimum always as the true color drawers needs it for __vectorcall
 	#set( ALL_C_FLAGS "${ALL_C_FLAGS} /arch:SSE2") # This is already the default
 
@@ -199,16 +200,16 @@ if( MSVC )
 #	else()
 #		set( ALL_C_FLAGS "${ALL_C_FLAGS} /arch:SSE2")
 #	endif()
-	
+
 	# Avoid CRT DLL dependancies in release builds, optionally generate assembly output for checking crash locations.
 	option( ZDOOM_GENERATE_ASM "Generate assembly output." OFF )
 	if( ZDOOM_GENERATE_ASM )
-		set( REL_C_FLAGS "/MT /Oy /Oi /FAcs" )
+		set( REL_C_FLAGS "/MT /Oy /Oi /FAcs /GS-" )
 	else()
-		set( REL_C_FLAGS "/MT /Oy /Oi" )
+		set( REL_C_FLAGS "/MT /Oy /Oi /GS-" )
 	endif()
 
-	
+
 	# Debug allocations in debug builds
 	set( DEB_C_FLAGS "/D _CRTDBG_MAP_ALLOC /MTd" )
 
@@ -216,7 +217,7 @@ if( MSVC )
 	if( MSVC_VERSION GREATER 1399 )
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} /wd4996" )
 	endif()
-	
+
 	# The CMake configurations set /GR and /MD by default, which conflict with our settings.
 	string(REPLACE "/MD " " " CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} )
 	string(REPLACE "/MD " " " CMAKE_CXX_FLAGS_MINSIZEREL ${CMAKE_CXX_FLAGS_MINSIZEREL} )
@@ -233,7 +234,7 @@ else()
 	set( REL_C_FLAGS "" )
 	set( DEB_C_FLAGS "" )
 
-	
+
 	if( APPLE )
 		if( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
 			# With standard Apple tools -stdlib=libc++ needs to be specified in order to get
@@ -271,6 +272,7 @@ option(FORCE_INTERNAL_ZLIB "Use internal zlib")
 option(FORCE_INTERNAL_JPEG "Use internal jpeg")
 option(FORCE_INTERNAL_BZIP2 "Use internal bzip2")
 option(FORCE_INTERNAL_GME "Use internal gme")
+option(FORCE_INTERNAL_ASMJIT "Use internal asmjit")
 
 # Fast math flags, required by some subprojects
 set( ZD_FASTMATH_FLAG "" )
@@ -289,6 +291,17 @@ else()
 	set( ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/zlib )
 	set( ZLIB_LIBRARIES z )
 	set( ZLIB_LIBRARY z )
+endif()
+
+if( ASMJIT_FOUND AND NOT FORCE_INTERNAL_ASMJIT )
+	message( STATUS "Using system asmjit, includes found at ${ASMJIT_INCLUDE_DIR}" )
+else()
+	message( STATUS "Using internal asmjit" )
+	set( SKIP_INSTALL_ALL TRUE ) # Avoid installing asmjit alongside zdoom
+	add_subdirectory( asmjit )
+	set( ASMJIT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/asmjit )
+	set( ASMJIT_LIBRARIES asmjit )
+	set( ASMJIT_LIBRARY asmjit )
 endif()
 
 if( JPEG_FOUND AND NOT FORCE_INTERNAL_JPEG )
@@ -315,6 +328,9 @@ if( GME_FOUND AND NOT FORCE_INTERNAL_GME )
 	message( STATUS "Using system gme library, includes found at ${GME_INCLUDE_DIR}" )
 else()
 	message( STATUS "Using internal gme library" )
+	# Use MAME as it's balanced emulator: well-accurate, but doesn't eats lot of CPU
+	# Nuked OPN2 is very accurate emulator, but it eats too much CPU for the workflow
+	set( GME_YM2612_EMU "MAME" )
 	add_subdirectory( game-music-emu )
 	set( GME_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/game-music-emu" )
 	set( GME_LIBRARIES gme )
@@ -334,8 +350,8 @@ if( WIN32 )
 else()
 	set( INSTALL_DOCS_PATH share/doc/${ZDOOM_EXE_NAME} CACHE STRING "Directory where the zdoom documentation will be placed during install." )
 endif()
-install(DIRECTORY docs/ 
-		DESTINATION ${INSTALL_DOCS_PATH} 
+install(DIRECTORY docs/
+		DESTINATION ${INSTALL_DOCS_PATH}
 		COMPONENT "Documentation")
 
 add_subdirectory( lzma )

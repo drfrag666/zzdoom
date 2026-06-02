@@ -667,7 +667,7 @@ class CommandDrawSwitchableImage : public CommandDrawImage
 		Operator	conditionalOperator[2];
 		FString		inventoryItem[2];
 		int			armorType[2];
-		FName		keySpecies[2];
+		FName		keySpecies[2] = { NAME_None, NAME_None };
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -686,12 +686,11 @@ class CommandDrawString : public SBarInfoCommand
 		{
 			if(lineBreaks)
 			{
-				FBrokenLines *lines = V_BreakLines(font, breakWidth, str.GetChars());
-				for(int i = 0;lines[i].Width >= 0;i++)
+				auto lines = V_BreakLines(font, breakWidth, str.GetChars());
+				for(unsigned i = 0; i < lines.Size();i++)
 				{
 					statusBar->DrawString(font, lines[i].Text, x, y+i*(font->GetHeight()+4), block->XOffset(), block->YOffset(), block->Alpha(), block->FullScreenOffsets(), translation, spacing, shadow, shadowX, shadowY);
 				}
-				V_FreeBrokenLines(lines);
 			}
 			else
 				statusBar->DrawString(font, str.GetChars(), x, y, block->XOffset(), block->YOffset(), block->Alpha(), block->FullScreenOffsets(), translation, spacing, shadow, shadowX, shadowY);

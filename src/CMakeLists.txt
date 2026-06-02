@@ -457,8 +457,8 @@ add_custom_target( revision_check ALL
 # Libraries ZDoom needs
 
 message( STATUS "Fluid synth libs: ${FLUIDSYNTH_LIBRARIES}" )
-set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${CMAKE_DL_LIBS}" )
-include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" )
+set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${ASMJIT_LIBRARIES}" "${CMAKE_DL_LIBS}" )
+include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" "${ASMJIT_INCLUDE_DIR}" )
 
 if( SNDFILE_FOUND )
     set( ZDOOM_LIBS ${ZDOOM_LIBS} "${SNDFILE_LIBRARIES}" )
@@ -607,12 +607,9 @@ elseif( FLUIDSYNTH_FOUND )
 	add_definitions( -DHAVE_FLUIDSYNTH )
 endif()
 
-# OPLMIDI needs for USE_LEGACY_EMULATOR macro to be correctly built
-add_definitions(-DOPNMIDI_USE_LEGACY_EMULATOR)
-
-# Disable ADLMIDI's and OPNMIDI's MIDI Sequencer, MUS and XMI converters
-add_definitions(-DADLMIDI_DISABLE_MUS_SUPPORT -DADLMIDI_DISABLE_XMI_SUPPORT -DADLMIDI_DISABLE_MIDI_SEQUENCER)
-add_definitions(-DOPNMIDI_DISABLE_MUS_SUPPORT -DOPNMIDI_DISABLE_XMI_SUPPORT -DOPNMIDI_DISABLE_MIDI_SEQUENCER)
+# Disable ADLMIDI's and OPNMIDI's MIDI Sequencer
+add_definitions(-DADLMIDI_DISABLE_MIDI_SEQUENCER)
+add_definitions(-DOPNMIDI_DISABLE_MIDI_SEQUENCER)
 
 # Disable OPNMIDI's experimental yet emulator (using of it has some issues and missing notes in playback)
 add_definitions(-DOPNMIDI_DISABLE_GX_EMULATOR)
@@ -798,6 +795,7 @@ set( FASTMATH_SOURCES
 	sound/opnmidi/opnmidi_midiplay.cpp
 	sound/opnmidi/opnmidi_opn2.cpp
 	sound/opnmidi/opnmidi_private.cpp
+	sound/opnmidi/wopn/wopn_file.c
 
 )
 
@@ -879,6 +877,7 @@ set (PCH_SOURCES
 	p_actionfunctions.cpp
 	p_ceiling.cpp
 	p_conversation.cpp
+	p_destructible.cpp
 	p_doors.cpp
 	p_effect.cpp
 	p_enemy.cpp
@@ -1027,6 +1026,7 @@ set (PCH_SOURCES
 	r_data/models/models_md2.cpp
 	r_data/models/models_voxel.cpp
 	r_data/models/models_ue1.cpp
+	r_data/models/models_obj.cpp
 	scripting/symbols.cpp
 	scripting/types.cpp
 	scripting/thingdef.cpp
@@ -1043,6 +1043,13 @@ set (PCH_SOURCES
 	scripting/decorate/thingdef_states.cpp
 	scripting/vm/vmexec.cpp
 	scripting/vm/vmframe.cpp
+	scripting/vm/jit.cpp
+	scripting/vm/jit_call.cpp
+	scripting/vm/jit_flow.cpp
+	scripting/vm/jit_load.cpp
+	scripting/vm/jit_math.cpp
+	scripting/vm/jit_move.cpp
+	scripting/vm/jit_store.cpp
 	scripting/zscript/ast.cpp
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
@@ -1229,7 +1236,12 @@ endif()
 
 add_custom_command(TARGET zdoom POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
-	${CMAKE_SOURCE_DIR}/soundfont/zzdoom.sf2 $<TARGET_FILE_DIR:zdoom>/soundfonts/zzdoom.sf2)
+	${CMAKE_SOURCE_DIR}/soundfont/zzdoom.sf2 $<TARGET_FILE_DIR:zdoom>/soundfonts/zzdoom.sf2
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	${CMAKE_SOURCE_DIR}/fm_banks/GENMIDI.GS.wopl $<TARGET_FILE_DIR:zdoom>/fm_banks/GENMIDI.GS.wopl
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn $<TARGET_FILE_DIR:zdoom>/fm_banks/gs-by-papiezak-and-sneakernets.wopn
+)
 
 if( CMAKE_COMPILER_IS_GNUCXX )
 	# GCC misoptimizes this file

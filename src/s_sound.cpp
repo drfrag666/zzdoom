@@ -777,8 +777,8 @@ static void CalcPosVel(int type, const AActor *actor, const sector_t *sector,
 				{
 					DVector2 disp = Displacements.getOffset(pgroup, poly->CenterSubsector->sector->PortalGroup);
 					CalcPolyobjSoundOrg(listenpos + disp, poly, *pos);
-					pos->X += (float)disp.X;
-					pos->Z += (float)disp.Y;
+					pos->X -= (float)disp.X;
+					pos->Z -= (float)disp.Y;
 				}
 				break;
 			}
@@ -2738,8 +2738,8 @@ DEFINE_ACTION_FUNCTION(DObject, S_ChangeMusic)
 	PARAM_PROLOGUE;
 	PARAM_STRING(music);
 	PARAM_INT_DEF(order);
-	PARAM_BOOL(looping);
-	PARAM_BOOL(force);
+	PARAM_BOOL_DEF(looping);
+	PARAM_BOOL_DEF(force);
 	ACTION_RETURN_BOOL(S_ChangeMusic(music, order, looping, force));
 }
 

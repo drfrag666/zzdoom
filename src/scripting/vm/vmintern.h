@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vm.h"
+#include <csetjmp>
 
 class VMScriptFunction;
 
@@ -162,6 +163,7 @@ enum EVMOpMode
 	MODE_CMP,
 
 	MODE_PARAM,
+	MODE_PARAM24,
 	MODE_THROW,
 	MODE_CATCH,
 	MODE_CAST,
@@ -208,7 +210,8 @@ enum EVMOpMode
 	MODE_CIMMS		= MODE_IMMS << MODE_CSHIFT,
 	MODE_CIMMZ		= MODE_IMMZ << MODE_CSHIFT,
 
-	MODE_BCJOINT	= (MODE_JOINT << MODE_BSHIFT) | (MODE_JOINT << MODE_CSHIFT),
+	MODE_ABCJOINT	= (MODE_JOINT << MODE_ASHIFT) | (MODE_JOINT << MODE_BSHIFT) | (MODE_JOINT << MODE_CSHIFT),
+	MODE_BCJOINT = (MODE_JOINT << MODE_BSHIFT) | (MODE_JOINT << MODE_CSHIFT),
 	MODE_BCKI		= MODE_KI << MODE_BCSHIFT,
 	MODE_BCKF		= MODE_KF << MODE_BCSHIFT,
 	MODE_BCKS		= MODE_KS << MODE_BCSHIFT,
@@ -219,8 +222,6 @@ enum EVMOpMode
 	MODE_BCTHROW	= MODE_THROW << MODE_BCSHIFT,
 	MODE_BCCATCH	= MODE_CATCH << MODE_BCSHIFT,
 	MODE_BCCAST		= MODE_CAST << MODE_BCSHIFT,
-
-	MODE_ABCJOINT	= (MODE_JOINT << MODE_ASHIFT) | MODE_BCJOINT,
 };
 
 struct VMOpInfo
@@ -356,6 +357,7 @@ public:
 		assert(Blocks != NULL && Blocks->LastFrame != NULL);
 		return Blocks->LastFrame;
 	}
+	static int OffsetLastFrame() { return (int)(ptrdiff_t)offsetof(BlockHeader, LastFrame); }
 private:
 	enum { BLOCK_SIZE = 4096 };		// Default block size
 	struct BlockHeader
@@ -427,7 +429,7 @@ enum EVMEngine
 };
 
 void VMSelectEngine(EVMEngine engine);
-extern int (*VMExec)(VMFrameStack *stack, const VMOP *pc, VMReturn *ret, int numret);
+extern int (*VMExec)(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret);
 void VMFillParams(VMValue *params, VMFrame *callee, int numparam);
 
 void VMDumpConstants(FILE *out, const VMScriptFunction *func);
@@ -436,6 +438,19 @@ void VMDisasm(FILE *out, const VMOP *code, int codesize, const VMScriptFunction 
 extern thread_local VMFrameStack GlobalVMStack;
 
 typedef std::pair<const class PType *, unsigned> FTypeAndOffset;
+
+struct JitExceptionInfo
+{
+	std::exception_ptr cppException;
+	std::jmp_buf sjljbuf;
+	int vmframes = 0;
+};
+
+extern thread_local JitExceptionInfo *CurrentJitExceptInfo;
+
+void VMThrowException(std::exception_ptr cppException);
+
+typedef int(*JitFuncPtr)(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret);
 
 class VMScriptFunction : public VMFunction
 {
@@ -471,4 +486,7 @@ public:
 	void DestroyExtra(void *addr);
 	int AllocExtraStack(PType *type);
 	int PCToLine(const VMOP *pc);
+
+private:
+	static int FirstScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret);
 };

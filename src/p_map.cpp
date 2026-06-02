@@ -1539,7 +1539,7 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 		// MBF bouncer might have a non-0 damage value, but they must not deal damage on impact either.
 		if ((tm.thing->BounceFlags & BOUNCE_Actors) && (tm.thing->IsZeroDamage() || !(tm.thing->flags & MF_MISSILE)))
 		{
-			return (tm.thing->target == thing || !(thing->flags & MF_SOLID));
+			return ((tm.thing->target == thing && !(tm.thing->flags8 & MF8_HITOWNER)) || !(thing->flags & MF_SOLID));
 		}
 
 		switch (tm.thing->SpecialMissileHit(thing))
@@ -1554,8 +1554,8 @@ bool PIT_CheckThing(FMultiBlockThingsIterator &it, FMultiBlockThingsIterator::Ch
 
 		if (tm.thing->target != NULL)
 		{
-			if (thing == tm.thing->target)
-			{ // Don't missile self
+			if (thing == tm.thing->target && !(tm.thing->flags8 & MF8_HITOWNER))
+			{ // Don't missile self -- [MK] unless explicitly allowed
 				return true;
 			}
 
@@ -3649,22 +3649,6 @@ bool P_BounceActor(AActor *mo, AActor *BlockingMobj, bool ontop)
 			mo->Angles.Yaw = angle;
 			mo->VelFromAngle(speed);
 			mo->PlayBounceSound(true);
-			if (mo->BounceFlags & BOUNCE_UseBounceState)
-			{
-				FName names[] = { NAME_Bounce, NAME_Actor, NAME_Creature };
-				FState *bouncestate;
-				int count = 2;
-
-				if ((BlockingMobj->flags & MF_SHOOTABLE) && !(BlockingMobj->flags & MF_NOBLOOD))
-				{
-					count = 3;
-				}
-				bouncestate = mo->FindState(count, names);
-				if (bouncestate != NULL)
-				{
-					mo->SetState(bouncestate);
-				}
-			}
 		}
 		else
 		{
@@ -3701,6 +3685,21 @@ bool P_BounceActor(AActor *mo, AActor *BlockingMobj, bool ontop)
 			{
 				if (!(mo->flags & MF_NOGRAVITY) && (mo->Vel.Z < 3.))
 					mo->BounceFlags &= ~BOUNCE_TypeMask;
+			}
+		}
+		if (mo->BounceFlags & BOUNCE_UseBounceState)
+		{
+			FName names[] = { NAME_Bounce, NAME_Actor, NAME_Creature };
+			FState *bouncestate;
+			int count = 2;
+ 			if ((BlockingMobj->flags & MF_SHOOTABLE) && !(BlockingMobj->flags & MF_NOBLOOD))
+			{
+				count = 3;
+			}
+			bouncestate = mo->FindState(count, names);
+			if (bouncestate != NULL)
+			{
+				mo->SetState(bouncestate);
 			}
 		}
 		return true;
@@ -4484,7 +4483,7 @@ DEFINE_ACTION_FUNCTION(AActor, AimLineAttack)
 struct Origin
 {
 	AActor *Caller;
-	FNameNoInit PuffSpecies;
+	FName PuffSpecies;
 	bool hitGhosts;
 	bool MThruSpecies;
 	bool ThruSpecies;
@@ -4684,6 +4683,8 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	{
 		if (trace.HitType != TRACE_HitActor)
 		{
+			P_GeometryLineAttack(trace, t1, damage, damageType);
+
 			// position a bit closer for puffs
 			if (nointeract || trace.HitType != TRACE_HitWall || ((trace.Line->special != Line_Horizon) || spawnSky))
 			{
@@ -4754,11 +4755,18 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 
 				// We must pass the unreplaced puff type here 
 				puff = P_SpawnPuff(t1, pufftype, bleedpos, trace.SrcAngleFromTarget, trace.SrcAngleFromTarget - 90, 2, puffFlags | PF_HITTHING, trace.Actor);
-
-				if (nointeract)
-				{
-					return puff;
-				}
+			}
+			if (victim != NULL)
+			{
+				victim->linetarget = trace.Actor;
+				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
+				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
+				victim->angleFromSource = trace.unlinked ? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
+				victim->unlinked = trace.unlinked;
+			}
+			if (nointeract)
+			{
+				return puff;
 			}
 
 			// Allow puffs to inflict poison damage, so that hitscans can poison, too.
@@ -4833,14 +4841,7 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 					P_TraceBleed(newdam > 0 ? newdam : damage, trace.HitPos, trace.Actor, trace.SrcAngleFromTarget, pitch);
 				}
 			}
-			if (victim != NULL)
-			{
-				victim->linetarget = trace.Actor;
-				victim->attackAngleFromSource = trace.SrcAngleFromTarget;
-				// With arbitrary portals this cannot be calculated so using the actual attack angle is the only option.
-				victim->angleFromSource = trace.unlinked? victim->attackAngleFromSource : t1->AngleTo(trace.Actor);
-				victim->unlinked = trace.unlinked;
-			}
+			
 		}
 		if (trace.Crossed3DWater || trace.CrossedWater)
 		{
@@ -5092,6 +5093,7 @@ AActor *P_LinePickActor(AActor *t1, DAngle angle, double distance, DAngle pitch,
 	TData.MThruSpecies = false;
 	TData.ThruActors = false;
 	TData.ThruSpecies = false;
+	TData.PuffSpecies = NAME_None;
 	
 	if (Trace(t1->PosAtZ(shootz), t1->Sector, direction, distance,
 		actorMask, wallMask, t1, trace, TRACE_NoSky | TRACE_PortalRestrict, CheckForActor, &TData))
@@ -5309,7 +5311,7 @@ struct RailData
 	AActor *Caller;
 	TArray<SRailHit> RailHits;
 	TArray<SPortalHit> PortalHits;
-	FNameNoInit PuffSpecies;
+	FName PuffSpecies;
 	bool StopAtOne;
 	bool StopAtInvul;
 	bool ThruGhosts;
@@ -5515,6 +5517,8 @@ void P_RailAttack(FRailParams *p)
 			P_TraceBleed(newdam > 0 ? newdam : p->damage, hitpos, hitactor, hitangle, pitch);
 		}
 	}
+
+	P_GeometryLineAttack(trace, p->source, p->damage, damagetype);
 
 	// Spawn a decal or puff at the point where the trace ended.
 	if (trace.HitType == TRACE_HitWall)
@@ -6126,6 +6130,8 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 		bombsource = bombspot;
 	}
 
+	P_GeometryRadiusAttack(bombspot, bombsource, bombdamage, bombdistance, bombmod, fulldamagedistance);
+
 	int count = 0;
 	while ((it.Next(&cres)))
 	{
@@ -6176,7 +6182,7 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 				{
 					//[MC] Don't count actors saved by buddha if already at 1 health.
 					int prehealth = thing->health;
-					newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod);
+					newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod, DMG_EXPLOSION);
 					if (thing->health < prehealth)	count++;
 				}
 				else if (thing->player == NULL && (!(flags & RADF_NOIMPACTDAMAGE) && !(thing->flags7 & MF7_DONTTHRUST)))
@@ -6228,7 +6234,7 @@ int P_RadiusAttack(AActor *bombspot, AActor *bombsource, int bombdamage, int bom
 			{ // OK to damage; target is in direct path
 				//[MC] Don't count actors saved by buddha if already at 1 health.
 				int prehealth = thing->health;
-				int newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod);
+				int newdam = P_DamageMobj(thing, bombspot, bombsource, damage, bombmod, DMG_EXPLOSION);
 				P_TraceBleed(newdam > 0 ? newdam : damage, thing, bombspot);
 				if (thing->health < prehealth)	count++;
 			}

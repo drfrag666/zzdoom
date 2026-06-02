@@ -40,6 +40,7 @@
 #include "r_utility.h"
 #include "r_data/models/models.h"
 #include "r_data/models/models_ue1.h"
+#include "r_data/models/models_obj.h"
 #include "i_time.h"
 
 #ifdef _MSC_VER
@@ -47,7 +48,7 @@
 #endif
 
 CVAR(Bool, gl_interpolate_model_frames, true, CVAR_ARCHIVE)
-EXTERN_CVAR(Bool, r_drawvoxels)
+EXTERN_CVAR (Bool, r_drawvoxels)
 
 extern TDeletingArray<FVoxel *> Voxels;
 extern TDeletingArray<FVoxelDef *> VoxelDefs;
@@ -269,7 +270,6 @@ void FModelRenderer::RenderFrameModels(const FSpriteModelFrame *smf, const FStat
 			FModel * mdl = Models[smf->modelIDs[i]];
 			FTexture *tex = smf->skinIDs[i].isValid() ? TexMan(smf->skinIDs[i]) : nullptr;
 			mdl->BuildVertexBuffer(this);
-			SetVertexBuffer(mdl->GetVertexBuffer(this));
 
 			mdl->PushSpriteMDLFrame(smf, i);
 
@@ -277,8 +277,6 @@ void FModelRenderer::RenderFrameModels(const FSpriteModelFrame *smf, const FStat
 				mdl->RenderFrame(this, tex, smf->modelframes[i], smfNext->modelframes[i], inter, translation);
 			else
 				mdl->RenderFrame(this, tex, smf->modelframes[i], smf->modelframes[i], 0.f, translation);
-
-			ResetVertexBuffer();
 		}
 	}
 }
@@ -419,7 +417,7 @@ static unsigned FindModel(const char * path, const char * modelfile)
 	FMemLump lumpd = Wads.ReadLump(lump);
 	char * buffer = (char*)lumpd.GetMem();
 
-	if ( (size_t)fullname.IndexOf("_d.3d") == fullname.Len()-5 )
+	if ( (size_t)fullname.LastIndexOf("_d.3d") == fullname.Len()-5 )
 	{
 		FString anivfile = fullname.GetChars();
 		anivfile.Substitute("_d.3d","_a.3d");
@@ -428,7 +426,7 @@ static unsigned FindModel(const char * path, const char * modelfile)
 			model = new FUE1Model;
 		}
 	}
-	else if ( (size_t)fullname.IndexOf("_a.3d") == fullname.Len()-5 )
+	else if ( (size_t)fullname.LastIndexOf("_a.3d") == fullname.Len()-5 )
 	{
 		FString datafile = fullname.GetChars();
 		datafile.Substitute("_a.3d","_d.3d");
@@ -436,6 +434,10 @@ static unsigned FindModel(const char * path, const char * modelfile)
 		{
 			model = new FUE1Model;
 		}
+	}
+	else if ( (size_t)fullname.LastIndexOf(".obj") == fullname.Len() - 4 )
+	{
+		model = new FOBJModel;
 	}
 	else if (!memcmp(buffer, "DMDM", 4))
 	{
@@ -507,6 +509,7 @@ void InitModels()
 		FVoxelModel *md = (FVoxelModel*)Models[VoxelDefs[i]->Voxel->VoxelIndex];
 		FSpriteModelFrame smf;
 		memset(&smf, 0, sizeof(smf));
+		smf.isVoxel = true;
 		smf.modelIDs[1] = smf.modelIDs[2] = smf.modelIDs[3] = -1;
 		smf.modelIDs[0] = VoxelDefs[i]->Voxel->VoxelIndex;
 		smf.skinIDs[0] = md->GetPaletteTexture();

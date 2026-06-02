@@ -88,6 +88,7 @@ The FON2 header is followed by variable length data:
 #include "sc_man.h"
 #include "hu_stuff.h"
 #include "textures/textures.h"
+#include "gstrings.h"
 #include "v_text.h"
 #include "vm.h"
 
@@ -920,7 +921,9 @@ DEFINE_ACTION_FUNCTION(FFont, StringWidth)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FFont);
 	PARAM_STRING(str);
-	ACTION_RETURN_INT(self->StringWidth(str));
+	const char *txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
+
+	ACTION_RETURN_INT(self->StringWidth(txt));
 }
 
 //==========================================================================
@@ -2044,7 +2047,14 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 
 	FixXMoves();
 
-	if (!noTranslate) LoadTranslations();
+	if (noTranslate)
+	{
+		ActiveColors = 0;
+	}
+	else
+	{
+		LoadTranslations();
+	}
 
 	delete[] charlumps;
 }

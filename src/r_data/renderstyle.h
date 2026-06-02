@@ -61,6 +61,7 @@ enum ERenderStyle
 	STYLE_Subtract,			// Actually this is 'reverse subtract' but this is what normal people would expect by 'subtract'.
 	STYLE_AddStencil,		// Fill image interior with alphacolor
 	STYLE_AddShaded,		// Treat patch data as alpha values for alphacolor
+	STYLE_Source,			// No blending (only used internally)
 
 	STYLE_Count
 };
@@ -134,6 +135,7 @@ union FRenderStyle
 
 	inline FRenderStyle &operator= (ERenderStyle legacy);
 	bool operator==(const FRenderStyle &o) const { return AsDWORD == o.AsDWORD; }
+	bool operator!=(const FRenderStyle &o) const { return AsDWORD != o.AsDWORD; }
 	void CheckFuzz();
 	bool IsVisible(double alpha) const throw();
 private:
@@ -146,11 +148,6 @@ private:
 extern FRenderStyle LegacyRenderStyles[STYLE_Count];
 
 inline FRenderStyle DefaultRenderStyle()
-{
-	return LegacyRenderStyles[STYLE_Normal];
-}
-
-inline FRenderStyle BadRenderStyle()	// This is just a marker to find places where work is still needed.
 {
 	return LegacyRenderStyles[STYLE_Normal];
 }

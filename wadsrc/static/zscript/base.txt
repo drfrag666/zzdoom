@@ -1,5 +1,6 @@
 struct _ native	// These are the global variables, the struct is only here to avoid extending the parser for this.
 {
+	native readonly Array<class> AllClasses;
 	native readonly Array<class<Actor> > AllActorClasses;
 	native readonly Array<@PlayerClass> PlayerClasses;
 	native readonly Array<@PlayerSkin> PlayerSkins;
@@ -668,6 +669,7 @@ struct LevelLocals native
 
 	native static clearscope vector2 Vec2Diff(vector2 v1, vector2 v2);
 	native static clearscope vector3 Vec3Diff(vector3 v1, vector3 v2);
+	native static clearscope vector3 SphericalCoords(vector3 viewpoint, vector3 targetPos, vector2 viewAngles = (0, 0), bool absolute = false);	
 	
 	native static clearscope vector2 Vec2Offset(vector2 pos, vector2 dir, bool absolute = false);
 	native static clearscope vector3 Vec2OffsetZ(vector2 pos, vector2 dir, double atz, bool absolute = false);
@@ -814,7 +816,8 @@ struct StringStruct native
 	native int CharCodeAt(int pos) const;
 	native String Filter();
 	native int IndexOf(String substr, int startIndex = 0) const;
-	native int LastIndexOf(String substr, int endIndex = 2147483647) const;
+	deprecated("3.5.1") native int LastIndexOf(String substr, int endIndex = 2147483647) const;
+	native int RightIndexOf(String substr, int endIndex = 2147483647) const;
 	native void ToUpper();
 	native void ToLower();
 	native int ToInt(int base = 0) const;

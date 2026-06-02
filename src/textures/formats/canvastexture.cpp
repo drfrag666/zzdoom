@@ -189,4 +189,3 @@ bool FCanvasTexture::CheckModified (FRenderStyle)
 	}
 	return false;
 }
-

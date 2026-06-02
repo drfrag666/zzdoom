@@ -2224,6 +2224,10 @@ ADVSNDMNU_RUNPCMRATE		= "Run emulator at PCM rate";
 ADVSNDMNU_ADLNUMCHIPS		= "Number of emulated OPL chips";
 ADVSNDMNU_VLMODEL			= "Volume model";
 ADVSNDMNU_OPNNUMCHIPS		= "Number of emulated OPN chips";
+ADVSNDMNU_ADLCUSTOMBANK 	= "Use custom WOPL bank";
+ADVSNDMNU_OPLBANKFILE       = "WOPL Bank file";
+ADVSNDMNU_OPNCUSTOMBANK 	= "Use custom WOPN bank";
+ADVSNDMNU_OPNBANKFILE       = "WOPN Bank file";
 
 // ADLMIDI's emulation cores
 
@@ -2299,7 +2303,8 @@ OPTVAL_ON					= "On";
 OPTVAL_AUTO					= "Auto";
 OPTVAL_MALE					= "Male";
 OPTVAL_FEMALE				= "Female";
-OPTVAL_OTHER				= "Other";
+OPTVAL_NEUTRAL				= "Neutral";
+OPTVAL_OTHER				= "Object";
 OPTVAL_UPPERLEFT			= "Upper left";
 OPTVAL_UPPERRIGHT			= "Upper right";
 OPTVAL_LOWERLEFT			= "Lower left";
@@ -2436,15 +2441,7 @@ OPTVAL_ERRORS				= "Errors";
 OPTVAL_WARNINGS				= "Warnings";
 OPTVAL_NOTIFICATIONS		= "Notifications";
 OPTVAL_EVERYTHING			= "Everything";
-OPTVAL_GL 					= "OpenGL";
-OPTVAL_D3D					= "Direct3D";
-OPTVAL_SDL					= "SDL";
-OPTVAL_COCOA				= "Cocoa";
-OPTVAL_HWPOLY				= "OpenGL-Accelerated";
 OPTVAL_SWDOOM				= "Doom Software Renderer";
-OPTVAL_DEDICATED			= "High-Performance";
-OPTVAL_INTEGRATED			= "Power-Saving";
-OPTVAL_VANILLA				= "Vanilla";
 OPTVAL_VTFZDOOM				= "ZDoom (Forced)";
 OPTVAL_VTFVANILLA			= "Vanilla (Forced)";
 OPTVAL_VTAZDOOM				= "Auto (ZDoom Preferred)";

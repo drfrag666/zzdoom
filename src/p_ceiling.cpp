@@ -429,7 +429,7 @@ bool P_CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int t
 				switch (change & 3)
 				{
 					case 1:		// type is zeroed
-						ceiling->m_NewSpecial.Clear();
+						ceiling->m_NewSpecial = {};
 						ceiling->m_Type = DCeiling::genCeilingChg0;
 						break;
 					case 2:		// type is copied
@@ -448,7 +448,7 @@ bool P_CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int t
 			switch (change & 3)
 			{
 				case 1:		// type is zeroed
-					ceiling->m_NewSpecial.Clear();
+					ceiling->m_NewSpecial = {};
 					ceiling->m_Type = DCeiling::genCeilingChg0;
 					break;
 				case 2:		// type is copied
