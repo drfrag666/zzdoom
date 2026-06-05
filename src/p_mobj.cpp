@@ -1,4 +1,4 @@
-﻿//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 //
 // Copyright 1993-1996 id Software
 // Copyright 1994-1996 Raven Software
@@ -296,6 +296,7 @@ DEFINE_FIELD(AActor, lastbump)
 DEFINE_FIELD(AActor, DesignatedTeam)
 DEFINE_FIELD(AActor, BlockingMobj)
 DEFINE_FIELD(AActor, BlockingLine)
+DEFINE_FIELD(AActor, Blocking3DFloor)
 DEFINE_FIELD(AActor, BlockingCeiling)
 DEFINE_FIELD(AActor, BlockingFloor)
 DEFINE_FIELD(AActor, PoisonDamage)
@@ -348,6 +349,7 @@ DEFINE_FIELD(AActor, BloodTranslation)
 DEFINE_FIELD(AActor, RenderHidden)
 DEFINE_FIELD(AActor, RenderRequired)
 DEFINE_FIELD(AActor, friendlyseeblocks)
+DEFINE_FIELD(AActor, SpawnTime)
 
 //==========================================================================
 //
@@ -480,6 +482,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("smokecounter", smokecounter)
 		("blockingmobj", BlockingMobj)
 		A("blockingline", BlockingLine)
+		A("blocking3dfloor", Blocking3DFloor)
 		A("blockingceiling", BlockingCeiling)
 		A("blockingfloor", BlockingFloor)
 		A("visibletoteam", VisibleToTeam)
@@ -528,8 +531,10 @@ void AActor::Serialize(FSerializer &arc)
 		A("selfdamagefactor", SelfDamageFactor)
 		A("stealthalpha", StealthAlpha)
 		A("renderhidden", RenderHidden)
-		A("renderrequired", RenderRequired);
-		A("friendlyseeblocks", friendlyseeblocks);
+		A("renderrequired", RenderRequired)
+		A("friendlyseeblocks", friendlyseeblocks)
+		A("spawntime", SpawnTime)
+		A("friction", Friction);
 }
 
 #undef A
@@ -746,7 +751,7 @@ DEFINE_ACTION_FUNCTION(AActor, SetState)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_POINTER(state, FState);
-	PARAM_BOOL_DEF(nofunction);
+	PARAM_BOOL(nofunction);
 	ACTION_RETURN_BOOL(self->SetState(state, nofunction));
 };
 
@@ -860,7 +865,7 @@ DEFINE_ACTION_FUNCTION(AActor, GiveInventory)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS(type, AInventory);
 	PARAM_INT(amount);
-	PARAM_BOOL_DEF(givecheat);
+	PARAM_BOOL(givecheat);
 	ACTION_RETURN_BOOL(self->GiveInventory(type, amount, givecheat));
 }
 
@@ -960,8 +965,8 @@ DEFINE_ACTION_FUNCTION(AActor, TakeInventory)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS_NOT_NULL(item, AInventory);
 	PARAM_INT(amount);
-	PARAM_BOOL_DEF(fromdecorate);
-	PARAM_BOOL_DEF(notakeinfinite);
+	PARAM_BOOL(fromdecorate);
+	PARAM_BOOL(notakeinfinite);
 	ACTION_RETURN_BOOL(self->TakeInventory(item, amount, fromdecorate, notakeinfinite));
 }
 
@@ -1030,7 +1035,7 @@ DEFINE_ACTION_FUNCTION(AActor, SetInventory)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS_NOT_NULL(item, AInventory);
 	PARAM_INT(amount);
-	PARAM_BOOL_DEF(beyondMax);
+	PARAM_BOOL(beyondMax);
 	ACTION_RETURN_BOOL(self->SetInventory(item, amount, beyondMax));
 }
 
@@ -1180,7 +1185,7 @@ DEFINE_ACTION_FUNCTION(AActor, DropInventory)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(item, AInventory);
-	PARAM_INT_DEF(amt);
+	PARAM_INT(amt);
 	ACTION_RETURN_OBJECT(self->DropInventory(item, amt));
 }
 
@@ -1227,7 +1232,7 @@ DEFINE_ACTION_FUNCTION(AActor, FindInventory)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS(type, AInventory);
-	PARAM_BOOL_DEF(subclass);
+	PARAM_BOOL(subclass);
 	ACTION_RETURN_OBJECT(self->FindInventory(type, subclass));
 }
 
@@ -1388,8 +1393,8 @@ DEFINE_ACTION_FUNCTION(AActor, CopyFriendliness)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(other, AActor);
-	PARAM_BOOL_DEF(changetarget);
-	PARAM_BOOL_DEF(resethealth);
+	PARAM_BOOL(changetarget);
+	PARAM_BOOL(resethealth);
 	self->CopyFriendliness(other, changetarget, resethealth);
 	return 0;
 }
@@ -1564,7 +1569,7 @@ DEFINE_ACTION_FUNCTION(AActor, GiveBody)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(num);
-	PARAM_INT_DEF(max);
+	PARAM_INT(max);
 	ACTION_RETURN_BOOL(P_GiveBody(self, num, max));
 }
 
@@ -1948,26 +1953,7 @@ void P_ExplodeMissile (AActor *mo, line_t *line, AActor *target, bool onsky)
 	// [ZZ] line damage callback
 	if (line)
 	{
-		int wside = P_PointOnLineSide(mo->Pos(), line);
-		int oside = !wside;
-		side_t* otherside = line->sidedef[oside];
-		// check if hit upper or lower part
-		if (otherside)
-		{
-			sector_t* othersector = otherside->sector;
-			double otherfloorz = othersector->floorplane.ZatPoint(mo->Pos());
-			double otherceilingz = othersector->ceilingplane.ZatPoint(mo->Pos());
-			double actualz = mo->Pos().Z;
-			if (actualz < otherfloorz && othersector->healthfloor > 0 && P_CheckLinedefVulnerable(line, wside, SECPART_Floor))
-				P_DamageSector(othersector, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Floor, mo->Pos());
-			if (actualz > otherceilingz && othersector->healthceiling > 0 && P_CheckLinedefVulnerable(line, wside, SECPART_Ceiling))
-				P_DamageSector(othersector, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Ceiling, mo->Pos());
-		}
-		
-		if (line->health > 0 && P_CheckLinedefVulnerable(line, wside))
-		{
-			P_DamageLinedef(line, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, wside, mo->Pos());
-		}
+		P_ProjectileHitLinedef(mo, line);
 	}
 
 	if (mo->flags3 & MF3_EXPLOCOUNT)
@@ -2105,8 +2091,8 @@ void P_ExplodeMissile (AActor *mo, line_t *line, AActor *target, bool onsky)
 DEFINE_ACTION_FUNCTION(AActor, ExplodeMissile)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_POINTER_DEF(line, line_t);
-	PARAM_OBJECT_DEF(target, AActor);
+	PARAM_POINTER(line, line_t);
+	PARAM_OBJECT(target, AActor);
 	P_ExplodeMissile(self, line, target);
 	return 0;
 }
@@ -2145,6 +2131,18 @@ void AActor::PlayBounceSound(bool onfloor)
 
 bool AActor::FloorBounceMissile (secplane_t &plane)
 {
+	// [ZZ] if bouncing missile hits a damageable sector(plane), it dies
+	if (P_ProjectileHitPlane(this, -1) && bouncecount > 0)
+	{
+		Vel.Zero();
+		Speed = 0;
+		bouncecount = 0;
+		if (flags & MF_MISSILE)
+			P_ExplodeMissile(this, nullptr, nullptr);
+		else CallDie(nullptr, nullptr);
+		return true;
+	}
+
 	if (Z() <= floorz && P_HitFloor (this))
 	{
 		// Landed in some sort of liquid
@@ -2762,13 +2760,11 @@ explode:
 				}
 				if (mo->BlockingCeiling) // hit floor or ceiling while XY movement
 				{
-					if (mo->BlockingCeiling->healthceiling > 0 && P_CheckSectorVulnerable(mo->BlockingCeiling, SECPART_Ceiling))
-						P_DamageSector(mo->BlockingCeiling, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Ceiling, mo->Pos());
+					P_ProjectileHitPlane(mo, SECPART_Ceiling);
 				}
 				if (mo->BlockingFloor)
 				{
-					if (mo->BlockingFloor->healthfloor > 0 && P_CheckSectorVulnerable(mo->BlockingFloor, SECPART_Floor))
-						P_DamageSector(mo->BlockingFloor, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Floor, mo->Pos());
+					P_ProjectileHitPlane(mo, SECPART_Floor);
 				}
 				P_ExplodeMissile (mo, mo->BlockingLine, BlockingMobj, onsky);
 				return Oldfloorz;
@@ -3164,8 +3160,7 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 					}
 					P_HitFloor (mo);
 					// hit floor: direct damage callback
-					if (mo->Sector->healthfloor > 0 && P_CheckSectorVulnerable(mo->Sector, SECPART_Floor))
-						P_DamageSector(mo->Sector, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Floor, mo->Pos());
+					P_ProjectileHitPlane(mo, SECPART_Floor);
 					P_ExplodeMissile (mo, NULL, NULL, onsky);
 					return;
 				}
@@ -3271,8 +3266,7 @@ void P_ZMovement (AActor *mo, double oldfloorz)
 					else onsky = true;
 				}
 				// hit ceiling: direct damage callback
-				if (mo->Sector->healthceiling > 0 && P_CheckSectorVulnerable(mo->Sector, SECPART_Ceiling))
-					P_DamageSector(mo->Sector, mo, mo->GetMissileDamage((mo->flags4 & MF4_STRIFEDAMAGE) ? 3 : 7, 1), mo->DamageType, SECPART_Ceiling, mo->Pos());
+				P_ProjectileHitPlane(mo, SECPART_Ceiling);
 				P_ExplodeMissile (mo, NULL, NULL, onsky);
 				return;
 			}
@@ -3348,7 +3342,7 @@ DEFINE_ACTION_FUNCTION(AActor, CheckFakeFloorTriggers)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(oldz);
-	PARAM_BOOL_DEF(oldz_has_viewh);
+	PARAM_BOOL(oldz_has_viewh);
 	P_CheckFakeFloorTriggers(self, oldz, oldz_has_viewh);
 	return 0;
 }
@@ -3661,8 +3655,8 @@ int P_FindUniqueTID(int start_tid, int limit)
 DEFINE_ACTION_FUNCTION(AActor, FindUniqueTid)
 {
 	PARAM_PROLOGUE;
-	PARAM_INT_DEF(start);
-	PARAM_INT_DEF(limit);
+	PARAM_INT(start);
+	PARAM_INT(limit);
 	ACTION_RETURN_INT(P_FindUniqueTID(start, limit));
 }
 
@@ -4107,7 +4101,7 @@ void AActor::CheckPortalTransition(bool islinked)
 DEFINE_ACTION_FUNCTION(AActor, CheckPortalTransition)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_BOOL_DEF(linked);
+	PARAM_BOOL(linked);
 	self->CheckPortalTransition(linked);
 	return 0;
 }
@@ -4522,6 +4516,7 @@ void AActor::Tick ()
 		BlockingMobj = nullptr;
 		sector_t* oldBlockingCeiling = BlockingCeiling;
 		sector_t* oldBlockingFloor = BlockingFloor;
+		Blocking3DFloor = nullptr;
 		BlockingFloor = nullptr;
 		BlockingCeiling = nullptr;
 		double oldfloorz = P_XYMovement (this, cumm);
@@ -4696,14 +4691,6 @@ void AActor::Tick ()
 		P_NightmareRespawn (this);
 	}
 }
-
-DEFINE_ACTION_FUNCTION(AActor, Tick)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	self->Tick();
-	return 0;
-}
-
 
 //==========================================================================
 //
@@ -4984,7 +4971,7 @@ bool AActor::UpdateWaterLevel(bool dosplash)
 DEFINE_ACTION_FUNCTION(AActor, UpdateWaterLevel)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_BOOL_DEF(splash);
+	PARAM_BOOL(splash);
 	ACTION_RETURN_BOOL(self->UpdateWaterLevel(splash));
 }
 
@@ -5009,6 +4996,7 @@ AActor *AActor::StaticSpawn (PClassActor *type, const DVector3 &pos, replace_t a
 	AActor *actor;
 	
 	actor = static_cast<AActor *>(const_cast<PClassActor *>(type)->CreateNew ());
+	actor->SpawnTime = level.totaltime;
 
 	// Set default dialogue
 	actor->ConversationRoot = GetConversation(actor->GetClass()->TypeName);
@@ -5183,10 +5171,10 @@ DEFINE_ACTION_FUNCTION(AActor, Spawn)
 {
 	PARAM_PROLOGUE;
 	PARAM_CLASS_NOT_NULL(type, AActor);
-	PARAM_FLOAT_DEF(x);
-	PARAM_FLOAT_DEF(y);
-	PARAM_FLOAT_DEF(z);
-	PARAM_INT_DEF(flags);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_INT(flags);
 	ACTION_RETURN_OBJECT(AActor::StaticSpawn(type, DVector3(x, y, z), replace_t(flags)));
 }
 
@@ -5787,10 +5775,7 @@ APlayerPawn *P_SpawnPlayer (FPlayerStart *mthing, int playernum, int flags)
 			}
 
 			DObject::StaticPointerSubstitution (oldactor, p->mo);
-			// PointerSubstitution() will also affect the bodyque, so undo that now.
-			for (int ii=0; ii < BODYQUESIZE; ++ii)
-				if (bodyque[ii] == p->mo)
-					bodyque[ii] = oldactor;
+
 			E_PlayerRespawned(int(p - players));
 			FBehavior::StaticStartTypedScripts (SCRIPT_Respawn, p->mo, true);
 		}
@@ -6248,7 +6233,11 @@ AActor *P_SpawnPuff (AActor *source, PClassActor *pufftype, const DVector3 &pos1
 	// it will enter the crash state. This is used by the StrifeSpark
 	// and BlasterPuff.
 	FState *crashstate;
-	if (!(flags & PF_HITTHING) && (crashstate = puff->FindState(NAME_Crash)) != NULL)
+	if ((flags & PF_HITSKY) && (crashstate = puff->FindState(NAME_Death, NAME_Sky, true)) != NULL)
+	{
+		puff->SetState (crashstate);
+	}
+	else if (!(flags & PF_HITTHING) && (crashstate = puff->FindState(NAME_Crash)) != NULL)
 	{
 		puff->SetState (crashstate);
 	}
@@ -6294,8 +6283,8 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnPuff)
 	PARAM_ANGLE(hitdir);
 	PARAM_ANGLE(particledir);
 	PARAM_INT(updown);
-	PARAM_INT_DEF(flags);
-	PARAM_OBJECT_DEF(victim, AActor);
+	PARAM_INT(flags);
+	PARAM_OBJECT(victim, AActor);
 	ACTION_RETURN_OBJECT(P_SpawnPuff(self, pufftype, DVector3(x, y, z), hitdir, particledir, updown, flags, victim));
 }
 
@@ -6494,7 +6483,7 @@ DEFINE_ACTION_FUNCTION(AActor, BloodSplatter)
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
 	PARAM_ANGLE(dir);
-	PARAM_BOOL_DEF(axe);
+	PARAM_BOOL(axe);
 	if (axe) P_BloodSplatter2(DVector3(x, y, z), self, dir);
 	else P_BloodSplatter(DVector3(x, y, z), self, dir);
 	return 0;
@@ -6726,9 +6715,9 @@ DEFINE_ACTION_FUNCTION(AActor, HitWater)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	PARAM_BOOL_DEF(checkabove);
-	PARAM_BOOL_DEF(alert);
-	PARAM_BOOL_DEF(force);
+	PARAM_BOOL(checkabove);
+	PARAM_BOOL(alert);
+	PARAM_BOOL(force);
 	ACTION_RETURN_BOOL(P_HitWater(self, sec, DVector3(x, y, z), checkabove, alert, force));
 }
 
@@ -7065,8 +7054,8 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissileXYZ)
 	PARAM_FLOAT(z);
 	PARAM_OBJECT_NOT_NULL(dest, AActor);
 	PARAM_CLASS(type, AActor);
-	PARAM_BOOL_DEF(check);
-	PARAM_OBJECT_DEF(owner, AActor);
+	PARAM_BOOL(check);
+	PARAM_OBJECT(owner, AActor);
 	ACTION_RETURN_OBJECT(P_SpawnMissileXYZ(DVector3(x,y,z), self, dest, type, check, owner));
 }
 
@@ -7084,7 +7073,7 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissile)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(dest, AActor);
 	PARAM_CLASS(type, AActor);
-	PARAM_OBJECT_DEF(owner, AActor);
+	PARAM_OBJECT(owner, AActor);
 	ACTION_RETURN_OBJECT(P_SpawnMissile(self, dest, type, owner));
 }
 
@@ -7140,7 +7129,7 @@ DEFINE_ACTION_FUNCTION(AActor, OldSpawnMissile)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(dest, AActor);
 	PARAM_CLASS(type, AActor);
-	PARAM_OBJECT_DEF(owner, AActor);
+	PARAM_OBJECT(owner, AActor);
 	ACTION_RETURN_OBJECT(P_OldSpawnMissile(self, owner, dest, type));
 }
 
@@ -7253,8 +7242,8 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnMissileAngleZSpeed)
 	PARAM_ANGLE(angle);
 	PARAM_FLOAT(vz);
 	PARAM_FLOAT(speed);
-	PARAM_OBJECT_DEF(owner, AActor);
-	PARAM_BOOL_DEF(checkspawn);
+	PARAM_OBJECT(owner, AActor);
+	PARAM_BOOL(checkspawn);
 	ACTION_RETURN_OBJECT(P_SpawnMissileAngleZSpeed(self, z, type, angle, vz, speed, owner, checkspawn));
 }
 
@@ -7427,16 +7416,16 @@ DEFINE_ACTION_FUNCTION(AActor, SpawnPlayerMissile)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_CLASS(type, AActor);
-	PARAM_ANGLE_DEF(angle);
-	PARAM_FLOAT_DEF(x);
-	PARAM_FLOAT_DEF(y);
-	PARAM_FLOAT_DEF(z);
-	PARAM_POINTER_DEF(lt, FTranslatedLineTarget);
-	PARAM_BOOL_DEF(nofreeaim);
-	PARAM_BOOL_DEF(noautoaim);
-	PARAM_INT_DEF(aimflags);
+	PARAM_ANGLE(angle);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(z);
+	PARAM_OUTPOINTER(lt, FTranslatedLineTarget);
+	PARAM_BOOL(nofreeaim);
+	PARAM_BOOL(noautoaim);
+	PARAM_INT(aimflags);
 	AActor *missileactor;
-	if (numparam == 2) angle = self->Angles.Yaw;
+	if (angle == 1e37) angle = self->Angles.Yaw;
 	AActor *misl = P_SpawnPlayerMissile(self, x, y, z, type, angle, lt, &missileactor, nofreeaim, noautoaim, aimflags);
 	if (numret > 0) ret[0].SetObject(misl);
 	if (numret > 1) ret[1].SetObject(missileactor), numret = 2;
@@ -7776,7 +7765,7 @@ void AActor::SetIdle(bool nofunction)
 DEFINE_ACTION_FUNCTION(AActor, SetIdle)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_BOOL_DEF(nofunction);
+	PARAM_BOOL(nofunction);
 	self->SetIdle(nofunction);
 	return 0;
 }
@@ -7953,7 +7942,7 @@ const char *AActor::GetTag(const char *def) const
 DEFINE_ACTION_FUNCTION(AActor, GetTag)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_STRING_DEF(def);
+	PARAM_STRING(def);
 	ACTION_RETURN_STRING(self->GetTag(def.Len() == 0? nullptr : def.GetChars()));
 }
 
@@ -8062,6 +8051,43 @@ void AActor::SetTranslation(FName trname)
 	// silently ignore if the name does not exist, this would create some insane message spam otherwise.
 }
 
+//==========================================================================
+//
+// AActor :: GetLevelSpawnTime
+//
+// Returns the time when this actor was spawned, 
+// relative to the current level.
+//
+//==========================================================================
+int AActor::GetLevelSpawnTime() const
+{
+	return SpawnTime - level.totaltime + level.time;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, GetLevelSpawnTime)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_INT(self->GetLevelSpawnTime());
+}
+
+//==========================================================================
+//
+// AActor :: GetAge
+//
+// Returns the number of ticks passed since this actor was spawned.
+//
+//==========================================================================
+int AActor::GetAge() const
+{
+	return level.totaltime - SpawnTime;
+}
+
+DEFINE_ACTION_FUNCTION(AActor, GetAge)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	ACTION_RETURN_INT(self->GetAge());
+}
+
 //---------------------------------------------------------------------------
 //
 // PROP A_RestoreSpecialPosition
@@ -8137,7 +8163,7 @@ double AActor::GetBobOffset(double ticfrac) const
 DEFINE_ACTION_FUNCTION(AActor, GetBobOffset)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_FLOAT_DEF(frac);
+	PARAM_FLOAT(frac);
 	ACTION_RETURN_FLOAT(self->GetBobOffset(frac));
 }
 
@@ -8160,7 +8186,7 @@ DEFINE_ACTION_FUNCTION(DActorIterator, Create)
 {
 	PARAM_PROLOGUE;
 	PARAM_INT(tid);
-	PARAM_CLASS_DEF(type, AActor);
+	PARAM_CLASS(type, AActor);
 	ACTION_RETURN_OBJECT(Create<DActorIterator>(type, tid));
 }
 
@@ -8227,7 +8253,7 @@ DEFINE_ACTION_FUNCTION(AActor, AddZ)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(addz);
-	PARAM_BOOL_DEF(moving);
+	PARAM_BOOL(moving);
 	self->AddZ(addz, moving);
 	return 0;
 }
@@ -8248,31 +8274,26 @@ DEFINE_ACTION_FUNCTION(AActor, SetDamage)
 	return 0;
 }
 
-DEFINE_ACTION_FUNCTION(AActor, GetDefaultByType)
-{
-	PARAM_PROLOGUE;
-	PARAM_CLASS(cls, AActor);
-	ACTION_RETURN_OBJECT(cls == nullptr? nullptr : GetDefaultByType(cls));
-}
-
 // This combines all 3 variations of the internal function
 DEFINE_ACTION_FUNCTION(AActor, VelFromAngle)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	if (numparam == 1)
+	PARAM_FLOAT(speed);
+	PARAM_ANGLE(angle);
+
+	if (speed == 1e37)
 	{
 		self->VelFromAngle();
 	}
 	else
 	{
-		PARAM_FLOAT(speed);
-		if (numparam == 2)
+		if (angle == 1e37)
+
 		{
 			self->VelFromAngle(speed);
 		}
 		else
 		{
-			PARAM_ANGLE(angle);
 			self->VelFromAngle(speed, angle);
 		}
 	}
@@ -8294,20 +8315,21 @@ DEFINE_ACTION_FUNCTION(AActor, Vel3DFromAngle)
 DEFINE_ACTION_FUNCTION(AActor, Thrust)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	if (numparam == 1)
+	PARAM_FLOAT(speed);
+	PARAM_ANGLE(angle);
+
+	if (speed == 1e37)
 	{
 		self->Thrust();
 	}
 	else
 	{
-		PARAM_FLOAT(speed);
-		if (numparam == 2)
+		if (angle == 1e37)
 		{
 			self->Thrust(speed);
 		}
 		else
 		{
-			PARAM_ANGLE(angle);
 			self->Thrust(angle, speed);
 		}
 	}
@@ -8318,7 +8340,7 @@ DEFINE_ACTION_FUNCTION(AActor, AngleTo)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(targ, AActor);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_FLOAT(self->AngleTo(targ, absolute).Degrees);
 }
 
@@ -8326,7 +8348,7 @@ DEFINE_ACTION_FUNCTION(AActor, AngleToVector)
 {
 	PARAM_PROLOGUE;
 	PARAM_ANGLE(angle);
-	PARAM_FLOAT_DEF(length);
+	PARAM_FLOAT(length);
 	ACTION_RETURN_VEC2(angle.ToVector(length));
 }
 
@@ -8369,7 +8391,7 @@ DEFINE_ACTION_FUNCTION(AActor, Vec2Angle)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(length);
 	PARAM_ANGLE(angle);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_VEC2(self->Vec2Angle(length, angle, absolute));
 }
 
@@ -8393,8 +8415,8 @@ DEFINE_ACTION_FUNCTION(AActor, Vec3Angle)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(length)
 	PARAM_ANGLE(angle);
-	PARAM_FLOAT_DEF(z);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_FLOAT(z);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_VEC3(self->Vec3Angle(length, angle, z, absolute));
 }
 
@@ -8404,7 +8426,7 @@ DEFINE_ACTION_FUNCTION(AActor, Vec2OffsetZ)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_VEC3(self->Vec2OffsetZ(x, y, z, absolute));
 }
 
@@ -8413,7 +8435,7 @@ DEFINE_ACTION_FUNCTION(AActor, Vec2Offset)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_VEC2(self->Vec2Offset(x, y, absolute));
 }
 
@@ -8423,7 +8445,7 @@ DEFINE_ACTION_FUNCTION(AActor, Vec3Offset)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	PARAM_BOOL_DEF(absolute);
+	PARAM_BOOL(absolute);
 	ACTION_RETURN_VEC3(self->Vec3Offset(x, y, z, absolute));
 }
 
@@ -8586,5 +8608,8 @@ void PrintMiscActorInfo(AActor *query)
 		Printf("FriendlySeeBlocks: %d\n", query->friendlyseeblocks);
 		Printf("Target: %s\n", query->target ? query->target->GetClass()->TypeName.GetChars() : "-");
 		Printf("Last enemy: %s\n", query->lastenemy ? query->lastenemy->GetClass()->TypeName.GetChars() : "-");
+		Printf("Spawn time: %d ticks (%f seconds) after game start, %d ticks (%f seconds) after level start\n", 
+			query->SpawnTime, (double) query->SpawnTime / TICRATE,
+			query->GetLevelSpawnTime(), (double) query->GetLevelSpawnTime() / TICRATE);
 	}
 }

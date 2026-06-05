@@ -728,8 +728,8 @@ DEFINE_ACTION_FUNCTION(AActor, Die)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(source, AActor);
 	PARAM_OBJECT(inflictor, AActor);
-	PARAM_INT_DEF(dmgflags);
-	PARAM_NAME_DEF(MeansOfDeath);
+	PARAM_INT(dmgflags);
+	PARAM_NAME(MeansOfDeath);
 	self->Die(source, inflictor, dmgflags, MeansOfDeath);
 	return 0;
 }
@@ -1086,7 +1086,7 @@ static int DamageMobj (AActor *target, AActor *inflictor, AActor *source, int da
 				damage = int(damage * source->DamageMultiply);
 
 				// Handle active damage modifiers (e.g. PowerDamage)
-				if (damage > 0)
+				if (damage > 0 && !(flags & DMG_NO_ENHANCE))
 				{
 					damage = source->GetModifiedDamage(mod, damage, false);
 				}
@@ -1635,8 +1635,8 @@ DEFINE_ACTION_FUNCTION(AActor, DamageMobj)
 	PARAM_OBJECT(source, AActor);
 	PARAM_INT(damage);
 	PARAM_NAME(mod);
-	PARAM_INT_DEF(flags);
-	PARAM_FLOAT_DEF(angle);
+	PARAM_INT(flags);
+	PARAM_FLOAT(angle);
 
 	// [ZZ] event handlers need the result.
 	bool needevent = true;

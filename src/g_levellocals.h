@@ -42,10 +42,12 @@
 #include "p_blockmap.h"
 #include "p_local.h"
 #include "p_destructible.h"
+#include "r_data/r_sections.h"
 
 struct FLevelLocals
 {
 	void Tick ();
+	void Mark();
 	void AddScroller (int secnum);
 	void SetInterMusic(const char *nextmap);
 	void SetMusicVolume(float v);
@@ -84,8 +86,15 @@ struct FLevelLocals
 	TArray<node_t> gamenodes;
 	node_t *headgamenode;
 	TArray<uint8_t> rejectmatrix;
+	
+	static const int BODYQUESIZE = 32;
+	TObjPtr<AActor*> bodyque[BODYQUESIZE];
+	int bodyqueslot;
+
 
 	TArray<FSectorPortal> sectorPortals;
+	FSectionContainer sections;
+
 	TArray<zone_t>	Zones;
 
 	// [ZZ] Destructible geometry information

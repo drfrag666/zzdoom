@@ -105,6 +105,9 @@ FSerializer &Serialize(FSerializer &arc, const char *key, side_t::part &part, si
 			("yscale", part.yScale, def->yScale)
 			("texture", part.texture, def->texture)
 			("interpolation", part.interpolation)
+			("flags", part.flags, def->flags)
+			("color1", part.SpecialColors[0], def->SpecialColors[0])
+			("color2", part.SpecialColors[1], def->SpecialColors[1])
 			.EndObject();
 	}
 	return arc;
@@ -297,6 +300,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, sector_t &p, sector_t 
 			("scrolls", scroll, nul)
 			("healthfloor", p.healthfloor, def->healthfloor)
 			("healthceiling", p.healthceiling, def->healthceiling)
+			("health3d", p.health3d, def->health3d)
 			// GZDoom exclusive:
 			.Array("reflect", p.reflect, def->reflect, 2, true)
 			.EndObject();
@@ -968,7 +972,9 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		("level.skytexture2", level.skytexture2)
 		("level.fogdensity", level.fogdensity)
 		("level.outsidefogdensity", level.outsidefogdensity)
-		("level.skyfog", level.skyfog);
+		("level.skyfog", level.skyfog)
+		("level.bodyqueslot", level.bodyqueslot)
+		.Array("level.bodyque", level.bodyque, level.BODYQUESIZE);
 
 	// Hub transitions must keep the current total time
 	if (!hubload)

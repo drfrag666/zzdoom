@@ -1022,6 +1022,7 @@ set (PCH_SOURCES
 	r_data/renderstyle.cpp
 	r_data/r_interpolate.cpp
 	r_data/r_vanillatrans.cpp
+	r_data/r_sections.cpp
 	r_data/models/models_md3.cpp
 	r_data/models/models_md2.cpp
 	r_data/models/models_voxel.cpp

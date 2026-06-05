@@ -53,6 +53,7 @@ struct FBlockNode;
 struct FPortalGroupArray;
 struct visstyle_t;
 class FLightDefaults;
+struct FSection;
 //
 // NOTES: AActor
 //
@@ -486,6 +487,7 @@ enum ActorBounceFlag
 	BOUNCE_AutoOffFloorOnly = 1<<13,		// like BOUNCE_AutoOff, but only on floors
 	BOUNCE_UseBounceState = 1<<14,	// Use Bounce[.*] states
 	BOUNCE_NotOnShootables = 1<<15,	// do not bounce off shootable actors if we are a projectile. Explode instead.
+	BOUNCE_BounceOnUnrips = 1<<16,	// projectile bounces on actors with DONTRIP
 
 	BOUNCE_TypeMask = BOUNCE_Walls | BOUNCE_Floors | BOUNCE_Ceilings | BOUNCE_Actors | BOUNCE_AutoOff | BOUNCE_HereticType | BOUNCE_MBF,
 
@@ -549,7 +551,7 @@ typedef TFlags<ActorFlag6> ActorFlags6;
 typedef TFlags<ActorFlag7> ActorFlags7;
 typedef TFlags<ActorFlag8> ActorFlags8;
 typedef TFlags<ActorRenderFlag> ActorRenderFlags;
-typedef TFlags<ActorBounceFlag, uint16_t> ActorBounceFlags;
+typedef TFlags<ActorBounceFlag> ActorBounceFlags;
 typedef TFlags<ActorRenderFeatureFlag> ActorRenderFeatureFlags;
 DEFINE_TFLAGS_OPERATORS (ActorFlags)
 DEFINE_TFLAGS_OPERATORS (ActorFlags2)
@@ -1033,6 +1035,10 @@ public:
 	void AttachLight(unsigned int count, const FLightDefaults *lightdef);
 	void SetDynamicLights();
 
+	// When was this actor spawned? (relative to the current level)
+	int GetLevelSpawnTime() const;
+	// How many ticks passed since this actor was spawned?
+	int GetAge() const;
 
 // info for drawing
 // NOTE: The first member variable *must* be snext.
@@ -1083,6 +1089,7 @@ public:
 	FBlockNode		*BlockNode;			// links in blocks (if needed)
 	struct sector_t	*Sector;
 	subsector_t *		subsector;
+	FSection *			section;
 	double			floorz, ceilingz;	// closest together of contacted secs
 	double			dropoffz;		// killough 11/98: the lowest floor over all contacted Sectors.
 
@@ -1182,6 +1189,7 @@ public:
 
 	AActor			*BlockingMobj;	// Actor that blocked the last move
 	line_t			*BlockingLine;	// Line that blocked the last move
+	sector_t		*Blocking3DFloor;	// 3D floor that blocked the last move (if any)
 	sector_t		*BlockingCeiling;	// Sector that blocked the last move (ceiling plane slope)
 	sector_t		*BlockingFloor;		// Sector that blocked the last move (floor plane slope)
 
@@ -1261,6 +1269,9 @@ public:
 	DRotator PrevAngles;
 	int PrevPortalGroup;
 	TArray<TObjPtr<AActor*> > AttachedLights;
+
+	// When was this actor spawned?
+	int SpawnTime;
 
 	// ThingIDs
 	static void ClearTIDHashes ();

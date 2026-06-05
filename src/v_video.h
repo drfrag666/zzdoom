@@ -205,6 +205,7 @@ struct VMVa_List
 	VMValue *args;
 	int curindex;
 	int numargs;
+	const uint8_t *reginfo;
 };
 
 // intermediate struct for fake shape drawing

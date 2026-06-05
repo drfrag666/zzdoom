@@ -1764,7 +1764,7 @@ FUNC(LS_Thing_Raise)
 
 	if (arg0==0)
 	{
-		ok = P_Thing_Raise (it,NULL, arg1);
+		ok = P_Thing_Raise (it, it, arg1);
 	}
 	else
 	{
@@ -1772,7 +1772,7 @@ FUNC(LS_Thing_Raise)
 
 		while ( (target = iterator.Next ()) )
 		{
-			ok |= P_Thing_Raise(target,NULL, arg1);
+			ok |= P_Thing_Raise(target, target, arg1);
 		}
 	}
 	return ok;
@@ -3522,6 +3522,12 @@ FUNC(LS_Sector_SetHealth)
 			if (sector->healthfloorgroup)
 				P_SetHealthGroupHealth(sector->healthfloorgroup, arg2);
 		}
+		else if (arg1 == SECPART_3D)
+		{
+			sector->health3d = arg2;
+			if (sector->health3dgroup)
+				P_SetHealthGroupHealth(sector->health3dgroup, arg2);
+		}
 	}
 	return true;
 }
@@ -3949,11 +3955,11 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, ExecuteSpecial)
 	PARAM_OBJECT(activator, AActor);
 	PARAM_POINTER(linedef, line_t);
 	PARAM_BOOL(lineside);
-	PARAM_INT_DEF(arg1);
-	PARAM_INT_DEF(arg2);
-	PARAM_INT_DEF(arg3);
-	PARAM_INT_DEF(arg4);
-	PARAM_INT_DEF(arg5);
+	PARAM_INT(arg1);
+	PARAM_INT(arg2);
+	PARAM_INT(arg3);
+	PARAM_INT(arg4);
+	PARAM_INT(arg5);
 
 	bool res = !!P_ExecuteSpecial(special, linedef, activator, lineside, arg1, arg2, arg3, arg4, arg5);
 

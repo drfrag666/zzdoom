@@ -136,7 +136,7 @@ IMPLEMENT_CLASS(DShape2D, false, false)
 DEFINE_ACTION_FUNCTION(DShape2D, Clear)
 {
 	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_INT_DEF(which);
+	PARAM_INT(which);
 
 	return 0;
 }
@@ -203,10 +203,12 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawTexture)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 
+	PARAM_VA_POINTER(va_reginfo)	// Get the hidden type information array
+
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 
 	FTexture *tex = animate ? TexMan(FSetTextureID(texid)) : TexMan[FSetTextureID(texid)];
-	VMVa_List args = { param + 4, 0, numparam - 4 };
+	VMVa_List args = { param + 4, 0, numparam - 5, va_reginfo + 4 };
 	screen->DrawTexture(tex, x, y, args);
 	return 0;
 }
@@ -243,6 +245,8 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawShape)
 	PARAM_INT(texid);
 	PARAM_BOOL(animate);
 	PARAM_POINTER(shape, DShape2D);
+
+	PARAM_VA_POINTER(va_reginfo)	// Get the hidden type information array
 
 	return 0;
 }
@@ -425,7 +429,7 @@ int ListGetInt(VMVa_List &tags)
 {
 	if (tags.curindex < tags.numargs)
 	{
-		if (tags.args[tags.curindex].Type == REGT_INT)
+		if (tags.reginfo[tags.curindex] == REGT_INT)
 		{
 			return tags.args[tags.curindex++].i;
 		}
@@ -436,11 +440,18 @@ int ListGetInt(VMVa_List &tags)
 
 static inline double ListGetDouble(VMVa_List &tags)
 {
-	if (tags.curindex < tags.numargs && tags.args[tags.curindex].Type == REGT_FLOAT)
+	if (tags.curindex < tags.numargs)
 	{
-		return tags.args[tags.curindex++].f;
+		if (tags.reginfo[tags.curindex] == REGT_FLOAT)
+		{
+			return tags.args[tags.curindex++].f;
+		}
+		if (tags.reginfo[tags.curindex] == REGT_INT)
+		{
+			return tags.args[tags.curindex++].i;
+		}
+		ThrowAbortException(X_OTHER, "Invalid parameter in draw function, float expected");
 	}
-	ThrowAbortException(X_OTHER, "Invalid parameter in draw function, float expected");
 	return 0;
 }
 
@@ -994,8 +1005,8 @@ DEFINE_ACTION_FUNCTION(_Screen, VirtualToRealCoords)
 	PARAM_FLOAT(h);
 	PARAM_FLOAT(vw);
 	PARAM_FLOAT(vh);
-	PARAM_BOOL_DEF(vbottom);
-	PARAM_BOOL_DEF(handleaspect);
+	PARAM_BOOL(vbottom);
+	PARAM_BOOL(handleaspect);
 	screen->VirtualToRealCoords(x, y, w, h, vw, vh, vbottom, handleaspect);
 	if (numret >= 1) ret[0].SetVector2(DVector2(x, y));
 	if (numret >= 2) ret[1].SetVector2(DVector2(w, h));
@@ -1079,7 +1090,7 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawLine)
 	PARAM_INT(x1);
 	PARAM_INT(y1);
 	PARAM_INT(color);
-	PARAM_INT_DEF(alpha);
+	PARAM_INT(alpha);
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->DrawLine(x0, y0, x1, y1, -1, color, alpha);
 	return 0;
@@ -1100,7 +1111,7 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawThickLine)
 	PARAM_INT(y1);
 	PARAM_FLOAT(thickness);
 	PARAM_INT(color);
-	PARAM_INT_DEF(alpha);
+	PARAM_INT(alpha);
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->DrawLine(x0, y0, x1, y1, -1, color, alpha);
 	return 0;
@@ -1170,7 +1181,7 @@ DEFINE_ACTION_FUNCTION(_Screen, Clear)
 	PARAM_INT(x2);
 	PARAM_INT(y2);
 	PARAM_INT(color);
-	PARAM_INT_DEF(palcol);
+	PARAM_INT(palcol);
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 	screen->Clear(x1, y1, x2, y2, palcol, color);
 	return 0;

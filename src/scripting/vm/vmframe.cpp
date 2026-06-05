@@ -44,11 +44,17 @@
 #include "c_cvars.h"
 #include "version.h"
 
+#if (defined(_M_X64  ) || defined(__x86_64) || defined(__x86_64__) || defined(_M_AMD64) || defined(__amd64 ) || defined(__amd64__ ))
+#define ARCH_X64
+#endif
+
+#ifdef ARCH_X64
 CUSTOM_CVAR(Bool, vm_jit, true, CVAR_NOINITCALL)
 {
 	Printf("You must restart " GAMENAME " for this change to take effect.\n");
 	Printf("This cvar is currently not saved. You must specify it on the command line.");
 }
+#endif
 
 cycle_t VMCycles[10];
 int VMCalls[10];
@@ -58,6 +64,49 @@ IMPLEMENT_CLASS(VMException, false, false)
 #endif
 
 TArray<VMFunction *> VMFunction::AllFunctions;
+
+// Creates the register type list for a function.
+// Native functions only need this to assert their parameters in debug mode, script functions use this to load their registers from the VMValues.
+void VMFunction::CreateRegUse()
+{
+#ifdef NDEBUG
+	if (VarFlags & VARF_Native) return;	// we do not need this for native functions in release builds.
+#endif
+	int count = 0;
+	if (!Proto)
+	{
+		if (RegTypes) return;
+		Printf(TEXTCOLOR_ORANGE "Function without prototype needs register info manually set: %s\n", PrintableName.GetChars());
+		return;
+	}
+	assert(Proto->isPrototype());
+
+	for (auto arg : Proto->ArgumentTypes)
+	{
+		count += arg? arg->GetRegCount() : 1;
+	}
+	uint8_t *regp;
+	RegTypes = regp = (uint8_t*)ClassDataAllocator.Alloc(count);
+	count = 0;
+	for (unsigned i = 0; i < Proto->ArgumentTypes.Size(); i++)
+	{
+		auto arg = Proto->ArgumentTypes[i];
+		auto flg = ArgFlags.Size() > i ? ArgFlags[i] : 0;
+		if (arg == nullptr)
+		{
+			// Marker for start of varargs.
+			*regp++ = REGT_NIL;
+		}
+		else if ((flg & VARF_Out) && !arg->isPointer())
+		{
+			*regp++ = REGT_POINTER;
+		}
+		else for (int j = 0; j < arg->GetRegCount(); j++)
+		{
+			*regp++ = arg->GetRegType();
+		}
+	}
+}
 
 VMScriptFunction::VMScriptFunction(FName name)
 {
@@ -215,9 +264,24 @@ int VMScriptFunction::PCToLine(const VMOP *pc)
 	return -1;
 }
 
+static bool CanJit(VMScriptFunction *func)
+{
+	// Asmjit has a 256 register limit. Stay safely away from it as the jit compiler uses a few for temporaries as well.
+	// Any function exceeding the limit will use the VM - a fair punishment to someone for writing a function so bloated ;)
+
+	int maxregs = 200;
+	if (func->NumRegA + func->NumRegD + func->NumRegF + func->NumRegS < maxregs)
+		return true;
+
+	Printf(TEXTCOLOR_ORANGE "%s is using too many registers (%d of max %d)! Function will not use native code.\n", func->PrintableName.GetChars(), func->NumRegA + func->NumRegD + func->NumRegF + func->NumRegS, maxregs);
+
+	return false;
+}
+
 int VMScriptFunction::FirstScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret)
 {
-	if (vm_jit)
+#ifdef ARCH_X64
+	if (vm_jit && CanJit(static_cast<VMScriptFunction*>(func)))
 	{
 		func->ScriptCall = JitCompile(static_cast<VMScriptFunction*>(func));
 		if (!func->ScriptCall)
@@ -227,6 +291,9 @@ int VMScriptFunction::FirstScriptCall(VMFunction *func, VMValue *params, int num
 	{
 		func->ScriptCall = VMExec;
 	}
+#else
+	func->ScriptCall = VMExec;
+#endif
 
 	return func->ScriptCall(func, params, numparams, ret, numret);
 }
@@ -236,7 +303,7 @@ int VMNativeFunction::NativeScriptCall(VMFunction *func, VMValue *params, int nu
 	try
 	{
 		VMCycles[0].Unclock();
-		numret = static_cast<VMNativeFunction *>(func)->NativeCall(params, func->DefaultArgs, numparams, returns, numret);
+		numret = static_cast<VMNativeFunction *>(func)->NativeCall(VM_INVOKE(params, numparams, returns, numret, func->RegTypes));
 		VMCycles[0].Clock();
 
 		return numret;
@@ -511,7 +578,7 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 	{	
 		if (func->VarFlags & VARF_Native)
 		{
-			return static_cast<VMNativeFunction *>(func)->NativeCall(params, func->DefaultArgs, numparams, results, numresults);
+			return static_cast<VMNativeFunction *>(func)->NativeCall(VM_INVOKE(params, numparams, results, numresults, func->RegTypes));
 		}
 		else
 		{
@@ -566,6 +633,21 @@ int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, 
 	}
 #endif
 }
+
+int VMCallWithDefaults(VMFunction *func, TArray<VMValue> &params, VMReturn *results, int numresults/*, VMException **trap = NULL*/)
+{
+	if (func->DefaultArgs.Size() > params.Size())
+	{
+		auto oldp = params.Size();
+		params.Resize(func->DefaultArgs.Size());
+		for (unsigned i = oldp; i < params.Size(); i++)
+		{
+			params[i] = func->DefaultArgs[i];
+		}
+	}
+	return VMCall(func, params.Data(), params.Size(), results, numresults);
+}
+
 
 // Exception stuff for the VM is intentionally placed there, because having this in vmexec.cpp would subject it to inlining
 // which we do not want because it increases the local stack requirements of Exec which are already too high.
@@ -658,7 +740,7 @@ void ThrowAbortException(VMScriptFunction *sfunc, VMOP *line, EVMAbortException 
 DEFINE_ACTION_FUNCTION(DObject, ThrowAbortException)
 {
 	PARAM_PROLOGUE;
-	FString s = FStringFormat(param, defaultparam, numparam, ret, numret);
+	FString s = FStringFormat(VM_ARGS_NAMES);
 	ThrowAbortException(X_OTHER, s.GetChars());
 	return 0;
 }

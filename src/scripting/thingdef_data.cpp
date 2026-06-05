@@ -359,6 +359,7 @@ static FFlagDef ActorFlagDefs[]=
 	DEFINE_FLAG2(BOUNCE_AutoOffFloorOnly, BOUNCEAUTOOFFFLOORONLY, AActor, BounceFlags),
 	DEFINE_FLAG2(BOUNCE_UseBounceState, USEBOUNCESTATE, AActor, BounceFlags),
 	DEFINE_FLAG2(BOUNCE_NotOnShootables, DONTBOUNCEONSHOOTABLES, AActor, BounceFlags),
+	DEFINE_FLAG2(BOUNCE_BounceOnUnrips, BOUNCEONUNRIPPABLES, AActor, BounceFlags),
 };
 
 // These won't be accessible through bitfield variables
@@ -942,6 +943,8 @@ void InitThingdef()
 	auto fcp = NewStruct("FCheckPosition", nullptr);
 	fcp->mConstructor = *FindFunction(fcp, "_Constructor")->VMPointer;
 	fcp->mDestructor = *FindFunction(fcp, "_Destructor")->VMPointer;
+	static const uint8_t reguse[] = { REGT_POINTER };
+	fcp->mConstructor->RegTypes = fcp->mDestructor->RegTypes = reguse;
 	fcp->Size = sizeof(FCheckPosition);
 	fcp->Align = alignof(FCheckPosition);
 
@@ -990,11 +993,6 @@ void SynthesizeFlagFields()
 		}
 	}
 }
-DEFINE_ACTION_FUNCTION(DObject, GameType)
-{
-	PARAM_PROLOGUE;
-	ACTION_RETURN_INT(gameinfo.gametype);
-}
 
 DEFINE_ACTION_FUNCTION(DObject, BAM)
 {
@@ -1007,7 +1005,7 @@ DEFINE_ACTION_FUNCTION(FStringTable, Localize)
 {
 	PARAM_PROLOGUE;
 	PARAM_STRING(label);
-	PARAM_BOOL_DEF(prefixed);
+	PARAM_BOOL(prefixed);
 	if (!prefixed) ACTION_RETURN_STRING(GStrings(label));
 	if (label[0] != '$') ACTION_RETURN_STRING(label);
 	ACTION_RETURN_STRING(GStrings(&label[1]));
@@ -1022,10 +1020,16 @@ DEFINE_ACTION_FUNCTION(FStringStruct, Replace)
 	return 0;
 }
 
-FString FStringFormat(VM_ARGS)
+FString FStringFormat(VM_ARGS, int offset)
 {
-	assert(param[0].Type == REGT_STRING);
-	FString fmtstring = param[0].s().GetChars();
+	PARAM_VA_POINTER(va_reginfo)	// Get the hidden type information array
+	assert(va_reginfo[offset] == REGT_STRING);
+
+	FString fmtstring = param[offset].s().GetChars();
+
+	param += offset;
+	numparam -= offset;
+	va_reginfo += offset;
 
 	// note: we don't need a real printf format parser.
 	//       enough to simply find the subtitution tokens and feed them to the real printf after checking types.
@@ -1076,7 +1080,7 @@ FString FStringFormat(VM_ARGS)
 					in_fmt = false;
 					// fail if something was found, but it's not a string
 					if (argnum >= numparam) ThrowAbortException(X_FORMAT_ERROR, "Not enough arguments for format.");
-					if (param[argnum].Type != REGT_STRING) ThrowAbortException(X_FORMAT_ERROR, "Expected a string for format %s.", fmt_current.GetChars());
+					if (va_reginfo[argnum] != REGT_STRING) ThrowAbortException(X_FORMAT_ERROR, "Expected a string for format %s.", fmt_current.GetChars());
 					// append
 					output.AppendFormat(fmt_current.GetChars(), param[argnum].s().GetChars());
 					if (!haveargnums) argnum = ++argauto;
@@ -1092,7 +1096,7 @@ FString FStringFormat(VM_ARGS)
 					in_fmt = false;
 					// fail if something was found, but it's not a string
 					if (argnum >= numparam) ThrowAbortException(X_FORMAT_ERROR, "Not enough arguments for format.");
-					if (param[argnum].Type != REGT_POINTER) ThrowAbortException(X_FORMAT_ERROR, "Expected a pointer for format %s.", fmt_current.GetChars());
+					if (va_reginfo[argnum] != REGT_POINTER) ThrowAbortException(X_FORMAT_ERROR, "Expected a pointer for format %s.", fmt_current.GetChars());
 					// append
 					output.AppendFormat(fmt_current.GetChars(), param[argnum].a);
 					if (!haveargnums) argnum = ++argauto;
@@ -1114,10 +1118,10 @@ FString FStringFormat(VM_ARGS)
 					in_fmt = false;
 					// fail if something was found, but it's not an int
 					if (argnum >= numparam) ThrowAbortException(X_FORMAT_ERROR, "Not enough arguments for format.");
-					if (param[argnum].Type != REGT_INT &&
-						param[argnum].Type != REGT_FLOAT) ThrowAbortException(X_FORMAT_ERROR, "Expected a numeric value for format %s.", fmt_current.GetChars());
+					if (va_reginfo[argnum] != REGT_INT &&
+						va_reginfo[argnum] != REGT_FLOAT) ThrowAbortException(X_FORMAT_ERROR, "Expected a numeric value for format %s.", fmt_current.GetChars());
 					// append
-					output.AppendFormat(fmt_current.GetChars(), param[argnum].ToInt());
+					output.AppendFormat(fmt_current.GetChars(), param[argnum].ToInt(va_reginfo[argnum]));
 					if (!haveargnums) argnum = ++argauto;
 					else argnum = -1;
 					break;
@@ -1138,10 +1142,10 @@ FString FStringFormat(VM_ARGS)
 					in_fmt = false;
 					// fail if something was found, but it's not a float
 					if (argnum >= numparam) ThrowAbortException(X_FORMAT_ERROR, "Not enough arguments for format.");
-					if (param[argnum].Type != REGT_INT &&
-						param[argnum].Type != REGT_FLOAT) ThrowAbortException(X_FORMAT_ERROR, "Expected a numeric value for format %s.", fmt_current.GetChars());
+					if (va_reginfo[argnum] != REGT_INT &&
+						va_reginfo[argnum] != REGT_FLOAT) ThrowAbortException(X_FORMAT_ERROR, "Expected a numeric value for format %s.", fmt_current.GetChars());
 					// append
-					output.AppendFormat(fmt_current.GetChars(), param[argnum].ToDouble());
+					output.AppendFormat(fmt_current.GetChars(), param[argnum].ToDouble(va_reginfo[argnum]));
 					if (!haveargnums) argnum = ++argauto;
 					else argnum = -1;
 					break;
@@ -1183,7 +1187,7 @@ FString FStringFormat(VM_ARGS)
 DEFINE_ACTION_FUNCTION(FStringStruct, Format)
 {
 	PARAM_PROLOGUE;
-	FString s = FStringFormat(param, defaultparam, numparam, ret, numret);
+	FString s = FStringFormat(VM_ARGS_NAMES);
 	ACTION_RETURN_STRING(s);
 }
 
@@ -1191,7 +1195,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, AppendFormat)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	// first parameter is the self pointer
-	FString s = FStringFormat(param+1, defaultparam, numparam-1, ret, numret);
+	FString s = FStringFormat(VM_ARGS_NAMES, 1);
 	(*self) += s;
 	return 0;
 }
@@ -1199,8 +1203,8 @@ DEFINE_ACTION_FUNCTION(FStringStruct, AppendFormat)
 DEFINE_ACTION_FUNCTION(FStringStruct, Mid)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
-	PARAM_UINT_DEF(pos);
-	PARAM_UINT_DEF(len);
+	PARAM_UINT(pos);
+	PARAM_UINT(len);
 	FString s = self->Mid(pos, len);
 	ACTION_RETURN_STRING(s);
 }
@@ -1261,7 +1265,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, IndexOf)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	PARAM_STRING(substr);
-	PARAM_INT_DEF(startIndex);
+	PARAM_INT(startIndex);
 	ACTION_RETURN_INT(self->IndexOf(substr, startIndex));
 }
 
@@ -1269,7 +1273,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, LastIndexOf)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	PARAM_STRING(substr);
-	PARAM_INT_DEF(endIndex);
+	PARAM_INT(endIndex);
 	ACTION_RETURN_INT(self->LastIndexOfBroken(substr, endIndex));
 }
 
@@ -1277,7 +1281,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, RightIndexOf)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	PARAM_STRING(substr);
-	PARAM_INT_DEF(endIndex);
+	PARAM_INT(endIndex);
 	ACTION_RETURN_INT(self->LastIndexOf(substr, endIndex));
 }
 
@@ -1298,7 +1302,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, ToLower)
 DEFINE_ACTION_FUNCTION(FStringStruct, ToInt)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
-	PARAM_INT_DEF(base);
+	PARAM_INT(base);
 	ACTION_RETURN_INT(self->ToLong(base));
 }
 
@@ -1313,7 +1317,7 @@ DEFINE_ACTION_FUNCTION(FStringStruct, Split)
 	PARAM_SELF_STRUCT_PROLOGUE(FString);
 	PARAM_POINTER(tokens, TArray<FString>);
 	PARAM_STRING(delimiter);
-	PARAM_INT_DEF(keepEmpty);
+	PARAM_INT(keepEmpty);
 	self->Split(*tokens, delimiter, static_cast<FString::EmptyTokenType>(keepEmpty));
 	return 0;
 }

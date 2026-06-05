@@ -48,6 +48,7 @@
 #include "r_state.h"
 #include "vm.h"
 #include "v_text.h"
+#include "g_levellocals.h"
 
 #include "gi.h"
 
@@ -891,7 +892,7 @@ void R_InitTranslationTables ()
 
 	// Each player corpse has its own translation so they won't change
 	// color if the player who created them changes theirs.
-	for (i = 0; i < BODYQUESIZE; ++i)
+	for (i = 0; i < level.BODYQUESIZE; ++i)
 	{
 		PushIdentityTable(TRANSLATION_PlayerCorpses);
 	}

@@ -196,8 +196,7 @@ struct VMReturn
 
 struct VMRegisters;
 
-
-struct VMValue
+struct TypedVMValue
 {
 	union
 	{
@@ -209,14 +208,91 @@ struct VMValue
 		const FString *sp;
 	};
 
-	// Unfortunately, FString cannot be used directly.
-	// Fortunately, it is relatively simple.
+	const FString &s() const { return *sp; }
+
+	TypedVMValue()
+	{
+		a = NULL;
+		Type = REGT_NIL;
+	}
+	TypedVMValue(const TypedVMValue &o)
+	{
+		biggest = o.biggest;
+	}
+	TypedVMValue(int v)
+	{
+		i = v;
+		Type = REGT_INT;
+	}
+	TypedVMValue(double v)
+	{
+		f = v;
+		Type = REGT_FLOAT;
+	}
+
+	TypedVMValue(const FString *s)
+	{
+		sp = s;
+		Type = REGT_STRING;
+	}
+	TypedVMValue(DObject *v)
+	{
+		a = v;
+		Type = REGT_POINTER;
+	}
+	TypedVMValue(void *v)
+	{
+		a = v;
+		Type = REGT_POINTER;
+	}
+	TypedVMValue &operator=(const TypedVMValue &o)
+	{
+		biggest = o.biggest;
+		return *this;
+	}
+	TypedVMValue &operator=(int v)
+	{
+		i = v;
+		Type = REGT_INT;
+		return *this;
+	}
+	TypedVMValue &operator=(double v)
+	{
+		f = v;
+		Type = REGT_FLOAT;
+		return *this;
+	}
+	TypedVMValue &operator=(const FString *v)
+	{
+		sp = v;
+		Type = REGT_STRING;
+		return *this;
+	}
+	TypedVMValue &operator=(DObject *v)
+	{
+		a = v;
+		Type = REGT_POINTER;
+		return *this;
+	}
+};
+
+
+struct VMValue
+{
+	union
+	{
+		int i;
+		void *a;
+		double f;
+		struct { int foo[2]; } biggest;
+		const FString *sp;
+	};
+
 	const FString &s() const { return *sp; }
 
 	VMValue()
 	{
 		a = NULL;
-		Type = REGT_NIL;
 	}
 	VMValue(const VMValue &o)
 	{
@@ -225,12 +301,10 @@ struct VMValue
 	VMValue(int v)
 	{
 		i = v;
-		Type = REGT_INT;
 	}
 	VMValue(double v)
 	{
 		f = v;
-		Type = REGT_FLOAT;
 	}
 	VMValue(const char *s) = delete;
 	VMValue(const FString &s) = delete;
@@ -238,39 +312,38 @@ struct VMValue
 	VMValue(const FString *s)
 	{
 		sp = s;
-		Type = REGT_STRING;
 	}
 	VMValue(DObject *v)
 	{
 		a = v;
-		Type = REGT_POINTER;
 	}
 	VMValue(void *v)
 	{
 		a = v;
-		Type = REGT_POINTER;
 	}
 	VMValue &operator=(const VMValue &o)
 	{
 		biggest = o.biggest;
 		return *this;
 	}
+	VMValue &operator=(const TypedVMValue &o)
+	{
+		memcpy(&biggest, &o.biggest, sizeof(biggest));
+		return *this;
+	}
 	VMValue &operator=(int v)
 	{
 		i = v;
-		Type = REGT_INT;
 		return *this;
 	}
 	VMValue &operator=(double v)
 	{
 		f = v;
-		Type = REGT_FLOAT;
 		return *this;
 	}
 	VMValue &operator=(const FString *v)
 	{
 		sp = v;
-		Type = REGT_STRING;
 		return *this;
 	}
 	VMValue &operator=(const FString &v) = delete;
@@ -278,10 +351,9 @@ struct VMValue
 	VMValue &operator=(DObject *v)
 	{
 		a = v;
-		Type = REGT_POINTER;
 		return *this;
 	}
-	int ToInt()
+	int ToInt(int Type)
 	{
 		if (Type == REGT_INT)
 		{
@@ -298,7 +370,7 @@ struct VMValue
 		// FIXME
 		return 0;
 	}
-	double ToDouble()
+	double ToDouble(int Type)
 	{
 		if (Type == REGT_FLOAT)
 		{
@@ -321,14 +393,16 @@ class VMFunction
 {
 public:
 	bool Unsafe = false;
-	int VarFlags = 0; // [ZZ] this replaces 5+ bool fields
 	uint8_t ImplicitArgs = 0;	// either 0 for static, 1 for method or 3 for action
+	int VarFlags = 0; // [ZZ] this replaces 5+ bool fields
 	unsigned VirtualIndex = ~0u;
 	FName Name;
-	TArray<VMValue> DefaultArgs;
+	const uint8_t *RegTypes = nullptr;
+	TArray<TypedVMValue> DefaultArgs;
 	FString PrintableName;	// so that the VM can print meaningful info if something in this function goes wrong.
 
 	class PPrototype *Proto;
+	TArray<uint32_t> ArgFlags;		// Should be the same length as Proto->ArgumentTypes
 
 	int(*ScriptCall)(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret) = nullptr;
 
@@ -353,14 +427,34 @@ public:
 		}
 		AllFunctions.Clear();
 	}
+	static void CreateRegUseInfo()
+	{
+		for (auto f : AllFunctions)
+		{
+			f->CreateRegUse();
+		}
+	}
 	static TArray<VMFunction *> AllFunctions;
 protected:
+	void CreateRegUse();
 };
+
+// Use this in the prototype for a native function.
+
+#ifdef NDEBUG
+#define VM_ARGS			VMValue *param, int numparam, VMReturn *ret, int numret
+#define VM_ARGS_NAMES	param, numparam, ret, numret
+#define VM_INVOKE(param, numparam, ret, numret, reginfo) (param), (numparam), (ret), (numret)
+#else
+#define VM_ARGS			VMValue *param, int numparam, VMReturn *ret, int numret, const uint8_t *reginfo
+#define VM_ARGS_NAMES	param, numparam, ret, numret, reginfo
+#define VM_INVOKE(param, numparam, ret, numret, reginfo) (param), (numparam), (ret), (numret), (reginfo)
+#endif
 
 class VMNativeFunction : public VMFunction
 {
 public:
-	typedef int (*NativeCallType)(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret);
+	typedef int (*NativeCallType)(VM_ARGS);
 
 	// 8 is VARF_Native. I can't write VARF_Native because of circular references between this and dobject/dobjtype.
 	VMNativeFunction() : NativeCall(NULL) { VarFlags = 8; ScriptCall = &VMNativeFunction::NativeScriptCall; }
@@ -370,15 +464,20 @@ public:
 	// Return value is the number of results.
 	NativeCallType NativeCall;
 
+	// Function pointer to a native function to be called directly by the JIT using the platform calling convention
+	void *DirectNativeCall = nullptr;
+
 private:
 	static int NativeScriptCall(VMFunction *func, VMValue *params, int numparams, VMReturn *ret, int numret);
 };
 
 int VMCall(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap = NULL*/);
+int VMCallWithDefaults(VMFunction *func, TArray<VMValue> &params, VMReturn *results, int numresults/*, VMException **trap = NULL*/);
 
-// Use this in the prototype for a native function.
-#define VM_ARGS			VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret
-#define VM_ARGS_NAMES	param, defaultparam, numparam, ret, numret
+inline int VMCallAction(VMFunction *func, VMValue *params, int numparams, VMReturn *results, int numresults/*, VMException **trap = NULL*/)
+{
+	return VMCall(func, params, numparams, results, numresults);
+}
 
 // Use these to collect the parameters in a native function.
 // variable name <x> at position <p>
@@ -390,49 +489,30 @@ bool AssertObject(void * ob);
 
 #define PARAM_NULLCHECK(ptr, var) (ptr == nullptr? NullParam(#var), ptr : ptr)
 
-#define ASSERTINT(p)					assert((p).Type == REGT_INT)
-#define ASSERTFLOAT(p)					assert((p).Type == REGT_FLOAT)
-#define ASSERTSTRING(p)					assert((p).Type == REGT_STRING)
-#define ASSERTOBJECT(p)					assert((p).Type == REGT_POINTER && AssertObject(p.a))
-#define ASSERTPOINTER(p)				assert((p).Type == REGT_POINTER)
+// This cannot assert because there is no info for varargs
+#define PARAM_VA_POINTER(x)			const uint8_t *x = (const uint8_t *)param[numparam-1].a;
 
 // For required parameters.
-#define PARAM_INT_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); int x = param[p].i;
-#define PARAM_UINT_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); unsigned x = param[p].i;
-#define PARAM_BOOL_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); bool x = !!param[p].i;
-#define PARAM_NAME_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); FName x = ENamedName(param[p].i);
-#define PARAM_SOUND_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); FSoundID x = param[p].i;
-#define PARAM_COLOR_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); PalEntry x; x.d = param[p].i;
-#define PARAM_FLOAT_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_FLOAT); double x = param[p].f;
-#define PARAM_ANGLE_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_FLOAT); DAngle x = param[p].f;
-#define PARAM_STRING_AT(p,x)		assert((p) < numparam); assert(param[p].Type == REGT_STRING); FString x = param[p].s();
-#define PARAM_STATE_AT(p,x)			assert((p) < numparam); assert(param[p].Type == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, self->GetClass());
-#define PARAM_STATE_ACTION_AT(p,x)	assert((p) < numparam); assert(param[p].Type == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, stateowner->GetClass());
-#define PARAM_POINTER_AT(p,x,type)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER); type *x = (type *)param[p].a;
-#define PARAM_POINTERTYPE_AT(p,x,type)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER); type x = (type )param[p].a;
-#define PARAM_OBJECT_AT(p,x,type)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER && AssertObject(param[p].a)); type *x = (type *)param[p].a; assert(x == NULL || x->IsKindOf(RUNTIME_CLASS(type)));
-#define PARAM_CLASS_AT(p,x,base)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER); base::MetaClass *x = (base::MetaClass *)param[p].a; assert(x == NULL || x->IsDescendantOf(RUNTIME_CLASS(base)));
-#define PARAM_POINTER_NOT_NULL_AT(p,x,type)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER); type *x = (type *)PARAM_NULLCHECK(param[p].a, #x);
-#define PARAM_OBJECT_NOT_NULL_AT(p,x,type)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER && (AssertObject(param[p].a))); type *x = (type *)PARAM_NULLCHECK(param[p].a, #x); assert(x == NULL || x->IsKindOf(RUNTIME_CLASS(type)));
-#define PARAM_CLASS_NOT_NULL_AT(p,x,base)	assert((p) < numparam); assert(param[p].Type == REGT_POINTER); base::MetaClass *x = (base::MetaClass *)PARAM_NULLCHECK(param[p].a, #x); assert(x == NULL || x->IsDescendantOf(RUNTIME_CLASS(base)));
+#define PARAM_INT_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); int x = param[p].i;
+#define PARAM_UINT_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); unsigned x = param[p].i;
+#define PARAM_BOOL_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); bool x = !!param[p].i;
+#define PARAM_NAME_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); FName x = ENamedName(param[p].i);
+#define PARAM_SOUND_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); FSoundID x = param[p].i;
+#define PARAM_COLOR_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); PalEntry x; x.d = param[p].i;
+#define PARAM_FLOAT_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_FLOAT); double x = param[p].f;
+#define PARAM_ANGLE_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_FLOAT); DAngle x = param[p].f;
+#define PARAM_STRING_AT(p,x)		assert((p) < numparam); assert(reginfo[p] == REGT_STRING); FString x = param[p].s();
+#define PARAM_STATE_AT(p,x)			assert((p) < numparam); assert(reginfo[p] == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, self->GetClass());
+#define PARAM_STATE_ACTION_AT(p,x)	assert((p) < numparam); assert(reginfo[p] == REGT_INT); FState *x = (FState *)StateLabels.GetState(param[p].i, stateowner->GetClass());
+#define PARAM_POINTER_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); type *x = (type *)param[p].a;
+#define PARAM_OUTPOINTER_AT(p,x,type)	assert((p) < numparam); type *x = (type *)param[p].a;
+#define PARAM_POINTERTYPE_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); type x = (type )param[p].a;
+#define PARAM_OBJECT_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER && AssertObject(param[p].a)); type *x = (type *)param[p].a; assert(x == NULL || x->IsKindOf(RUNTIME_CLASS(type)));
+#define PARAM_CLASS_AT(p,x,base)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); base::MetaClass *x = (base::MetaClass *)param[p].a; assert(x == NULL || x->IsDescendantOf(RUNTIME_CLASS(base)));
+#define PARAM_POINTER_NOT_NULL_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); type *x = (type *)PARAM_NULLCHECK(param[p].a, #x);
+#define PARAM_OBJECT_NOT_NULL_AT(p,x,type)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER && (AssertObject(param[p].a))); type *x = (type *)PARAM_NULLCHECK(param[p].a, #x); assert(x == NULL || x->IsKindOf(RUNTIME_CLASS(type)));
+#define PARAM_CLASS_NOT_NULL_AT(p,x,base)	assert((p) < numparam); assert(reginfo[p] == REGT_POINTER); base::MetaClass *x = (base::MetaClass *)PARAM_NULLCHECK(param[p].a, #x); assert(x == NULL || x->IsDescendantOf(RUNTIME_CLASS(base)));
 
-#define PARAM_EXISTS(p)					((p) < numparam)
-
-#define PARAM_INT_DEF_AT(p,x)			int x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = param[p].i; } else { ASSERTINT(defaultparam[p]); x = defaultparam[p].i; }
-#define PARAM_UINT_DEF_AT(p,x)			unsigned x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = param[p].i; } else { ASSERTINT(defaultparam[p]); x = defaultparam[p].i; }
-#define PARAM_BOOL_DEF_AT(p,x)			bool x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = !!param[p].i; } else { ASSERTINT(defaultparam[p]); x = !!defaultparam[p].i; }
-#define PARAM_NAME_DEF_AT(p,x)			FName x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = ENamedName(param[p].i); } else { ASSERTINT(defaultparam[p]); x = ENamedName(defaultparam[p].i); }
-#define PARAM_SOUND_DEF_AT(p,x)			FSoundID x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = FSoundID(param[p].i); } else { ASSERTINT(defaultparam[p]); x = FSoundID(defaultparam[p].i); }
-#define PARAM_COLOR_DEF_AT(p,x)			PalEntry x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = param[p].i; } else { ASSERTINT(defaultparam[p]); x = defaultparam[p].i; }
-#define PARAM_FLOAT_DEF_AT(p,x)			double x; if (PARAM_EXISTS(p)) { ASSERTFLOAT(param[p]); x = param[p].f; } else { ASSERTFLOAT(defaultparam[p]); x = defaultparam[p].f; }
-#define PARAM_ANGLE_DEF_AT(p,x)			DAngle x; if (PARAM_EXISTS(p)) { ASSERTFLOAT(param[p]); x = param[p].f; } else { ASSERTFLOAT(defaultparam[p]); x = defaultparam[p].f; }
-#define PARAM_STRING_DEF_AT(p,x)		FString x; if (PARAM_EXISTS(p)) { ASSERTSTRING(param[p]); x = param[p].s(); } else { ASSERTSTRING(defaultparam[p]); x = defaultparam[p].s(); }
-#define PARAM_STATE_DEF_AT(p,x)			FState *x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = (FState*)StateLabels.GetState(param[p].i, self->GetClass()); } else { ASSERTINT(defaultparam[p]); x = (FState*)StateLabels.GetState(defaultparam[p].i, self->GetClass()); }
-#define PARAM_STATE_ACTION_DEF_AT(p,x)	FState *x; if (PARAM_EXISTS(p)) { ASSERTINT(param[p]); x = (FState*)StateLabels.GetState(param[p].i, stateowner->GetClass()); } else { ASSERTINT(defaultparam[p]); x = (FState*)StateLabels.GetState(defaultparam[p].i, stateowner->GetClass()); }
-#define PARAM_POINTER_DEF_AT(p,x,t)		t *x; if (PARAM_EXISTS(p)) { ASSERTPOINTER(param[p]); x = (t*)param[p].a; } else { ASSERTPOINTER(defaultparam[p]); x = (t*)defaultparam[p].a; }
-#define PARAM_OBJECT_DEF_AT(p,x,t)		t *x; if (PARAM_EXISTS(p)) { ASSERTOBJECT(param[p]); x = (t*)param[p].a; } else { ASSERTOBJECT(defaultparam[p]); x = (t*)defaultparam[p].a; }
-#define PARAM_CLASS_DEF_AT(p,x,t)		t::MetaClass *x; if (PARAM_EXISTS(p)) { x = (t::MetaClass*)param[p].a; } else { ASSERTPOINTER(defaultparam[p]); x = (t::MetaClass*)defaultparam[p].a; }
-#define PARAM_CLASS_DEF_NOT_NULL_AT(p,x,t)		t::MetaClass *x; if (PARAM_EXISTS(p)) { x = (t::MetaClass*)PARAM_NULLCHECK(param[p].a, #x); } else { x = (t::MetaClass*)PARAM_NULLCHECK(defaultparam[p].a, #x); }
 
 // The above, but with an automatically increasing position index.
 #define PARAM_PROLOGUE				int paramnum = -1;
@@ -449,6 +529,7 @@ bool AssertObject(void * ob);
 #define PARAM_STATE(x)				++paramnum; PARAM_STATE_AT(paramnum,x)
 #define PARAM_STATE_ACTION(x)		++paramnum; PARAM_STATE_ACTION_AT(paramnum,x)
 #define PARAM_POINTER(x,type)		++paramnum; PARAM_POINTER_AT(paramnum,x,type)
+#define PARAM_OUTPOINTER(x,type)		++paramnum; PARAM_OUTPOINTER_AT(paramnum,x,type)
 #define PARAM_POINTERTYPE(x,type)	++paramnum; PARAM_POINTERTYPE_AT(paramnum,x,type)
 #define PARAM_OBJECT(x,type)		++paramnum; PARAM_OBJECT_AT(paramnum,x,type)
 #define PARAM_CLASS(x,base)			++paramnum; PARAM_CLASS_AT(paramnum,x,base)
@@ -457,23 +538,7 @@ bool AssertObject(void * ob);
 #define PARAM_OBJECT_NOT_NULL(x,type)		++paramnum; PARAM_OBJECT_NOT_NULL_AT(paramnum,x,type)
 #define PARAM_CLASS_NOT_NULL(x,base)		++paramnum; PARAM_CLASS_NOT_NULL_AT(paramnum,x,base)
 
-#define PARAM_INT_DEF(x)			++paramnum; PARAM_INT_DEF_AT(paramnum,x)
-#define PARAM_UINT_DEF(x)			++paramnum; PARAM_UINT_DEF_AT(paramnum,x)
-#define PARAM_BOOL_DEF(x)			++paramnum; PARAM_BOOL_DEF_AT(paramnum,x)
-#define PARAM_NAME_DEF(x)			++paramnum; PARAM_NAME_DEF_AT(paramnum,x)
-#define PARAM_SOUND_DEF(x)			++paramnum; PARAM_SOUND_DEF_AT(paramnum,x)
-#define PARAM_COLOR_DEF(x)			++paramnum; PARAM_COLOR_DEF_AT(paramnum,x)
-#define PARAM_FLOAT_DEF(x)			++paramnum; PARAM_FLOAT_DEF_AT(paramnum,x)
-#define PARAM_ANGLE_DEF(x)			++paramnum; PARAM_ANGLE_DEF_AT(paramnum,x)
-#define PARAM_STRING_DEF(x)			++paramnum; PARAM_STRING_DEF_AT(paramnum,x)
-#define PARAM_STATE_DEF(x)			++paramnum; PARAM_STATE_DEF_AT(paramnum,x)
-#define PARAM_STATE_ACTION_DEF(x)	++paramnum; PARAM_STATE_ACTION_DEF_AT(paramnum,x)
-#define PARAM_POINTER_DEF(x,type)	++paramnum; PARAM_POINTER_DEF_AT(paramnum,x,type)
-#define PARAM_OBJECT_DEF(x,type)	++paramnum; PARAM_OBJECT_DEF_AT(paramnum,x,type)
-#define PARAM_CLASS_DEF(x,base)		++paramnum; PARAM_CLASS_DEF_AT(paramnum,x,base)
-#define PARAM_CLASS_DEF_NOT_NULL(x,base)	++paramnum; PARAM_CLASS_DEF_NOT_NULL_AT(paramnum,x,base)
-
-typedef int(*actionf_p)(VMValue *param, TArray<VMValue> &defaultparam, int numparam, VMReturn *ret, int numret);/*(VM_ARGS)*/
+typedef int(*actionf_p)(VM_ARGS);
 
 struct FieldDesc
 {
@@ -610,7 +675,7 @@ class PFunction;
 VMFunction *FindVMFunction(PClass *cls, const char *name);
 #define DECLARE_VMFUNC(cls, name) static VMFunction *name; if (name == nullptr) name = FindVMFunction(RUNTIME_CLASS(cls), #name);
 
-FString FStringFormat(VM_ARGS);
+FString FStringFormat(VM_ARGS, int offset = 0);
 
 
 unsigned GetVirtualIndex(PClass *cls, const char *funcname);

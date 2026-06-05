@@ -234,9 +234,9 @@ DEFINE_ACTION_FUNCTION(AActor, VelIntercept)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT_NOT_NULL(targ, AActor);
-	PARAM_FLOAT_DEF(speed);
-	PARAM_BOOL_DEF(aimpitch);
-	PARAM_BOOL_DEF(oldvel);
+	PARAM_FLOAT(speed);
+	PARAM_BOOL(aimpitch);
+	PARAM_BOOL(oldvel);
 	if (speed < 0)	speed = self->Speed;
 	VelIntercept(targ, self, speed, aimpitch, oldvel);
 	return 0;
@@ -432,12 +432,15 @@ void P_RemoveThing(AActor * actor)
 
 }
 
-bool P_Thing_Raise(AActor *thing, AActor *raiser, int nocheck)
+bool P_Thing_Raise(AActor *thing, AActor *raiser, int flags)
 {
+	if (!thing)	
+		return false;
+
 	FState * RaiseState = thing->GetRaiseState();
 	if (RaiseState == NULL)
 	{
-		return true;	// monster doesn't have a raise state
+		return false;	// monster doesn't have a raise state
 	}
 	
 	AActor *info = thing->GetDefault ();
@@ -452,7 +455,7 @@ bool P_Thing_Raise(AActor *thing, AActor *raiser, int nocheck)
 	thing->flags |= MF_SOLID;
 	thing->Height = info->Height;	// [RH] Use real height
 	thing->radius = info->radius;	// [RH] Use real radius
-	if (!nocheck && !P_CheckPosition (thing, thing->Pos()))
+	if (!(flags & RF_NOCHECKPOSITION) && !P_CheckPosition (thing, thing->Pos()))
 	{
 		thing->flags = oldflags;
 		thing->radius = oldradius;
@@ -460,12 +463,14 @@ bool P_Thing_Raise(AActor *thing, AActor *raiser, int nocheck)
 		return false;
 	}
 
+	if (!P_CanResurrect(raiser, thing))
+		return false;
 
 	S_Sound (thing, CHAN_BODY, "vile/raise", 1, ATTN_IDLE);
 
 	thing->Revive();
 
-	if (raiser != NULL)
+	if ((flags & RF_TRANSFERFRIENDLINESS) && raiser != nullptr)
 	{
 		// Let's copy the friendliness of the one who raised it.
 		thing->CopyFriendliness(raiser, false);
@@ -988,15 +993,15 @@ int P_Thing_Warp(AActor *caller, AActor *reference, double xofs, double yofs, do
 DEFINE_ACTION_FUNCTION(AActor, Warp)
 {
 	PARAM_SELF_PROLOGUE(AActor)
-	PARAM_OBJECT_DEF(destination, AActor)
-	PARAM_FLOAT_DEF(xofs)				
-	PARAM_FLOAT_DEF(yofs)				
-	PARAM_FLOAT_DEF(zofs)				
-	PARAM_ANGLE_DEF(angle)				
-	PARAM_INT_DEF(flags)				
-	PARAM_FLOAT_DEF(heightoffset)		
-	PARAM_FLOAT_DEF(radiusoffset)		
-	PARAM_ANGLE_DEF(pitch)				
+	PARAM_OBJECT(destination, AActor)
+	PARAM_FLOAT(xofs)				
+	PARAM_FLOAT(yofs)				
+	PARAM_FLOAT(zofs)				
+	PARAM_ANGLE(angle)				
+	PARAM_INT(flags)				
+	PARAM_FLOAT(heightoffset)		
+	PARAM_FLOAT(radiusoffset)		
+	PARAM_ANGLE(pitch)				
 
 	ACTION_RETURN_INT(!!P_Thing_Warp(self, destination, xofs, yofs, zofs, angle, flags, heightoffset, radiusoffset, pitch));
 }

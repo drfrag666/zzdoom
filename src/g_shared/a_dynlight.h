@@ -13,16 +13,16 @@ struct seg_t;
 class ADynamicLight;
 class FSerializer;
 class FLightDefaults;
-
+struct FSectionLine;
 
 enum
 {
-   LIGHT_RED = 0,
-   LIGHT_GREEN = 1,
-   LIGHT_BLUE = 2,
-   LIGHT_INTENSITY = 3,
-   LIGHT_SECONDARY_INTENSITY = 4,
-   LIGHT_SCALE = 3,
+	LIGHT_RED = 0,
+	LIGHT_GREEN = 1,
+	LIGHT_BLUE = 2,
+	LIGHT_INTENSITY = 3,
+	LIGHT_SECONDARY_INTENSITY = 4,
+	LIGHT_SCALE = 3,
 };
 
 enum LightFlag
@@ -108,12 +108,11 @@ public:
 	bool IsSpot() { return !!(lightflags & LF_SPOT); }
 	FState *targetState;
 	FLightNode * touching_sides;
-	FLightNode * touching_subsectors;
 	FLightNode * touching_sector;
 
 private:
-	double DistToSeg(const DVector3 &pos, seg_t *seg);
-	void CollectWithinRadius(const DVector3 &pos, subsector_t *subSec, float radius);
+	double DistToSeg(const DVector3 &pos, vertex_t *start, vertex_t *end);
+	void CollectWithinRadius(const DVector3 &pos, FSection *section, float radius);
 
 protected:
 	DVector3 m_off;

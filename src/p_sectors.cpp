@@ -878,17 +878,6 @@ DEFINE_ACTION_FUNCTION(_Sector, SetFade)
 //
 //=====================================================================================
 
-void sector_t::SetSpecialColor(int slot, int r, int g, int b)
-{
-	SpecialColors[slot] = PalEntry(255, r, g, b);
-}
-
-void sector_t::SetSpecialColor(int slot, PalEntry rgb)
-{
-	rgb.a = 255;
-	SpecialColors[slot] = rgb;
-}
-
 DEFINE_ACTION_FUNCTION(_Sector, SetSpecialColor)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(sector_t);
@@ -1311,7 +1300,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextHighestCeilingAt)
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(bottomz);
 	PARAM_FLOAT(topz);
-	PARAM_INT_DEF(flags);
+	PARAM_INT(flags);
 	sector_t *resultsec;
 	F3DFloor *resultff;
 	double resultheight = self->NextHighestCeilingAt(x, y, bottomz, topz, flags, &resultsec, &resultff);
@@ -1388,8 +1377,8 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	PARAM_INT_DEF(flags);
-	PARAM_FLOAT_DEF(steph);
+	PARAM_INT(flags);
+	PARAM_FLOAT(steph);
 	sector_t *resultsec;
 	F3DFloor *resultff;
 	double resultheight = self->NextLowestFloorAt(x, y, z, flags, steph, &resultsec, &resultff);
@@ -1628,7 +1617,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
-	 PARAM_BOOL_DEF(addbase);
+	 PARAM_BOOL(addbase);
 	 ACTION_RETURN_FLOAT(self->GetYOffset(pos, addbase));
  }
 
@@ -1678,7 +1667,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
-	 PARAM_BOOL_DEF(addbase);
+	 PARAM_BOOL(addbase);
 	 ACTION_RETURN_FLOAT(self->GetAngle(pos, addbase).Degrees);
  }
 
@@ -1753,7 +1742,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
 	 PARAM_INT(o);
-	 PARAM_BOOL_DEF(adj);
+	 PARAM_BOOL(adj);
 	 self->SetTexture(pos, FSetTextureID(o), adj);
 	 return 0;
  }
@@ -1770,7 +1759,7 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 PARAM_INT(pos);
 	 PARAM_FLOAT(o);
-	 PARAM_BOOL_DEF(dirty);
+	 PARAM_BOOL(dirty);
 	 self->SetPlaneTexZ(pos, o, true);	// not setting 'dirty' here is a guaranteed cause for problems.
 	 return 0;
  }
@@ -1802,13 +1791,6 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
 	 ACTION_RETURN_INT(self->GetLightLevel());
- }
-
- DEFINE_ACTION_FUNCTION(_Sector, ClearSpecial)
- {
-	 PARAM_SELF_STRUCT_PROLOGUE(sector_t);
-	 self->ClearSpecial();
-	 return 0;
  }
 
  DEFINE_ACTION_FUNCTION(_Sector, PortalBlocksView)
@@ -2135,6 +2117,26 @@ DEFINE_ACTION_FUNCTION(_Sector, NextLowestFloorAt)
 	 ACTION_RETURN_INT(self->Index());
  }
 
+ //=====================================================================================
+//
+//
+//=====================================================================================
+
+ DEFINE_ACTION_FUNCTION(_Side, SetSpecialColor)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(side_t);
+	 PARAM_INT(tier);
+	 PARAM_INT(position);
+	 PARAM_COLOR(color);
+	 if (tier >= 0 && tier < 3 && position >= 0 && position < 2)
+	 {
+		 color.a = 255;
+		 self->SetSpecialColor(tier, position, color);
+	 }
+	 return 0;
+ }
+
+
  DEFINE_ACTION_FUNCTION(_Vertex, Index)
  {
 	 PARAM_SELF_STRUCT_PROLOGUE(vertex_t);
@@ -2448,7 +2450,8 @@ DEFINE_ACTION_FUNCTION(_Secplane, HeightDiff)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(secplane_t);
 	PARAM_FLOAT(oldd);
-	if (numparam == 2)
+	PARAM_FLOAT(newd);
+	if (newd != 1e37)
 	{
 		ACTION_RETURN_FLOAT(self->HeightDiff(oldd));
 	}

@@ -261,8 +261,8 @@ DEFINE_ACTION_FUNCTION(AActor, SoundAlert)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(target, AActor);
-	PARAM_BOOL_DEF(splash);
-	PARAM_FLOAT_DEF(maxdist);
+	PARAM_BOOL(splash);
+	PARAM_FLOAT(maxdist);
 	// Note that the emitter is self, not the target of the alert! Target can be NULL.
 	P_NoiseAlert(target, self, splash, maxdist);
 	return 0;
@@ -1350,7 +1350,7 @@ DEFINE_ACTION_FUNCTION(AActor, IsVisible)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(other, AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_IsVisible(self, other, allaround, params));
 }
 
@@ -1589,7 +1589,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForTID)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForTID(self, allaround, params));
 }
 
@@ -1736,7 +1736,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForEnemies)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForEnemies(self, allaround, params));
 }
 
@@ -1931,7 +1931,7 @@ DEFINE_ACTION_FUNCTION(AActor, LookForPlayers)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL(allaround);
-	PARAM_POINTER_DEF(params, FLookExParams);
+	PARAM_POINTER(params, FLookExParams);
 	ACTION_RETURN_BOOL(P_LookForPlayers(self, allaround, params));
 }
 
@@ -2067,12 +2067,12 @@ DEFINE_ACTION_FUNCTION(AActor, A_Look)
 DEFINE_ACTION_FUNCTION(AActor, A_LookEx)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF	(flags)			
-	PARAM_FLOAT_DEF	(minseedist)	
-	PARAM_FLOAT_DEF	(maxseedist)	
-	PARAM_FLOAT_DEF (maxheardist)	
-	PARAM_ANGLE_DEF (fov)			
-	PARAM_STATE_DEF	(seestate)		
+	PARAM_INT	(flags)			
+	PARAM_FLOAT	(minseedist)	
+	PARAM_FLOAT	(maxseedist)	
+	PARAM_FLOAT (maxheardist)	
+	PARAM_ANGLE (fov)			
+	PARAM_STATE	(seestate)		
 
 	AActor *targ = NULL; // Shuts up gcc
 	double dist;
@@ -2284,7 +2284,7 @@ enum ChaseFlags
 DEFINE_ACTION_FUNCTION(AActor, A_Wander)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF(flags);
+	PARAM_INT(flags);
 	A_Wander(self, flags);
 	return 0;
 }
@@ -2757,11 +2757,63 @@ void A_DoChase (AActor *actor, bool fastchase, FState *meleestate, FState *missi
 	actor->flags &= ~MF_INCHASE;
 }
 
+//==========================================================================
+//
+// CanResurrect
+//
+// Checks if an actor can resurrect with another one, calling virtual script
+// functions to check.
+// 
+//==========================================================================
+// [MC] Code is almost a duplicate of CanCollideWith but with changes to
+// accommodate checking of just one actor.
+bool P_CanResurrect(AActor *raiser, AActor *thing)
+{
+	if (raiser == nullptr)
+		return false;
+
+	static unsigned VIndex = ~0u;
+	if (VIndex == ~0u)
+	{
+		VIndex = GetVirtualIndex(RUNTIME_CLASS(AActor), "CanResurrect");
+		assert(VIndex != ~0u);
+	}
+
+	VMValue params[3] = { raiser, thing, false };
+	VMReturn ret;
+	int retval;
+	ret.IntAt(&retval);
+
+	auto clss = raiser->GetClass();
+	VMFunction *func = clss->Virtuals.Size() > VIndex ? clss->Virtuals[VIndex] : nullptr;
+	if (func != nullptr)
+	{
+		VMCall(func, params, 3, &ret, 1);
+		if (!retval) return false;
+	}
+
+	// Pointless to be running it again if it's just self.
+	if (thing == nullptr || thing == raiser)
+		return true;
+
+	std::swap(params[0].a, params[1].a);
+	params[2].i = true;
+
+	// re-get for the other actor.
+	clss = thing->GetClass();
+	func = clss->Virtuals.Size() > VIndex ? clss->Virtuals[VIndex] : nullptr;
+	if (func != nullptr)
+	{
+		VMCall(func, params, 3, &ret, 1);
+		if (!retval) return false;
+	}
+	return true;
+}
 
 //==========================================================================
 //
 // P_CheckForResurrection (formerly part of A_VileChase)
-// Check for ressurecting a body
+// Check for resurrecting a body
 //
 //==========================================================================
 
@@ -2834,7 +2886,7 @@ static bool P_CheckForResurrection(AActor *self, bool usevilestates)
 				corpsehit->flags = oldflags;
 				corpsehit->radius = oldradius;
 				corpsehit->Height = oldheight;
-				if (!check) continue;
+				if (!check || !P_CanResurrect(self, corpsehit)) continue;
 
 				// got one!
 				temp = self->target;
@@ -2920,21 +2972,21 @@ static bool P_CheckForResurrection(AActor *self, bool usevilestates)
 DEFINE_ACTION_FUNCTION(AActor, A_Chase)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_STATE_DEF	(melee)		
-	PARAM_STATE_DEF	(missile)	
-	PARAM_INT_DEF	(flags)		
+	PARAM_STATE	(melee)		
+	PARAM_STATE	(missile)	
+	PARAM_INT	(flags)		
 
-	if (numparam > 1)
+	if (melee != nullptr || missile != nullptr || flags != 0x40000000)
 	{
 		if ((flags & CHF_RESURRECT) && P_CheckForResurrection(self, false))
 			return 0;
 		
 		A_DoChase(self, !!(flags&CHF_FASTCHASE), melee, missile, !(flags&CHF_NOPLAYACTIVE), 
-					!!(flags&CHF_NIGHTMAREFAST), !!(flags&CHF_DONTMOVE), flags);
+					!!(flags&CHF_NIGHTMAREFAST), !!(flags&CHF_DONTMOVE), flags & 0x3fffffff);
 	}
 	else // this is the old default A_Chase
 	{
-		A_DoChase(self, false, self->MeleeState, self->MissileState, true, gameinfo.nightmarefast, false, flags);
+		A_DoChase(self, false, self->MeleeState, self->MissileState, true, gameinfo.nightmarefast, false, 0);
 	}
 	return 0;
 }
@@ -2961,8 +3013,8 @@ DEFINE_ACTION_FUNCTION(AActor, A_ExtChase)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_BOOL		(domelee);
 	PARAM_BOOL		(domissile);
-	PARAM_BOOL_DEF	(playactive);
-	PARAM_BOOL_DEF	(nightmarefast);
+	PARAM_BOOL	(playactive);
+	PARAM_BOOL	(nightmarefast);
 
 	// Now that A_Chase can handle state label parameters, this function has become rather useless...
 	A_DoChase(self, false,
@@ -3106,12 +3158,12 @@ DEFINE_ACTION_FUNCTION(AActor, A_Face)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_OBJECT(faceto, AActor)
-	PARAM_ANGLE_DEF(max_turn)		
-	PARAM_ANGLE_DEF(max_pitch)		
-	PARAM_ANGLE_DEF(ang_offset)		
-	PARAM_ANGLE_DEF(pitch_offset)	
-	PARAM_INT_DEF(flags)			
-	PARAM_FLOAT_DEF(z_add)			
+	PARAM_ANGLE(max_turn)		
+	PARAM_ANGLE(max_pitch)		
+	PARAM_ANGLE(ang_offset)		
+	PARAM_ANGLE(pitch_offset)	
+	PARAM_INT(flags)			
+	PARAM_FLOAT(z_add)			
 
 	A_Face(self, faceto, max_turn, max_pitch, ang_offset, pitch_offset, flags, z_add);
 	return 0;

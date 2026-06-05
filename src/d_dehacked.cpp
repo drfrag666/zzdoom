@@ -65,6 +65,7 @@
 #include "backend/vmbuilder.h"
 #include "types.h"
 #include "m_argv.h"
+#include "actorptrselect.h"
 
 void JitDumpLog(FILE *file, VMScriptFunction *func);
 
@@ -631,131 +632,104 @@ static int GetLine (void)
 	}
 }
 
+
 // misc1 = vrange (arg +3), misc2 = hrange (arg+4)
-static int CreateMushroomFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateMushroomFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_Mushroom
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);		// spawntype
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);		// numspawns
-	buildit.Emit(OP_PARAMI, 1);					// flag
-	// vrange
-	if (value1 == 0)
-	{
-		buildit.Emit(OP_PARAM, REGT_NIL, 0);
-	}
-	else
-	{
-		buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value1)));
-	}
-	// hrange
-	if (value2 == 0)
-	{
-		buildit.Emit(OP_PARAM, REGT_NIL, 0);
-	}
-	else
-	{
-		buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(DEHToDouble(value2)));
-	}
-	return 5;
+	emitters.AddParameterPointerConst(PClass::FindClass("FatShot"));	// itemtype
+	emitters.AddParameterIntConst(0);									// numspawns
+	emitters.AddParameterIntConst(1);									// flag MSF_Classic
+	emitters.AddParameterFloatConst(value1? DEHToDouble(value1) : 4.0);	// vrange
+	emitters.AddParameterFloatConst(value2? DEHToDouble(value2) : 0.5);	// hrange
 }
 
 // misc1 = type (arg +0), misc2 = Z-pos (arg +2)
-static int CreateSpawnFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateSpawnFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_SpawnItem
-	if (InfoNames[value1-1] == NULL)
+	if (InfoNames[value1-1] == nullptr)
 	{
 		I_Error("No class found for dehackednum %d!\n", value1+1);
-		return 0;
 	}
-	int typereg = buildit.GetConstantAddress(InfoNames[value1-1]);
-	int heightreg = buildit.GetConstantFloat(value2);
-
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, typereg);	// itemtype
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);							// distance
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, heightreg);	// height
-	// The rest of the parameters to A_SpawnItem can just keep their defaults
-	return 3;
+	emitters.AddParameterPointerConst(InfoNames[value1-1]);	// itemtype
+	emitters.AddParameterFloatConst(value2);				// distance
+	emitters.AddParameterFloatConst(0);						// height
+	emitters.AddParameterIntConst(0);						// useammo
+	emitters.AddParameterIntConst(0);						// transfer_translation
 }
 
+
 // misc1 = angle (in degrees) (arg +0 but factor in current actor angle too)
-static int CreateTurnFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateTurnFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_Turn
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
-	return 1;
+	emitters.AddParameterFloatConst(value1);				// angle
 }
 
 // misc1 = angle (in degrees) (arg +0)
-static int CreateFaceFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateFaceFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_FaceTarget
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, buildit.GetConstantFloat(value1));		// angle
-	return 1;
+	emitters.AddParameterFloatConst(value1);				// angle
+	emitters.AddParameterIntConst(0);						// flags
+	emitters.AddParameterIntConst(AAPTR_DEFAULT);			// ptr
 }
 
 // misc1 = damage, misc 2 = sound
-static int CreateScratchFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateScratchFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_CustomMeleeAttack
-	buildit.EmitParamInt(value1);					// damage
-	if (value2)
-	{
-		buildit.EmitParamInt(SoundMap[value2-1]);	// hit sound
-		return 2;
-	}
-	return 1;
+	emitters.AddParameterIntConst(value1);								// damage
+	emitters.AddParameterIntConst(value2 ? (int)SoundMap[value2 - 1] : 0);	// hit sound
+	emitters.AddParameterIntConst(0);									// miss sound
+	emitters.AddParameterIntConst(NAME_None);							// damage type
+	emitters.AddParameterIntConst(true);								// bleed
 }
 
 // misc1 = sound, misc2 = attenuation none (true) or normal (false)
-static int CreatePlaySoundFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreatePlaySoundFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_PlaySound
-	int float1 = buildit.GetConstantFloat(1);
-	int attenreg = buildit.GetConstantFloat(value2 ? ATTN_NONE : ATTN_NORM);
-
-	buildit.EmitParamInt(SoundMap[value1-1]);						// soundid
-	buildit.Emit(OP_PARAMI, CHAN_BODY);								// channel
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, float1);		// volume
-	buildit.Emit(OP_PARAMI, false);									// looping
-	buildit.Emit(OP_PARAM, REGT_FLOAT | REGT_KONST, attenreg);	// attenuation
-	return 5;
+	emitters.AddParameterIntConst(value1 ? (int)SoundMap[value1 - 1] : 0);	// soundid
+	emitters.AddParameterIntConst(CHAN_BODY);							// channel
+	emitters.AddParameterFloatConst(1);									// volume
+	emitters.AddParameterIntConst(false);								// looping
+	emitters.AddParameterFloatConst(value2 ? ATTN_NONE : ATTN_NORM);	// attenuation
+	emitters.AddParameterIntConst(false);								// local
 }
 
 // misc1 = state, misc2 = probability
-static int CreateRandomJumpFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateRandomJumpFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_Jump
-	int statereg = buildit.GetConstantAddress(FindState(value1));
-
-	buildit.EmitParamInt(value2);									// maxchance
-	buildit.Emit(OP_PARAM, REGT_POINTER | REGT_KONST, statereg);	// jumpto
-	return 2;
+	emitters.AddParameterIntConst(value2);					// maxchance
+	emitters.AddParameterPointerConst(FindState(value1));	// jumpto
 }
 
 // misc1 = Boom linedef type, misc2 = sector tag
-static int CreateLineEffectFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateLineEffectFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_LineEffect
 	// This is the second MBF codepointer that couldn't be translated easily.
 	// Calling P_TranslateLineDef() here was a simple matter, as was adding an
 	// extra parameter to A_CallSpecial so as to replicate the LINEDONE stuff,
 	// but unfortunately DEHACKED lumps are processed before the map translation
 	// arrays are initialized so this didn't work.
-	buildit.EmitParamInt(value1);					// special
-	buildit.EmitParamInt(value2);					// tag
-	return 2;
+	emitters.AddParameterIntConst(value1);		// special
+	emitters.AddParameterIntConst(value2);		// tag
 }
 
 // No misc, but it's basically A_Explode with an added effect
-static int CreateNailBombFunc(VMFunctionBuilder &buildit, int value1, int value2)
+static void CreateNailBombFunc(FunctionCallEmitter &emitters, int value1, int value2)
 { // A_Explode
 	// This one does not actually have MBF-style parameters. But since
 	// we're aliasing it to an extension of A_Explode...
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// damage
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// distance
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// flags
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// alert
-	buildit.Emit(OP_PARAM, REGT_NIL, 0);			// fulldamagedistance
-	buildit.Emit(OP_PARAMI, 30);					// nails
-	buildit.Emit(OP_PARAMI, 10);					// naildamage
-	return 7;
+	emitters.AddParameterIntConst(-1);		// damage
+	emitters.AddParameterIntConst(-1);		// distance
+	emitters.AddParameterIntConst(1);		// flags (1=XF_HURTSOURCE)
+	emitters.AddParameterIntConst(0);		// alert
+	emitters.AddParameterIntConst(0);		// fulldamagedistance
+	emitters.AddParameterIntConst(30);		// nails
+	emitters.AddParameterIntConst(10);		// naildamage
+	emitters.AddParameterPointerConst(PClass::FindClass(NAME_BulletPuff));	// itemtype
+	emitters.AddParameterIntConst(NAME_None);	// damage type
 }
 
 // This array must be in sync with the Aliases array in DEHSUPP.
-static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int) =
+static void (*MBFCodePointerFactories[])(FunctionCallEmitter&, int, int) =
 {
 	// Die and Detonate are not in this list because these codepointers have
 	// no dehacked arguments and therefore do not need special handling.
@@ -775,6 +749,7 @@ static int (*MBFCodePointerFactories[])(VMFunctionBuilder&, int, int) =
 
 void SetDehParams(FState *state, int codepointer)
 {
+	static const uint8_t regts[] = { REGT_POINTER, REGT_POINTER, REGT_POINTER };
 	int value1 = state->GetMisc1();
 	int value2 = state->GetMisc2();
 	if (!(value1|value2)) return;
@@ -802,15 +777,18 @@ void SetDehParams(FState *state, int codepointer)
 		// self, stateowner, state (all are pointers)
 		buildit.Registers[REGT_POINTER].Get(numargs);
 		// Emit code to pass the standard action function parameters.
+		FunctionCallEmitter emitters(sym->Variants[0].Implementation);
 		for (int i = 0; i < numargs; i++)
 		{
-			buildit.Emit(OP_PARAM, REGT_POINTER, i);
+			emitters.AddParameterPointer(i, false);
 		}
 		// Emit code for action parameters.
-		int argcount = MBFCodePointerFactories[codepointer](buildit, value1, value2);
-		buildit.Emit(OP_TAIL_K, buildit.GetConstantAddress(sym->Variants[0].Implementation), numargs + argcount, 0);
+		MBFCodePointerFactories[codepointer](emitters, value1, value2);
+		emitters.EmitCall(&buildit);
+		buildit.Emit(OP_RET, RET_FINAL, REGT_NIL, 0);
 		// Attach it to the state.
 		VMScriptFunction *sfunc = new VMScriptFunction;
+		sfunc->RegTypes = regts;	// These functions are built after running the script compiler so they don't get this info.
 		buildit.MakeFunction(sfunc);
 		sfunc->NumArgs = numargs;
 		sfunc->ImplicitArgs = numargs;
@@ -3186,4 +3164,3 @@ DEFINE_ACTION_FUNCTION(ADehackedPickup, DetermineType)
 	}
 	ACTION_RETURN_POINTER(nullptr);
 }
-

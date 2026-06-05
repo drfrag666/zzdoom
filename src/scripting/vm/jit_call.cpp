@@ -1,116 +1,16 @@
 
 #include "jitintern.h"
+#include <map>
+#include <memory>
 
 void JitCompiler::EmitPARAM()
 {
-	using namespace asmjit;
-
-	int index = NumParam++;
 	ParamOpcodes.Push(pc);
-
-	X86Gp stackPtr, tmp;
-	X86Xmm tmp2;
-
-	switch (A)
-	{
-	case REGT_NIL:
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), (int64_t)0);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_NIL);
-		break;
-	case REGT_INT:
-		cc.mov(x86::dword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, i)), regD[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_INT);
-		break;
-	case REGT_INT | REGT_ADDROF:
-		stackPtr = newTempIntPtr();
-		cc.lea(stackPtr, x86::ptr(vmframe, offsetD + (int)(BC * sizeof(int32_t))));
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), stackPtr);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_INT | REGT_KONST:
-		cc.mov(x86::dword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, i)), konstd[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_INT);
-		break;
-	case REGT_STRING:
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, sp)), regS[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_STRING);
-		break;
-	case REGT_STRING | REGT_ADDROF:
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), regS[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_STRING | REGT_KONST:
-		tmp = newTempIntPtr();
-		cc.mov(tmp, asmjit::imm_ptr(&konsts[BC]));
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, sp)), tmp);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_STRING);
-		break;
-	case REGT_POINTER:
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), regA[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_POINTER | REGT_ADDROF:
-		stackPtr = newTempIntPtr();
-		cc.lea(stackPtr, x86::ptr(vmframe, offsetA + (int)(BC * sizeof(void*))));
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), stackPtr);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_POINTER | REGT_KONST:
-		tmp = newTempIntPtr();
-		cc.mov(tmp, asmjit::imm_ptr(konsta[BC].v));
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), tmp);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_FLOAT:
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		break;
-	case REGT_FLOAT | REGT_MULTIREG2:
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		index = NumParam++;
-		ParamOpcodes.Push(pc);
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC + 1]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		break;
-	case REGT_FLOAT | REGT_MULTIREG3:
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		index = NumParam++;
-		ParamOpcodes.Push(pc);
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC + 1]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		index = NumParam++;
-		ParamOpcodes.Push(pc);
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), regF[BC + 2]);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		break;
-	case REGT_FLOAT | REGT_ADDROF:
-		stackPtr = newTempIntPtr();
-		cc.lea(stackPtr, x86::ptr(vmframe, offsetF + (int)(BC * sizeof(double))));
-		cc.mov(x86::ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, a)), stackPtr);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_POINTER);
-		break;
-	case REGT_FLOAT | REGT_KONST:
-		tmp = newTempIntPtr();
-		tmp2 = newTempXmmSd();
-		cc.mov(tmp, asmjit::imm_ptr(konstf + BC));
-		cc.movsd(tmp2, asmjit::x86::qword_ptr(tmp));
-		cc.movsd(x86::qword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, f)), tmp2);
-		cc.mov(x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_FLOAT);
-		break;
-	default:
-		I_FatalError("Unknown REGT value passed to EmitPARAM\n");
-		break;
-	}
 }
 
 void JitCompiler::EmitPARAMI()
 {
-	int index = NumParam++;
 	ParamOpcodes.Push(pc);
-	cc.mov(asmjit::x86::dword_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, i)), (int)ABCs);
-	cc.mov(asmjit::x86::byte_ptr(vmframe, offsetParams + index * sizeof(VMValue) + offsetof(VMValue, Type)), (int)REGT_INT);
 }
 
 void JitCompiler::EmitRESULT()
@@ -120,164 +20,195 @@ void JitCompiler::EmitRESULT()
 	// be executed.
 }
 
+void JitCompiler::EmitVTBL()
+{
+	// This instruction is handled in the CALL/CALL_K instruction following it
+}
+
+void JitCompiler::EmitVtbl(const VMOP *op)
+{
+	int a = op->a;
+	int b = op->b;
+	int c = op->c;
+
+	auto label = EmitThrowExceptionLabel(X_READ_NIL);
+	cc.test(regA[b], regA[b]);
+	cc.jz(label);
+
+	cc.mov(regA[a], asmjit::x86::qword_ptr(regA[b], myoffsetof(DObject, Class)));
+	cc.mov(regA[a], asmjit::x86::qword_ptr(regA[a], myoffsetof(PClass, Virtuals) + myoffsetof(FArray, Array)));
+	cc.mov(regA[a], asmjit::x86::qword_ptr(regA[a], c * (int)sizeof(void*)));
+}
+
 void JitCompiler::EmitCALL()
 {
-	EmitDoCall(regA[A]);
+	EmitVMCall(regA[A]);
+	pc += C; // Skip RESULTs
 }
 
 void JitCompiler::EmitCALL_K()
 {
-	auto ptr = newTempIntPtr();
-	cc.mov(ptr, asmjit::imm_ptr(konsta[A].o));
-	EmitDoCall(ptr);
-}
+	VMFunction *target = static_cast<VMFunction*>(konsta[A].v);
 
-void JitCompiler::EmitTAIL()
-{
-	EmitDoTail(regA[A]);
-}
+	VMNativeFunction *ntarget = nullptr;
+	if (target && (target->VarFlags & VARF_Native))
+		ntarget = static_cast<VMNativeFunction *>(target);
 
-void JitCompiler::EmitTAIL_K()
-{
-	auto ptr = newTempIntPtr();
-	cc.mov(ptr, asmjit::imm_ptr(konsta[A].o));
-	EmitDoTail(ptr);
-}
-
-void JitCompiler::EmitDoCall(asmjit::X86Gp vmfunc)
-{
-	using namespace asmjit;
-
-	if (NumParam < B)
-		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions");
-
-	StoreInOuts(B);
-	FillReturns(pc + 1, C);
-
-	X86Gp paramsptr = newTempIntPtr();
-	cc.lea(paramsptr, x86::ptr(vmframe, offsetParams + (int)((NumParam - B) * sizeof(VMValue))));
-
-	EmitScriptCall(vmfunc, paramsptr);
-
-	LoadInOuts(B);
-	LoadReturns(pc + 1, C);
-
-	NumParam -= B;
-	ParamOpcodes.Resize(ParamOpcodes.Size() - B);
+	if (ntarget && ntarget->DirectNativeCall)
+	{
+		EmitNativeCall(ntarget);
+	}
+	else
+	{
+		auto ptr = newTempIntPtr();
+		cc.mov(ptr, asmjit::imm_ptr(target));
+		EmitVMCall(ptr);
+	}
 
 	pc += C; // Skip RESULTs
 }
 
-void JitCompiler::EmitScriptCall(asmjit::X86Gp vmfunc, asmjit::X86Gp paramsptr)
+void JitCompiler::EmitVMCall(asmjit::X86Gp vmfunc)
 {
 	using namespace asmjit;
 
-	auto scriptcall = newTempIntPtr();
-	cc.mov(scriptcall, x86::ptr(vmfunc, offsetof(VMScriptFunction, ScriptCall)));
+	CheckVMFrame();
 
-	auto result = newResultInt32();
-	auto call = cc.call(scriptcall, FuncSignature5<int, VMFunction *, VMValue*, int, VMReturn*, int>());
-	call->setRet(0, result);
-	call->setArg(0, vmfunc);
-	call->setArg(1, paramsptr);
-	call->setArg(2, Imm(B));
-	call->setArg(3, callReturns);
-	call->setArg(4, Imm(C));
-}
+	int numparams = StoreCallParams();
+	if (numparams != B)
+		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions");
 
-void JitCompiler::EmitDoTail(asmjit::X86Gp vmfunc)
-{
-	// Whereas the CALL instruction uses its third operand to specify how many return values
-	// it expects, TAIL ignores its third operand and uses whatever was passed to this Exec call.
+	if ((pc - 1)->op == OP_VTBL)
+		EmitVtbl(pc - 1);
 
-	// Note: this is not a true tail call, but then again, it isn't in the vmexec implementation either..
-
-	using namespace asmjit;
-
-	if (NumParam < B)
-		I_FatalError("OP_TAIL parameter count does not match the number of preceding OP_PARAM instructions");
-
-	StoreInOuts(B); // Is REGT_ADDROF even allowed for (true) tail calls?
+	FillReturns(pc + 1, C);
 
 	X86Gp paramsptr = newTempIntPtr();
-	cc.lea(paramsptr, x86::ptr(vmframe, offsetParams + (int)((NumParam - B) * sizeof(VMValue))));
-
-	auto result = newResultInt32();
-
-	EmitScriptTailCall(vmfunc, result, paramsptr);
-
-	EmitPopFrame();
-	cc.ret(result);
-
-	NumParam -= B;
-	ParamOpcodes.Resize(ParamOpcodes.Size() - B);
-}
-
-void JitCompiler::EmitScriptTailCall(asmjit::X86Gp vmfunc, asmjit::X86Gp result, asmjit::X86Gp paramsptr)
-{
-	using namespace asmjit;
+	cc.lea(paramsptr, x86::ptr(vmframe, offsetParams));
 
 	auto scriptcall = newTempIntPtr();
-	cc.mov(scriptcall, x86::ptr(vmfunc, offsetof(VMScriptFunction, ScriptCall)));
+	cc.mov(scriptcall, x86::ptr(vmfunc, myoffsetof(VMScriptFunction, ScriptCall)));
 
+	auto result = newResultInt32();
 	auto call = cc.call(scriptcall, FuncSignature5<int, VMFunction *, VMValue*, int, VMReturn*, int>());
 	call->setRet(0, result);
 	call->setArg(0, vmfunc);
 	call->setArg(1, paramsptr);
 	call->setArg(2, Imm(B));
-	call->setArg(3, ret);
-	call->setArg(4, numret);
+	call->setArg(3, GetCallReturns());
+	call->setArg(4, Imm(C));
+
+	LoadInOuts();
+	LoadReturns(pc + 1, C);
+
+	ParamOpcodes.Clear();
 }
 
-void JitCompiler::StoreInOuts(int b)
+int JitCompiler::StoreCallParams()
 {
 	using namespace asmjit;
 
-	for (unsigned int i = ParamOpcodes.Size() - b; i < ParamOpcodes.Size(); i++)
+	X86Gp stackPtr = newTempIntPtr();
+	X86Gp tmp = newTempIntPtr();
+	X86Xmm tmp2 = newTempXmmSd();
+
+	int numparams = 0;
+	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
 	{
-		asmjit::X86Gp stackPtr;
-		auto bc = ParamOpcodes[i]->i16u;
+		int slot = numparams++;
+
+		if (ParamOpcodes[i]->op == OP_PARAMI)
+		{
+			int abcs = ParamOpcodes[i]->i24;
+			cc.mov(asmjit::x86::dword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, i)), abcs);
+			continue;
+		}
+
+		int bc = ParamOpcodes[i]->i16u;
+
 		switch (ParamOpcodes[i]->a)
 		{
+		case REGT_NIL:
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), (int64_t)0);
+			break;
+		case REGT_INT:
+			cc.mov(x86::dword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, i)), regD[bc]);
+			break;
 		case REGT_INT | REGT_ADDROF:
-			stackPtr = newTempIntPtr();
 			cc.lea(stackPtr, x86::ptr(vmframe, offsetD + (int)(bc * sizeof(int32_t))));
 			cc.mov(x86::dword_ptr(stackPtr), regD[bc]);
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), stackPtr);
+			break;
+		case REGT_INT | REGT_KONST:
+			cc.mov(x86::dword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, i)), konstd[bc]);
+			break;
+		case REGT_STRING:
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, sp)), regS[bc]);
 			break;
 		case REGT_STRING | REGT_ADDROF:
-			// We don't have to do anything in this case. String values are never moved to virtual registers.
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), regS[bc]);
+			break;
+		case REGT_STRING | REGT_KONST:
+			cc.mov(tmp, asmjit::imm_ptr(&konsts[bc]));
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, sp)), tmp);
+			break;
+		case REGT_POINTER:
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), regA[bc]);
 			break;
 		case REGT_POINTER | REGT_ADDROF:
-			stackPtr = newTempIntPtr();
 			cc.lea(stackPtr, x86::ptr(vmframe, offsetA + (int)(bc * sizeof(void*))));
 			cc.mov(x86::ptr(stackPtr), regA[bc]);
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), stackPtr);
+			break;
+		case REGT_POINTER | REGT_KONST:
+			cc.mov(tmp, asmjit::imm_ptr(konsta[bc].v));
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), tmp);
+			break;
+		case REGT_FLOAT:
+			cc.movsd(x86::qword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, f)), regF[bc]);
+			break;
+		case REGT_FLOAT | REGT_MULTIREG2:
+			for (int j = 0; j < 2; j++)
+			{
+				cc.movsd(x86::qword_ptr(vmframe, offsetParams + (slot + j) * sizeof(VMValue) + myoffsetof(VMValue, f)), regF[bc + j]);
+			}
+			numparams++;
+			break;
+		case REGT_FLOAT | REGT_MULTIREG3:
+			for (int j = 0; j < 3; j++)
+			{
+				cc.movsd(x86::qword_ptr(vmframe, offsetParams + (slot + j) * sizeof(VMValue) + myoffsetof(VMValue, f)), regF[bc + j]);
+			}
+			numparams += 2;
 			break;
 		case REGT_FLOAT | REGT_ADDROF:
-			stackPtr = newTempIntPtr();
 			cc.lea(stackPtr, x86::ptr(vmframe, offsetF + (int)(bc * sizeof(double))));
-			cc.movsd(x86::qword_ptr(stackPtr), regF[bc]);
-
 			// When passing the address to a float we don't know if the receiving function will treat it as float, vec2 or vec3.
-			if ((unsigned int)bc + 1 < regF.Size())
+			for (int j = 0; j < 3; j++)
 			{
-				cc.add(stackPtr, (int)sizeof(double));
-				cc.movsd(x86::qword_ptr(stackPtr), regF[bc + 1]);
+				if ((unsigned int)(bc + j) < regF.Size())
+					cc.movsd(x86::qword_ptr(stackPtr, j * sizeof(double)), regF[bc + j]);
 			}
-			if ((unsigned int)bc + 2 < regF.Size())
-			{
-				cc.add(stackPtr, (int)sizeof(double));
-				cc.movsd(x86::qword_ptr(stackPtr), regF[bc + 2]);
-			}
+			cc.mov(x86::ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, a)), stackPtr);
 			break;
+		case REGT_FLOAT | REGT_KONST:
+			cc.mov(tmp, asmjit::imm_ptr(konstf + bc));
+			cc.movsd(tmp2, asmjit::x86::qword_ptr(tmp));
+			cc.movsd(x86::qword_ptr(vmframe, offsetParams + slot * sizeof(VMValue) + myoffsetof(VMValue, f)), tmp2);
+			break;
+
 		default:
+			I_FatalError("Unknown REGT value passed to EmitPARAM\n");
 			break;
 		}
 	}
+
+	return numparams;
 }
 
-void JitCompiler::LoadInOuts(int b)
+void JitCompiler::LoadInOuts()
 {
-	for (unsigned int i = ParamOpcodes.Size() - b; i < ParamOpcodes.Size(); i++)
+	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
 	{
 		const VMOP &param = *ParamOpcodes[i];
 		if (param.op == OP_PARAM && (param.a & REGT_ADDROF))
@@ -377,7 +308,231 @@ void JitCompiler::FillReturns(const VMOP *retval, int numret)
 			break;
 		}
 
-		cc.mov(x86::ptr(callReturns, i * sizeof(VMReturn) + offsetof(VMReturn, Location)), regPtr);
-		cc.mov(x86::byte_ptr(callReturns, i * sizeof(VMReturn) + offsetof(VMReturn, RegType)), type);
+		cc.mov(x86::ptr(GetCallReturns(), i * sizeof(VMReturn) + myoffsetof(VMReturn, Location)), regPtr);
+		cc.mov(x86::byte_ptr(GetCallReturns(), i * sizeof(VMReturn) + myoffsetof(VMReturn, RegType)), type);
 	}
+}
+
+void JitCompiler::EmitNativeCall(VMNativeFunction *target)
+{
+	using namespace asmjit;
+
+	auto call = cc.call(imm_ptr(target->DirectNativeCall), CreateFuncSignature(target));
+
+	if ((pc - 1)->op == OP_VTBL)
+	{
+		I_FatalError("Native direct member function calls not implemented\n");
+	}
+
+	X86Gp tmp;
+	X86Xmm tmp2;
+
+	int numparams = 0;
+	for (unsigned int i = 0; i < ParamOpcodes.Size(); i++)
+	{
+		int slot = numparams++;
+
+		if (ParamOpcodes[i]->op == OP_PARAMI)
+		{
+			int abcs = ParamOpcodes[i]->i24;
+			call->setArg(slot, imm(abcs));
+		}
+		else // OP_PARAM
+		{
+			int bc = ParamOpcodes[i]->i16u;
+			switch (ParamOpcodes[i]->a)
+			{
+			case REGT_NIL:
+				call->setArg(slot, imm(0));
+				break;
+			case REGT_INT:
+				call->setArg(slot, regD[bc]);
+				break;
+			case REGT_INT | REGT_KONST:
+				call->setArg(slot, imm(konstd[bc]));
+				break;
+			case REGT_STRING:
+				call->setArg(slot, regS[bc]);
+				break;
+			case REGT_STRING | REGT_KONST:
+				call->setArg(slot, imm_ptr(&konsts[bc]));
+				break;
+			case REGT_POINTER:
+				call->setArg(slot, regA[bc]);
+				break;
+			case REGT_POINTER | REGT_KONST:
+				call->setArg(slot, asmjit::imm_ptr(konsta[bc].v));
+				break;
+			case REGT_FLOAT:
+				call->setArg(slot, regF[bc]);
+				break;
+			case REGT_FLOAT | REGT_MULTIREG2:
+				for (int j = 0; j < 2; j++)
+					call->setArg(slot + j, regF[bc + j]);
+				numparams++;
+				break;
+			case REGT_FLOAT | REGT_MULTIREG3:
+				for (int j = 0; j < 3; j++)
+					call->setArg(slot + j, regF[bc + j]);
+				numparams += 2;
+				break;
+			case REGT_FLOAT | REGT_KONST:
+				tmp = newTempIntPtr();
+				tmp2 = newTempXmmSd();
+				cc.mov(tmp, asmjit::imm_ptr(konstf + bc));
+				cc.movsd(tmp2, asmjit::x86::qword_ptr(tmp));
+				call->setArg(slot, tmp2);
+				break;
+
+			case REGT_STRING | REGT_ADDROF:
+			case REGT_INT | REGT_ADDROF:
+			case REGT_POINTER | REGT_ADDROF:
+			case REGT_FLOAT | REGT_ADDROF:
+				I_FatalError("REGT_ADDROF not implemented for native direct calls\n");
+				break;
+
+			default:
+				I_FatalError("Unknown REGT value passed to EmitPARAM\n");
+				break;
+			}
+		}
+	}
+
+	if (numparams != B)
+		I_FatalError("OP_CALL parameter count does not match the number of preceding OP_PARAM instructions\n");
+
+	int numret = C;
+	if (numret > 1)
+		I_FatalError("Only one return parameter is supported for direct native calls\n");
+
+	if (numret == 1)
+	{
+		const auto &retval = pc[1];
+		if (retval.op != OP_RESULT)
+		{
+			I_FatalError("Expected OP_RESULT to follow OP_CALL\n");
+		}
+
+		int type = retval.b;
+		int regnum = retval.c;
+
+		if (type & REGT_KONST)
+		{
+			I_FatalError("OP_RESULT with REGT_KONST is not allowed\n");
+		}
+
+		// Note: the usage of newResultXX is intentional. Asmjit has a register allocation bug
+		// if the return virtual register is already allocated in an argument slot.
+
+		switch (type & REGT_TYPE)
+		{
+		case REGT_INT:
+			tmp = newResultInt32();
+			call->setRet(0, tmp);
+			cc.mov(regD[regnum], tmp);
+			break;
+		case REGT_FLOAT:
+			tmp2 = newResultXmmSd();
+			call->setRet(0, tmp2);
+			cc.movsd(regF[regnum], tmp2);
+			break;
+		case REGT_POINTER:
+			tmp = newResultIntPtr();
+			cc.mov(regA[regnum], tmp);
+			break;
+		case REGT_STRING:
+		case REGT_FLOAT | REGT_MULTIREG2:
+		case REGT_FLOAT | REGT_MULTIREG3:
+		default:
+			I_FatalError("Unsupported OP_RESULT type encountered in EmitNativeCall\n");
+			break;
+		}
+	}
+
+	ParamOpcodes.Clear();
+}
+
+asmjit::FuncSignature JitCompiler::CreateFuncSignature(VMFunction *func)
+{
+	using namespace asmjit;
+
+	TArray<uint8_t> args;
+	FString key;
+	for (unsigned int i = 0; i < func->Proto->ArgumentTypes.Size(); i++)
+	{
+		const PType *type = func->Proto->ArgumentTypes[i];
+		if (func->ArgFlags[i] & (VARF_Out | VARF_Ref))
+		{
+			args.Push(TypeIdOf<void*>::kTypeId);
+			key += "v";
+		}
+		else if (type == TypeVector2)
+		{
+			args.Push(TypeIdOf<double>::kTypeId);
+			args.Push(TypeIdOf<double>::kTypeId);
+			key += "ff";
+		}
+		else if (type == TypeVector3)
+		{
+			args.Push(TypeIdOf<double>::kTypeId);
+			args.Push(TypeIdOf<double>::kTypeId);
+			args.Push(TypeIdOf<double>::kTypeId);
+			key += "fff";
+		}
+		else if (type == TypeFloat64)
+		{
+			args.Push(TypeIdOf<double>::kTypeId);
+			key += "f";
+		}
+		else if (type == TypeString)
+		{
+			args.Push(TypeIdOf<void*>::kTypeId);
+			key += "s";
+		}
+		else if (type->isIntCompatible())
+		{
+			args.Push(TypeIdOf<int>::kTypeId);
+			key += "i";
+		}
+		else
+		{
+			args.Push(TypeIdOf<void*>::kTypeId);
+			key += "v";
+		}
+	}
+
+	uint32_t rettype = TypeIdOf<void>::kTypeId;
+	if (func->Proto->ReturnTypes.Size() > 0)
+	{
+		const PType *type = func->Proto->ReturnTypes[0];
+		if (type == TypeFloat64)
+		{
+			rettype = TypeIdOf<double>::kTypeId;
+			key += "rf";
+		}
+		else if (type == TypeString)
+		{
+			rettype = TypeIdOf<void*>::kTypeId;
+			key += "rs";
+		}
+		else if (type->isIntCompatible())
+		{
+			rettype = TypeIdOf<int>::kTypeId;
+			key += "ri";
+		}
+		else
+		{
+			rettype = TypeIdOf<void*>::kTypeId;
+			key += "rv";
+		}
+	}
+
+	// FuncSignature only keeps a pointer to its args array. Store a copy of each args array variant.
+	static std::map<FString, std::unique_ptr<TArray<uint8_t>>> argsCache;
+	std::unique_ptr<TArray<uint8_t>> &cachedArgs = argsCache[key];
+	if (!cachedArgs) cachedArgs.reset(new TArray<uint8_t>(args));
+
+	FuncSignature signature;
+	signature.init(CallConv::kIdHost, rettype, cachedArgs->Data(), cachedArgs->Size());
+	return signature;
 }

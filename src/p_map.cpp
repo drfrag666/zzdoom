@@ -417,7 +417,7 @@ void P_FindFloorCeiling(AActor *actor, int flags)
 DEFINE_ACTION_FUNCTION(AActor, FindFloorCeiling)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_INT_DEF(flags); 
+	PARAM_INT(flags); 
 	P_FindFloorCeiling(self, flags);
 	return 0;
 }
@@ -583,7 +583,7 @@ DEFINE_ACTION_FUNCTION(AActor, TeleportMove)
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
 	PARAM_BOOL(telefrag);
-	PARAM_BOOL_DEF(modify);
+	PARAM_BOOL(modify);
 	ACTION_RETURN_BOOL(P_TeleportMove(self, DVector3(x, y, z), telefrag, modify));
 }
 	
@@ -1071,6 +1071,8 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 				tm.ceilingpic = open.ceilingpic;
 				tm.ceilingline = ld;
 				tm.thing->BlockingLine = ld;
+				if (open.topffloor)
+					tm.thing->Blocking3DFloor = open.topffloor->model;
 			}
 		}
 
@@ -1086,6 +1088,8 @@ bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::Chec
 				tm.touchmidtex = open.touchmidtex;
 				tm.abovemidtex = open.abovemidtex;
 				tm.thing->BlockingLine = ld;
+				if (open.bottomffloor)
+					tm.thing->Blocking3DFloor = open.bottomffloor->model;
 			}
 			else if (open.bottom == tm.floorz)
 			{
@@ -1805,6 +1809,10 @@ bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, boo
 	tm.abovemidtex = false;
 	validcount++;
 
+	// Remove all old entries before returning.
+	spechit.Clear();
+	portalhit.Clear();
+
 	if ((thing->flags & MF_NOCLIP) && !(thing->flags & MF_SKULLFLY))
 		return true;
 
@@ -1882,13 +1890,15 @@ bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, boo
 	// being considered for collision with the player.
 	validcount++;
 
+	// Clear out any residual garbage left behind by PIT_CheckThing induced recursions etc.
+	spechit.Clear();
+	portalhit.Clear();
+
 	thing->BlockingMobj = NULL;
 	thing->Height = realHeight;
 	if (actorsonly || (thing->flags & MF_NOCLIP))
 		return (thing->BlockingMobj = thingblocker) == NULL;
 
-	spechit.Clear();
-	portalhit.Clear();
 
 	FMultiBlockLinesIterator it(pcheck, pos.X, pos.Y, thing->Z(), thing->Height, thing->radius, newsec);
 	FMultiBlockLinesIterator::CheckResult lcres;
@@ -1949,8 +1959,8 @@ DEFINE_ACTION_FUNCTION(AActor, CheckPosition)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_BOOL_DEF(actorsonly);
-	PARAM_POINTER_DEF(tm, FCheckPosition);
+	PARAM_BOOL(actorsonly);
+	PARAM_POINTER(tm, FCheckPosition);
 	if (tm)
 	{
 		ACTION_RETURN_BOOL(P_CheckPosition(self, DVector2(x, y), *tm, actorsonly));
@@ -2107,7 +2117,7 @@ bool P_TestMobjZ(AActor *actor, bool quick, AActor **pOnmobj)
 DEFINE_ACTION_FUNCTION(AActor, TestMobjZ)
 {
 	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_BOOL_DEF(quick);
+	PARAM_BOOL(quick);
 	
 	AActor *on = nullptr;;
 	bool retv = P_TestMobjZ(self, quick, &on);
@@ -2763,8 +2773,8 @@ DEFINE_ACTION_FUNCTION(AActor, TryMove)
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_INT(dropoff);
-	PARAM_BOOL_DEF(missilecheck);
-	PARAM_POINTER_DEF(tm, FCheckPosition);
+	PARAM_BOOL(missilecheck);
+	PARAM_POINTER(tm, FCheckPosition);
 	if (tm == nullptr)
 	{
 		ACTION_RETURN_BOOL(P_TryMove(self, DVector2(x, y), dropoff, nullptr, missilecheck));
@@ -2888,8 +2898,8 @@ DEFINE_ACTION_FUNCTION(AActor, CheckMove)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
-	PARAM_INT_DEF(flags);
-	PARAM_POINTER_DEF(tm, FCheckPosition);
+	PARAM_INT(flags);
+	PARAM_POINTER(tm, FCheckPosition);
 	if (tm == nullptr)
 	{
 		ACTION_RETURN_BOOL(P_CheckMove(self, DVector2(x, y), flags));
@@ -3548,6 +3558,18 @@ bool FSlide::BounceWall(AActor *mo)
 		return true;
 	}
 
+	// [ZZ] if bouncing missile hits a damageable linedef, it dies
+	if (P_ProjectileHitLinedef(mo, line) && mo->bouncecount > 0)
+	{
+		mo->Vel.Zero();
+		mo->Speed = 0;
+		mo->bouncecount = 0;
+		if (mo->flags & MF_MISSILE)
+			P_ExplodeMissile(mo, line, nullptr);
+		else mo->CallDie(nullptr, nullptr);
+		return true;
+	}
+
 	// The amount of bounces is limited
 	if (mo->bouncecount>0 && --mo->bouncecount == 0)
 	{
@@ -3620,7 +3642,8 @@ bool P_BounceActor(AActor *mo, AActor *BlockingMobj, bool ontop)
 		|| ((BlockingMobj->player == NULL) && (!(BlockingMobj->flags3 & MF3_ISMONSTER)))))
 	{
 		// Rippers should not bounce off shootable actors, since they rip through them.
-		if ((mo->flags & MF_MISSILE) && (mo->flags2 & MF2_RIP) && BlockingMobj->flags & MF_SHOOTABLE)
+		if ((mo->flags & MF_MISSILE) && (mo->flags2 & MF2_RIP) && BlockingMobj->flags & MF_SHOOTABLE
+			&& !(mo->BounceFlags & BOUNCE_BounceOnUnrips && BlockingMobj->flags5 & MF5_DONTRIP))
 			return true;
 
 		if (BlockingMobj->flags & MF_SHOOTABLE && mo->BounceFlags & BOUNCE_NotOnShootables)
@@ -4466,11 +4489,11 @@ DEFINE_ACTION_FUNCTION(AActor, AimLineAttack)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_ANGLE(angle);
 	PARAM_FLOAT(distance);
-	PARAM_POINTER_DEF(pLineTarget, FTranslatedLineTarget);
-	PARAM_ANGLE_DEF(vrange);
-	PARAM_INT_DEF(flags);
-	PARAM_OBJECT_DEF(target, AActor);
-	PARAM_OBJECT_DEF(friender, AActor);
+	PARAM_OUTPOINTER(pLineTarget, FTranslatedLineTarget);
+	PARAM_ANGLE(vrange);
+	PARAM_INT(flags);
+	PARAM_OBJECT(target, AActor);
+	PARAM_OBJECT(friender, AActor);
 	ACTION_RETURN_FLOAT(P_AimLineAttack(self, angle, distance, pLineTarget, vrange, flags, target, friender).Degrees);
 }
 
@@ -4623,9 +4646,13 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 		damageType = puffDefaults->DamageType;
 	}
 
-	int tflags;
-	if (nointeract || (puffDefaults && puffDefaults->flags6 & MF6_NOTRIGGER)) tflags = TRACE_NoSky;
-	else tflags = TRACE_NoSky | TRACE_Impact;
+	uint32_t tflags = TRACE_NoSky | TRACE_Impact;
+	if (nointeract || (puffDefaults && puffDefaults->flags6 & MF6_NOTRIGGER)) tflags &= ~TRACE_Impact;
+	if (spawnSky)
+	{
+		tflags &= ~TRACE_NoSky;
+		tflags |= TRACE_HitSky;
+	}
 
 	// [MC] Check the flags and set the position according to what is desired.
 	// LAF_ABSPOSITION: Treat the offset parameters as direct coordinates.
@@ -4683,7 +4710,15 @@ AActor *P_LineAttack(AActor *t1, DAngle angle, double distance,
 	{
 		if (trace.HitType != TRACE_HitActor)
 		{
+
+			if (trace.HitType == TRACE_HasHitSky || (trace.HitType == TRACE_HitWall
+				&& trace.Line->special == Line_Horizon && spawnSky))
+			{
+				puffFlags |= PF_HITSKY;
+			}
+
 			P_GeometryLineAttack(trace, t1, damage, damageType);
+
 
 			// position a bit closer for puffs
 			if (nointeract || trace.HitType != TRACE_HitWall || ((trace.Line->special != Line_Horizon) || spawnSky))
@@ -4890,11 +4925,11 @@ DEFINE_ACTION_FUNCTION(AActor, LineAttack)
 	PARAM_INT(damage);
 	PARAM_NAME(damageType);
 	PARAM_CLASS(puffType, AActor);
-	PARAM_INT_DEF(flags);
-	PARAM_POINTER_DEF(victim, FTranslatedLineTarget);
-	PARAM_FLOAT_DEF(offsetz);
-	PARAM_FLOAT_DEF(offsetforward);
-	PARAM_FLOAT_DEF(offsetside);
+	PARAM_INT(flags);
+	PARAM_OUTPOINTER(victim, FTranslatedLineTarget);
+	PARAM_FLOAT(offsetz);
+	PARAM_FLOAT(offsetforward);
+	PARAM_FLOAT(offsetside);
 
 	int acdmg;
 	if (puffType == nullptr) puffType = PClass::FindActor("BulletPuff");	// P_LineAttack does not work without a puff to take info from.
@@ -5053,11 +5088,11 @@ DEFINE_ACTION_FUNCTION(AActor, LineTrace)
 	PARAM_ANGLE(angle);
 	PARAM_FLOAT(distance);
 	PARAM_ANGLE(pitch);
-	PARAM_INT_DEF(flags);
-	PARAM_FLOAT_DEF(offsetz);
-	PARAM_FLOAT_DEF(offsetforward);
-	PARAM_FLOAT_DEF(offsetside);
-	PARAM_POINTER_DEF(data, FLineTraceData);
+	PARAM_INT(flags);
+	PARAM_FLOAT(offsetz);
+	PARAM_FLOAT(offsetforward);
+	PARAM_FLOAT(offsetside);
+	PARAM_OUTPOINTER(data, FLineTraceData);
 	ACTION_RETURN_BOOL(P_LineTrace(self,angle,distance,pitch,flags,offsetz,offsetforward,offsetside,data));
 }
 
@@ -6082,8 +6117,8 @@ DEFINE_ACTION_FUNCTION(AActor, GetRadiusDamage)
 	PARAM_OBJECT(thing, AActor);
 	PARAM_INT(damage);
 	PARAM_INT(distance);
-	PARAM_INT_DEF(fulldmgdistance);
-	PARAM_BOOL_DEF(oldradiusdmg);
+	PARAM_INT(fulldmgdistance);
+	PARAM_BOOL(oldradiusdmg);
 
 	if (!thing)
 	{
@@ -7029,7 +7064,7 @@ void SpawnShootDecal(AActor *t1, const FTraceResults &trace)
 
 	if (t1->player != NULL && t1->player->ReadyWeapon != NULL)
 	{
-		decalbase = t1->player->ReadyWeapon->GetDefault()->DecalGenerator;
+		decalbase = t1->player->ReadyWeapon->DecalGenerator;
 	}
 	else
 	{
