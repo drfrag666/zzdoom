@@ -322,8 +322,8 @@ void P_GetFloorCeilingZ(FCheckPosition &tmf, int flags)
 	sector_t *sec = (!(flags & FFCF_SAMESECTOR) || tmf.thing->Sector == NULL)? P_PointInSector(tmf.pos) : tmf.sector;
 	F3DFloor *ffc, *fff;
 
-	tmf.ceilingz = sec->NextHighestCeilingAt(tmf.pos.X, tmf.pos.Y, tmf.pos.Z, tmf.pos.Z + tmf.thing->Height, flags, &tmf.ceilingsector, &ffc);
-	tmf.floorz = tmf.dropoffz = sec->NextLowestFloorAt(tmf.pos.X, tmf.pos.Y, tmf.pos.Z, flags, tmf.thing->MaxStepHeight, &tmf.floorsector, &fff);
+	tmf.ceilingz = NextHighestCeilingAt(sec, tmf.pos.X, tmf.pos.Y, tmf.pos.Z, tmf.pos.Z + tmf.thing->Height, flags, &tmf.ceilingsector, &ffc);
+	tmf.floorz = tmf.dropoffz = NextLowestFloorAt(sec, tmf.pos.X, tmf.pos.Y, tmf.pos.Z, flags, tmf.thing->MaxStepHeight, &tmf.floorsector, &fff);
 
 	if (fff)
 	{
@@ -1798,8 +1798,8 @@ bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, boo
 	else
 	{
 		// With noclip2, we must ignore 3D floors and go right to the uppermost ceiling and lowermost floor.
-		tm.floorz = tm.dropoffz = newsec->LowestFloorAt(pos, &tm.floorsector);
-		tm.ceilingz = newsec->HighestCeilingAt(pos, &tm.ceilingsector);
+		tm.floorz = tm.dropoffz = LowestFloorAt(newsec, pos.X, pos.Y, &tm.floorsector);
+		tm.ceilingz = HighestCeilingAt(newsec, pos.X, pos.Y, &tm.ceilingsector);
 		tm.floorpic = tm.floorsector->GetTexture(sector_t::floor);
 		tm.floorterrain = tm.floorsector->GetTerrain(sector_t::floor);
 		tm.ceilingpic = tm.ceilingsector->GetTexture(sector_t::ceiling);
@@ -6485,7 +6485,7 @@ void P_FindBelowIntersectors(AActor *actor)
 
 void P_DoCrunch(AActor *thing, FChangePosition *cpos)
 {
-	if (!(thing && thing->Grind(true) && cpos)) return;
+	if (!(thing && thing->CallGrind(true) && cpos)) return;
 	cpos->nofit = true;
 
 	if ((cpos->crushchange > 0) && !(level.maptime & 3))

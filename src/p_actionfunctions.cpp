@@ -578,11 +578,11 @@ DEFINE_ACTION_FUNCTION(AActor, GetZAt)
 					}
 					else if (flags & GZF_NO3DFLOOR)
 					{
-						z = sec->HighestCeilingAt(pos);
+						z = HighestCeilingAt(sec, pos.X, pos.Y);
 					}
 					else
 					{	// [MC] Handle strict 3D floors and portal toggling via the flags passed to it.
-						z = sec->NextHighestCeilingAt(pos.X, pos.Y, mobj->Z(), mobj->Top(), pflags);
+						z = NextHighestCeilingAt(sec, pos.X, pos.Y, mobj->Z(), mobj->Top(), pflags);
 					}
 				}
 				else
@@ -593,11 +593,11 @@ DEFINE_ACTION_FUNCTION(AActor, GetZAt)
 					}
 					else if (flags & GZF_NO3DFLOOR)
 					{
-						z = sec->LowestFloorAt(pos);
+						z = LowestFloorAt(sec, pos.X, pos.Y);
 					}
 					else
 					{
-						z = sec->NextLowestFloorAt(pos.X, pos.Y, mobj->Z(), pflags, mobj->MaxStepHeight);
+						z = NextLowestFloorAt(sec, pos.X, pos.Y, mobj->Z(), pflags, mobj->MaxStepHeight);
 					}
 				}
 			}
@@ -957,33 +957,6 @@ DEFINE_ACTION_FUNCTION(AActor, A_CopyFriendliness)
 // Custom sound functions. 
 //
 //==========================================================================
-
-DEFINE_ACTION_FUNCTION(AActor, A_PlaySound)
-{
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_SOUND	(soundid);
-	PARAM_INT	(channel);
-	PARAM_FLOAT	(volume);
-	PARAM_BOOL	(looping);
-	PARAM_FLOAT	(attenuation);
-	PARAM_BOOL	(local);
-
-	if (!looping)
-	{
-		if (!(channel & CHAN_NOSTOP) || !S_IsActorPlayingSomething(self, channel & 7, soundid))
-		{
-			S_PlaySound(self, channel, soundid, (float)volume, (float)attenuation, local);
-		}
-	}
-	else
-	{
-		if (!S_IsActorPlayingSomething (self, channel&7, soundid))
-		{
-			S_PlaySound(self, channel | CHAN_LOOP, soundid, (float)volume, (float)attenuation, local);
-		}
-	}
-	return 0;
-}
 
 DEFINE_ACTION_FUNCTION(AActor, A_StopSound)
 {

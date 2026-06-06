@@ -38,7 +38,7 @@ private:
 	#include "vmops.h"
 	#undef xx
 
-	static asmjit::FuncSignature CreateFuncSignature(VMFunction *sfunc);
+	asmjit::FuncSignature CreateFuncSignature();
 
 	void Setup();
 	void CreateRegisters();
@@ -51,7 +51,7 @@ private:
 	void EmitPopFrame();
 
 	void EmitNativeCall(VMNativeFunction *target);
-	void EmitVMCall(asmjit::X86Gp ptr);
+	void EmitVMCall(asmjit::X86Gp ptr, VMFunction *target);
 	void EmitVtbl(const VMOP *op);
 
 	int StoreCallParams();
@@ -307,3 +307,6 @@ public:
 		throw AsmJitException(err, message);
 	}
 };
+
+void *AddJitFunction(asmjit::CodeHolder* code, asmjit::CCFunc *func);
+asmjit::CodeInfo GetHostCodeInfo();
