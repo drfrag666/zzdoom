@@ -19,6 +19,13 @@
 //
 // VM thunks for internal functions.
 //
+// Important note about this file: Since everything in here is supposed to be called
+// from JIT-compiled VM code it needs to be very careful about calling conventions.
+// As a result none of the integer sized struct types may be used as function
+// arguments, because current C++ calling conventions require them to be passed
+// by reference. The JIT code, however will pass them by value so any direct native function
+// taking such an argument needs to receive it as a naked int.
+//
 //-----------------------------------------------------------------------------
 
 #include "vm.h"
@@ -26,7 +33,261 @@
 #include "g_levellocals.h"
 #include "s_sound.h"
 #include "p_local.h"
+#include "v_font.h"
+#include "gstrings.h"
+#include "a_keys.h"
+#include "sbar.h"
+#include "doomstat.h"
+#include "p_acs.h"
+#include "a_pickups.h"
+#include "a_specialspot.h"
+#include "actorptrselect.h"
+#include "a_weapons.h"
+#include "d_player.h"
+#include "p_setup.h"
+#include "i_music.h"
 
+DVector2 AM_GetPosition();
+int Net_GetLatency(int *ld, int *ad);
+void PrintPickupMessage(bool localview, const FString &str);
+
+
+//=====================================================================================
+//
+// FString exports
+//
+//=====================================================================================
+
+static void LocalizeString(const FString &label, bool prefixed, FString *result)
+{
+	if (!prefixed) *result = GStrings(label);
+	else if (label[0] != '$') *result = label;
+	else *result = GStrings(&label[1]);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringTable, Localize, LocalizeString)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(label);
+	PARAM_BOOL(prefixed);
+	FString result;
+	LocalizeString(label, prefixed, &result);
+	ACTION_RETURN_STRING(result);
+}
+
+static void StringReplace(FString *self, const FString &s1, const FString &s2)
+{
+	self->Substitute(s1, s2);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Replace, StringReplace)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(s1);
+	PARAM_STRING(s2);
+	self->Substitute(s1, s2);
+	return 0;
+}
+
+static void StringMid(FString *self, unsigned pos, unsigned len, FString *result)
+{
+	*result = self->Mid(pos, len);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Mid, StringMid)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_UINT(pos);
+	PARAM_UINT(len);
+	FString s = self->Mid(pos, len);
+	ACTION_RETURN_STRING(s);
+}
+
+static void StringLeft(FString *self, unsigned len, FString *result)
+{
+	*result = self->Left(len);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Left, StringLeft)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_UINT(len);
+	FString s = self->Left(len);
+	ACTION_RETURN_STRING(s);
+}
+
+static void StringTruncate(FString *self, unsigned len)
+{
+	self->Truncate(len);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Truncate, StringTruncate)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_UINT(len);
+	self->Truncate(len);
+	return 0;
+}
+
+static void StringRemove(FString *self, unsigned index, unsigned remlen)
+{
+	self->Remove(index, remlen);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Remove, StringRemove)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_UINT(index);
+	PARAM_UINT(remlen);
+	self->Remove(index, remlen);
+	return 0;
+}
+
+static void StringCharAt(FString *self, int pos, FString *result)
+{
+	if ((unsigned)pos >= self->Len()) *result = "";
+	else *result = FString((*self)[pos]);
+}
+// CharAt and CharCodeAt is how JS does it, and JS is similar here in that it doesn't have char type as int.
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, CharAt, StringCharAt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_INT(pos);
+	FString result;
+	StringCharAt(self, pos, &result);
+	ACTION_RETURN_STRING(result);
+}
+
+static int StringCharCodeAt(FString *self, int pos)
+{
+	if ((unsigned)pos >= self->Len()) return 0;
+	else return (*self)[pos];
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, CharCodeAt, StringCharCodeAt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_INT(pos);
+	ACTION_RETURN_INT(StringCharCodeAt(self, pos));
+}
+
+static void StringFilter(FString *self, FString *result)
+{
+	*result = strbin1(*self);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Filter, StringFilter)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_STRING(strbin1(*self));
+}
+
+static int StringIndexOf(FString *self, const FString &substr, int startIndex)
+{
+	return self->IndexOf(substr, startIndex);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, IndexOf, StringIndexOf)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(substr);
+	PARAM_INT(startIndex);
+	ACTION_RETURN_INT(self->IndexOf(substr, startIndex));
+}
+
+static int StringLastIndexOf(FString *self, const FString &substr, int endIndex)
+{
+	return self->LastIndexOfBroken(substr, endIndex);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, LastIndexOf, StringLastIndexOf)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(substr);
+	PARAM_INT(endIndex);
+	ACTION_RETURN_INT(self->LastIndexOfBroken(substr, endIndex));
+}
+
+static int StringRightIndexOf(FString *self, const FString &substr, int endIndex)
+{
+	return self->LastIndexOf(substr, endIndex);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, RightIndexOf, StringRightIndexOf)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_STRING(substr);
+	PARAM_INT(endIndex);
+	ACTION_RETURN_INT(self->LastIndexOf(substr, endIndex));
+}
+
+static void StringToUpper(FString *self)
+{
+	self->ToUpper();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, ToUpper, StringToUpper)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	self->ToUpper();
+	return 0;
+}
+
+static void StringToLower(FString *self)
+{
+	self->ToLower();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, ToLower, StringToLower)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	self->ToLower();
+	return 0;
+}
+
+static int StringToInt(FString *self, int base)
+{
+	return (int)self->ToLong(base);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, ToInt, StringToInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_INT(base);
+	ACTION_RETURN_INT(self->ToLong(base));
+}
+
+static double StringToDbl(FString *self)
+{
+	return self->ToDouble();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, ToDouble, StringToDbl)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	ACTION_RETURN_FLOAT(self->ToDouble());
+}
+
+static void StringSplit(FString *self, TArray<FString> *tokens, const FString &delimiter, int keepEmpty)
+{
+	self->Split(*tokens, delimiter, static_cast<FString::EmptyTokenType>(keepEmpty));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FStringStruct, Split, StringSplit)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FString);
+	PARAM_POINTER(tokens, TArray<FString>);
+	PARAM_STRING(delimiter);
+	PARAM_INT(keepEmpty);
+	StringSplit(self, tokens, delimiter, keepEmpty);
+	return 0;
+}
+
+//=====================================================================================
+//
+// sector_t exports
+//
+//=====================================================================================
 
 DEFINE_ACTION_FUNCTION_NATIVE(_Sector, FindLowestFloorSurrounding, FindLowestFloorSurrounding)
 {
@@ -1033,7 +1294,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, RemoveForceField, RemoveForceField)
 
  //===========================================================================
  //
- // 
+ // side_t exports 
  //
  //===========================================================================
 
@@ -1281,6 +1542,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, RemoveForceField, RemoveForceField)
 
  //=====================================================================================
 //
+ // vertex_t exports
 //
 //=====================================================================================
 
@@ -1300,6 +1562,12 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, RemoveForceField, RemoveForceField)
 	 ACTION_RETURN_INT(VertexIndex(self));
  }
 
+ //=====================================================================================
+//
+// TexMan exports
+//
+//=====================================================================================
+
  // This is needed to convert the strings to char pointers.
  static void ReplaceTextures(const FString &from, const FString &to, int flags)
  {
@@ -1318,6 +1586,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, ReplaceTextures, ReplaceTextures)
 
 //=====================================================================================
 //
+// secplane_t exports
 //
 //=====================================================================================
 
@@ -1445,19 +1714,815 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Secplane, PointToDist, PointToDist)
 	ACTION_RETURN_FLOAT(self->PointToDist(DVector2(x, y), z));
 }
 
-DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_PlaySound, A_PlaySound)
+//=====================================================================================
+//
+// FFont exports
+//
+//=====================================================================================
+
+static FFont *GetFont(int name)
 {
-	PARAM_SELF_PROLOGUE(AActor);
-	PARAM_SOUND(soundid);
-	PARAM_INT(channel);
-	PARAM_FLOAT(volume);
-	PARAM_BOOL(looping);
-	PARAM_FLOAT(attenuation);
-	PARAM_BOOL(local);
-	A_PlaySound(self, soundid, channel, volume, looping, attenuation, local);
+	return V_GetFont(FName(ENamedName(name)).GetChars());
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetFont, GetFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(name);
+	ACTION_RETURN_POINTER(GetFont(name));
+}
+
+static FFont *FindFont(int name)
+{
+	return FFont::FindFont(FName(ENamedName(name)));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, FindFont, FindFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(name);
+	ACTION_RETURN_POINTER(FFont::FindFont(name));
+}
+
+static int GetCharWidth(FFont *font, int code)
+{
+	return font->GetCharWidth(code);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetCharWidth, GetCharWidth)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_INT(code);
+	ACTION_RETURN_INT(self->GetCharWidth(code));
+}
+
+static int GetHeight(FFont *font)
+{
+	return font->GetHeight();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetHeight, GetHeight)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	ACTION_RETURN_INT(self->GetHeight());
+}
+
+double GetBottomAlignOffset(FFont *font, int c);
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetBottomAlignOffset, GetBottomAlignOffset)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_INT(code);
+	ACTION_RETURN_FLOAT(GetBottomAlignOffset(self, code));
+}
+
+static int StringWidth(FFont *font, const FString &str)
+{
+	const char *txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
+	return font->StringWidth(txt);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, StringWidth, StringWidth)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_STRING(str);
+	ACTION_RETURN_INT(StringWidth(self, str));
+}
+
+static int FindFontColor(int name)
+{
+	return V_FindFontColor(ENamedName(name));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, FindFontColor, FindFontColor)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(code);
+	ACTION_RETURN_INT((int)V_FindFontColor(code));
+}
+
+static void GetCursor(FFont *font, FString *result)
+{
+	*result = font->GetCursor();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetCursor, GetCursor)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	ACTION_RETURN_STRING(FString(self->GetCursor()));
+}
+
+//=====================================================================================
+//
+// WeaponSlots exports
+//
+//=====================================================================================
+
+static int LocateWeapon(FWeaponSlots *self, PClassActor *weap, int *pslot, int *pindex)
+{
+	return self->LocateWeapon(weap, pslot, pindex);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, LocateWeapon, LocateWeapon)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_CLASS(weap, AActor);
+	int slot = 0, index = 0;
+	bool retv = self->LocateWeapon(weap, &slot, &index);
+	if (numret >= 1) ret[0].SetInt(retv);
+	if (numret >= 2) ret[1].SetInt(slot);
+	if (numret >= 3) ret[2].SetInt(index);
+	return MIN(numret, 3);
+}
+
+static PClassActor *GetWeapon(FWeaponSlots *self, int slot, int index)
+{
+	return self->GetWeapon(slot, index);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, GetWeapon, GetWeapon)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_INT(slot);
+	PARAM_INT(index);
+	ACTION_RETURN_POINTER(self->GetWeapon(slot, index));
+	return 1;
+}
+
+static int SlotSize(FWeaponSlots *self, int slot)
+{
+	return self->SlotSize(slot);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, SlotSize, SlotSize)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FWeaponSlots);
+	PARAM_INT(slot);
+	ACTION_RETURN_INT(self->SlotSize(slot));
+	return 1;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FWeaponSlots, SetupWeaponSlots, FWeaponSlots::SetupWeaponSlots)
+{
+	PARAM_PROLOGUE;
+	PARAM_OBJECT(pawn, APlayerPawn);
+	FWeaponSlots::SetupWeaponSlots(pawn);
 	return 0;
 }
 
+//=====================================================================================
+//
+// SpotState exports
+//
+//=====================================================================================
+
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, GetSpotState, DSpotState::GetSpotState)
+{
+	PARAM_PROLOGUE;
+	PARAM_BOOL(create);
+	ACTION_RETURN_OBJECT(DSpotState::GetSpotState(create));
+}
+
+static void AddSpot(DSpotState *state, AActor *spot)
+{
+	state->AddSpot(spot);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, AddSpot, AddSpot)
+{
+	PARAM_SELF_PROLOGUE(DSpotState);
+	PARAM_OBJECT(spot, AActor);
+	self->AddSpot(spot);
+	return 0;
+}
+
+static void RemoveSpot(DSpotState *state, AActor *spot)
+{
+	state->RemoveSpot(spot);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, RemoveSpot, RemoveSpot)
+{
+	PARAM_SELF_PROLOGUE(DSpotState);
+	PARAM_OBJECT(spot, AActor);
+	self->RemoveSpot(spot);
+	return 0;
+}
+
+static AActor *GetNextInList(DSpotState *self, PClassActor *type, int skipcounter)
+{
+	return self->GetNextInList(type, skipcounter);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, GetNextInList, GetNextInList)
+{
+	PARAM_SELF_PROLOGUE(DSpotState);
+	PARAM_CLASS(type, AActor);
+	PARAM_INT(skipcounter);
+	ACTION_RETURN_OBJECT(self->GetNextInList(type, skipcounter));
+}
+
+static AActor *GetSpotWithMinMaxDistance(DSpotState *self, PClassActor *type, double x, double y, double mindist, double maxdist)
+{
+	return self->GetSpotWithMinMaxDistance(type, x, y, mindist, maxdist);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, GetSpotWithMinMaxDistance, GetSpotWithMinMaxDistance)
+{
+	PARAM_SELF_PROLOGUE(DSpotState);
+	PARAM_CLASS(type, AActor);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(mindist);
+	PARAM_FLOAT(maxdist);
+	ACTION_RETURN_OBJECT(self->GetSpotWithMinMaxDistance(type, x, y, mindist, maxdist));
+}
+
+static AActor *GetRandomSpot(DSpotState *self, PClassActor *type, bool onlyonce)
+{
+	return self->GetRandomSpot(type, onlyonce);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, GetRandomSpot, GetRandomSpot)
+{
+	PARAM_SELF_PROLOGUE(DSpotState);
+	PARAM_CLASS(type, AActor);
+	PARAM_BOOL(onlyonce);
+	ACTION_RETURN_POINTER(self->GetRandomSpot(type, onlyonce));
+}
+
+//=====================================================================================
+//
+// Statusbar exports
+//
+//=====================================================================================
+
+static void SBar_SetSize(DBaseStatusBar *self, int rt, int vw, int vh, int hvw, int hvh)
+{
+	self->SetSize(rt, vw, vh, hvw, hvh);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, SetSize, SBar_SetSize)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_INT(rt);
+	PARAM_INT(vw);
+	PARAM_INT(vh);
+	PARAM_INT(hvw);
+	PARAM_INT(hvh);
+	self->SetSize(rt, vw, vh, hvw, hvh);
+	return 0;
+}
+
+static void SBar_GetHUDScale(DBaseStatusBar *self, DVector2 *result)
+{
+	*result = self->GetHUDScale();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetHUDScale, SBar_GetHUDScale)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	ACTION_RETURN_VEC2(self->GetHUDScale());
+}
+
+static void BeginStatusBar(DBaseStatusBar *self, bool fs, int w, int h, int r)
+{
+	self->BeginStatusBar(w, h, r, fs);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, BeginStatusBar, BeginStatusBar)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_BOOL(fs);
+	PARAM_INT(w);
+	PARAM_INT(h);
+	PARAM_INT(r);
+	self->BeginStatusBar(w, h, r, fs);
+	return 0;
+}
+
+static void BeginHUD(DBaseStatusBar *self, double a, bool fs, int w, int h)
+{
+	self->BeginHUD(w, h, a, fs);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, BeginHUD, BeginHUD)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_FLOAT(a);
+	PARAM_BOOL(fs);
+	PARAM_INT(w);
+	PARAM_INT(h);
+	self->BeginHUD(w, h, a, fs);
+	return 0;
+}
+
+static void UpdateScreenGeometry(DBaseStatusBar *)
+{
+	setsizeneeded = true;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, UpdateScreenGeometry, UpdateScreenGeometry)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	setsizeneeded = true;
+	return 0;
+}
+
+static void SBar_Tick(DBaseStatusBar *self)
+{
+	self->Tick();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, Tick, SBar_Tick)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	self->Tick();
+	return 0;
+}
+
+static void SBar_AttachMessage(DBaseStatusBar *self, DHUDMessageBase *msg, unsigned id, int layer)
+{
+	self->AttachMessage(msg, id, layer);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, AttachMessage, SBar_AttachMessage)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_OBJECT(msg, DHUDMessageBase);
+	PARAM_UINT(id);
+	PARAM_INT(layer);
+	self->AttachMessage(msg, id, layer);
+	return 0;
+}
+
+static void SBar_DetachMessage(DBaseStatusBar *self, DHUDMessageBase *msg)
+{
+	self->DetachMessage(msg);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DetachMessage, SBar_DetachMessage)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_OBJECT(msg, DHUDMessageBase);
+	ACTION_RETURN_OBJECT(self->DetachMessage(msg));
+}
+
+static void SBar_DetachMessageID(DBaseStatusBar *self, unsigned id)
+{
+	self->DetachMessage(id);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DetachMessageID, SBar_DetachMessageID)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_INT(id);
+	ACTION_RETURN_OBJECT(self->DetachMessage(id));
+}
+
+static void SBar_DetachAllMessages(DBaseStatusBar *self)
+{
+	self->DetachAllMessages();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DetachAllMessages, SBar_DetachAllMessages)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	self->DetachAllMessages();
+	return 0;
+}
+
+static void SBar_Draw(DBaseStatusBar *self, int state, double ticFrac)
+{
+	self->Draw((EHudState)state, ticFrac);
+}
+
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, Draw, SBar_Draw)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_INT(state);
+	PARAM_FLOAT(ticFrac);
+	self->Draw((EHudState)state, ticFrac);
+	return 0;
+}
+
+static void SetMugshotState(DBaseStatusBar *self, const FString &statename, bool wait, bool reset)
+{
+	self->mugshot.SetState(statename, wait, reset);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, SetMugshotState, SetMugshotState)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_STRING(statename);
+	PARAM_BOOL(wait);
+	PARAM_BOOL(reset);
+	self->mugshot.SetState(statename, wait, reset);
+	return 0;
+}
+
+static void SBar_ScreenSizeChanged(DBaseStatusBar *self)
+{
+	self->ScreenSizeChanged();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, ScreenSizeChanged, SBar_ScreenSizeChanged)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	self->ScreenSizeChanged();
+	return 0;
+}
+
+static double StatusbarToRealCoords(DBaseStatusBar *self, double x, double y, double w, double h, double *py, double *pw, double *ph)
+{
+	self->StatusbarToRealCoords(x, y, w, h);
+	*py = y;
+	*pw = w;
+	*ph = h;
+	return x;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, StatusbarToRealCoords, StatusbarToRealCoords)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	self->StatusbarToRealCoords(x, y, w, h);
+	if (numret > 0) ret[0].SetFloat(x);
+	if (numret > 1) ret[1].SetFloat(y);
+	if (numret > 2) ret[2].SetFloat(w);
+	if (numret > 3) ret[3].SetFloat(h);
+	return MIN(4, numret);
+}
+
+static int GetTopOfStatusbar(DBaseStatusBar *self)
+{
+	return self->GetTopOfStatusbar();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetTopOfStatusbar, GetTopOfStatusbar)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	ACTION_RETURN_INT(self->GetTopOfStatusbar());
+}
+
+void SBar_DrawTexture(DBaseStatusBar *self, int texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY)
+{
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
+	self->DrawGraphic(FSetTextureID(texid), x, y, flags, alpha, w, h, scaleX, scaleY);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawTexture, SBar_DrawTexture)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_INT(texid);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_INT(flags);
+	PARAM_FLOAT(alpha);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_FLOAT(scaleX);
+	PARAM_FLOAT(scaleY);
+	SBar_DrawTexture(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY);
+	return 0;
+}
+
+void SBar_DrawImage(DBaseStatusBar *self, const FString &texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY)
+{
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
+	self->DrawGraphic(TexMan.CheckForTexture(texid, ETextureType::Any), x, y, flags, alpha, w, h, scaleX, scaleY);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawImage, SBar_DrawImage)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_STRING(texid);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_INT(flags);
+	PARAM_FLOAT(alpha);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_FLOAT(scaleX);
+	PARAM_FLOAT(scaleY);
+	SBar_DrawImage(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY);
+	return 0;
+}
+
+void SBar_DrawString(DBaseStatusBar *self, DHUDFont *font, const FString &string, double x, double y, int flags, int trans, double alpha, int wrapwidth, int linespacing);
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawString, SBar_DrawString)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_POINTER_NOT_NULL(font, DHUDFont);
+	PARAM_STRING(string);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_INT(flags);
+	PARAM_INT(trans);
+	PARAM_FLOAT(alpha);
+	PARAM_INT(wrapwidth);
+	PARAM_INT(linespacing);
+	SBar_DrawString(self, font, string, x, y, flags, trans, alpha, wrapwidth, linespacing);
+	return 0;
+}
+
+static double SBar_TransformRect(DBaseStatusBar *self, double x, double y, double w, double h, int flags, double *py, double *pw, double *ph)
+{
+	self->TransformRect(x, y, w, h, flags);
+	*py = y;
+	*pw = w;
+	*ph = h;
+	return x;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, TransformRect, SBar_TransformRect)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_INT(flags);
+	self->TransformRect(x, y, w, h, flags);
+	if (numret > 0) ret[0].SetFloat(x);
+	if (numret > 1) ret[1].SetFloat(y);
+	if (numret > 2) ret[2].SetFloat(w);
+	if (numret > 3) ret[3].SetFloat(h);
+	return MIN(4, numret);
+}
+
+static void SBar_Fill(DBaseStatusBar *self, int color, double x, double y, double w, double h, int flags)
+{
+	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
+	self->Fill(color, x, y, w, h, flags);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, Fill, SBar_Fill)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_COLOR(color);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_INT(flags);
+	SBar_Fill(self, color, x, y, w, h, flags);
+	return 0;
+}
+
+static void SBar_SetClipRect(DBaseStatusBar *self, double x, double y, double w, double h, int flags)
+{
+	self->SetClipRect(x, y, w, h, flags);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, SetClipRect, SBar_SetClipRect)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	PARAM_FLOAT(w);
+	PARAM_FLOAT(h);
+	PARAM_INT(flags);
+	self->SetClipRect(x, y, w, h, flags);
+	return 0;
+}
+
+static void GetGlobalACSString(int index, FString *result)
+{
+	*result = FBehavior::StaticLookupString(ACS_GlobalVars[index]);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetGlobalACSString, GetGlobalACSString)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(index);
+	ACTION_RETURN_STRING(FBehavior::StaticLookupString(ACS_GlobalVars[index]));
+}
+
+static void GetGlobalACSArrayString(int arrayno, int index, FString *result)
+{
+	*result = FBehavior::StaticLookupString(ACS_GlobalVars[index]);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetGlobalACSArrayString, GetGlobalACSArrayString)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(arrayno);
+	PARAM_INT(index);
+	ACTION_RETURN_STRING(FBehavior::StaticLookupString(ACS_GlobalArrays[arrayno][index]));
+}
+
+static int GetGlobalACSValue(int index)
+{
+	return (ACS_GlobalVars[index]);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetGlobalACSValue, GetGlobalACSValue)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(index);
+	ACTION_RETURN_INT(ACS_GlobalVars[index]);
+}
+
+static int GetGlobalACSArrayValue(int arrayno, int index)
+{
+	return (ACS_GlobalArrays[arrayno][index]);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetGlobalACSArrayValue, GetGlobalACSArrayValue)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(arrayno);
+	PARAM_INT(index);
+	ACTION_RETURN_INT(ACS_GlobalArrays[arrayno][index]);
+}
+
+void FormatNumber(int number, int minsize, int maxsize, int flags, const FString &prefix, FString *result);
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, FormatNumber, FormatNumber)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(number);
+	PARAM_INT(minsize);
+	PARAM_INT(maxsize);
+	PARAM_INT(flags);
+	PARAM_STRING(prefix);
+	FString fmt;
+	FormatNumber(number, minsize, maxsize, flags, prefix, &fmt);
+	ACTION_RETURN_STRING(fmt);
+}
+
+static void ReceivedWeapon(DBaseStatusBar *self)
+{
+	self->mugshot.Grin();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, ReceivedWeapon, ReceivedWeapon)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	ReceivedWeapon(self);
+	return 0;
+}
+
+static int GetMugshot(DBaseStatusBar *self, int accuracy, int stateflags, const FString &def_face)
+{
+	auto tex = self->mugshot.GetFace(self->CPlayer, def_face, accuracy, (FMugShot::StateFlags)stateflags);
+	return (tex ? tex->id.GetIndex() : -1);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetMugshot, GetMugshot)
+{
+	PARAM_SELF_PROLOGUE(DBaseStatusBar);
+	PARAM_INT(accuracy);
+	PARAM_INT(stateflags);
+	PARAM_STRING(def_face);
+	ACTION_RETURN_INT(GetMugshot(self, accuracy, stateflags, def_face));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetInventoryIcon, GetInventoryIcon)
+{
+	PARAM_PROLOGUE;
+	PARAM_OBJECT(item, AActor);
+	PARAM_INT(flags);
+	int applyscale;
+	FTextureID icon = FSetTextureID(GetInventoryIcon(item, flags, &applyscale));
+	if (numret >= 1) ret[0].SetInt(icon.GetIndex());
+	if (numret >= 2) ret[1].SetInt(applyscale);
+	return MIN(numret, 2);
+}
+
+//=====================================================================================
+//
+// 
+//
+//=====================================================================================
+
+DHUDFont *CreateHudFont(FFont *fnt, int spac, bool mono, int sx, int sy)
+{
+	return (Create<DHUDFont>(fnt, spac, mono, sy, sy));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DHUDFont, Create, CreateHudFont)
+{
+	PARAM_PROLOGUE;
+	PARAM_POINTER(fnt, FFont);
+	PARAM_INT(spac);
+	PARAM_BOOL(mono);
+	PARAM_INT(sx);
+	PARAM_INT(sy);
+	ACTION_RETURN_POINTER(Create<DHUDFont>(fnt, spac, mono, sy, sy));
+}
+
+
+//=====================================================================================
+//
+//
+//
+//=====================================================================================
+
+static void FormatMapName(FLevelLocals *self, int cr, FString *result)
+{
+	char mapnamecolor[3] = { '\34', char(cr + 'A'), 0 };
+	ST_FormatMapName(*result, mapnamecolor);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, FormatMapName, FormatMapName)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(cr);
+	FString rets;
+	FormatMapName(self, cr, &rets);
+	ACTION_RETURN_STRING(rets);
+}
+
+static void GetAutomapPosition(DVector2 *pos)
+{
+	*pos = AM_GetPosition();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetAutomapPosition, GetAutomapPosition)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_VEC2(AM_GetPosition());
+}
+
+static int ZGetUDMFInt(FLevelLocals *self, int type, int index, int key)
+{
+	return GetUDMFInt(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFInt, ZGetUDMFInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_INT(GetUDMFInt(type, index, key));
+}
+
+static double ZGetUDMFFloat(FLevelLocals *self, int type, int index, int key)
+{
+	return GetUDMFFloat(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFFloat, ZGetUDMFFloat)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_FLOAT(GetUDMFFloat(type, index, key));
+}
+
+static void ZGetUDMFString(FLevelLocals *self, int type, int index, int key, FString *result)
+{
+	*result = GetUDMFString(type, index, ENamedName(key));
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetUDMFString, ZGetUDMFString)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(type);
+	PARAM_INT(index);
+	PARAM_NAME(key);
+	ACTION_RETURN_STRING(GetUDMFString(type, index, key));
+}
+
+//=====================================================================================
+//
+//
+//
+//=====================================================================================
+
+static int GetRealTime()
+{
+	time_t now;
+	time(&now);
+	struct tm* timeinfo = localtime(&now);
+	return timeinfo ? timeinfo->tm_sec + timeinfo->tm_min * 60 + timeinfo->tm_hour * 3600 : 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_AltHUD, GetRealTime, GetRealTime)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_INT(GetRealTime());
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_AltHUD, GetLatency, Net_GetLatency)
+{
+	PARAM_PROLOGUE;
+	int ld, ad;
+	int severity = Net_GetLatency(&ld, &ad);
+	if (numret > 0) ret[0].SetInt(severity);
+	if (numret > 1) ret[1].SetInt(ld);
+	if (numret > 2) ret[2].SetInt(ad);
+	return numret;
+}
 
 DEFINE_FIELD_X(Sector, sector_t, floorplane)
 DEFINE_FIELD_X(Sector, sector_t, ceilingplane)
@@ -1536,3 +2601,25 @@ DEFINE_FIELD_X(Secplane, secplane_t, D)
 DEFINE_FIELD_X(Secplane, secplane_t, negiC)
 
 DEFINE_FIELD_X(Vertex, vertex_t, p)
+
+DEFINE_FIELD(DBaseStatusBar, RelTop);
+DEFINE_FIELD(DBaseStatusBar, HorizontalResolution);
+DEFINE_FIELD(DBaseStatusBar, VerticalResolution);
+DEFINE_FIELD(DBaseStatusBar, Centering);
+DEFINE_FIELD(DBaseStatusBar, FixedOrigin);
+DEFINE_FIELD(DBaseStatusBar, CompleteBorder);
+DEFINE_FIELD(DBaseStatusBar, CrosshairSize);
+DEFINE_FIELD(DBaseStatusBar, Displacement);
+DEFINE_FIELD(DBaseStatusBar, CPlayer);
+DEFINE_FIELD(DBaseStatusBar, ShowLog);
+DEFINE_FIELD(DBaseStatusBar, Alpha);
+DEFINE_FIELD(DBaseStatusBar, drawOffset);
+DEFINE_FIELD(DBaseStatusBar, drawClip);
+DEFINE_FIELD(DBaseStatusBar, fullscreenOffsets);
+DEFINE_FIELD(DBaseStatusBar, defaultScale);
+DEFINE_FIELD(DBaseStatusBar, artiflashTick);
+DEFINE_FIELD(DBaseStatusBar, itemflashFade);
+
+DEFINE_FIELD(DHUDFont, mFont);
+
+DEFINE_GLOBAL(StatusBar);

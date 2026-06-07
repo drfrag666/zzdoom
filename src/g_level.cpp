@@ -1258,7 +1258,7 @@ void G_StartTravel ()
 		if (playeringame[i])
 		{
 			AActor *pawn = players[i].mo;
-			AInventory *inv;
+			AActor *inv;
 			players[i].camera = NULL;
 
 			// Only living players travel. Dead ones get a new body on the new level.
@@ -1297,7 +1297,7 @@ int G_FinishTravel ()
 {
 	TThinkerIterator<APlayerPawn> it (STAT_TRAVELLING);
 	APlayerPawn *pawn, *pawndup, *oldpawn, *next;
-	AInventory *inv;
+	AActor *inv;
 	FPlayerStart *start;
 	int pnum;
 	int failnum = 0;
@@ -1385,7 +1385,7 @@ int G_FinishTravel ()
 			inv->ChangeStatNum (STAT_INVENTORY);
 			inv->LinkToWorld (nullptr);
 
-			IFVIRTUALPTR(inv, AInventory, Travelled)
+			IFVIRTUALPTRNAME(inv, NAME_Inventory, Travelled)
 			{
 				VMValue params[1] = { inv };
 				VMCall(func, params, 1, nullptr, 0);
@@ -1488,6 +1488,7 @@ void G_InitLevelLocals ()
 	level.fogdensity = info->fogdensity;
 	level.outsidefogdensity = info->outsidefogdensity;
 	level.skyfog = info->skyfog;
+	level.deathsequence = info->deathsequence;
 
 	level.pixelstretch = info->pixelstretch;
 
@@ -2005,9 +2006,9 @@ void FLevelLocals::SetMusicVolume(float f)
 //==========================================================================
 
 
-bool IsPointInMap(DVector3 p)
+int IsPointInMap(double x, double y, double z)
 {
-	subsector_t *subsector = R_PointInSubsector(FLOAT2FIXED(p.X), FLOAT2FIXED(p.Y));
+	subsector_t *subsector = R_PointInSubsector(FLOAT2FIXED(x), FLOAT2FIXED(y));
 	if (!subsector) return false;
 
 	for (uint32_t i = 0; i < subsector->numlines; i++)
@@ -2018,26 +2019,26 @@ bool IsPointInMap(DVector3 p)
 
 		divline_t dline;
 		P_MakeDivline(seg->linedef, &dline);
-		bool pol = P_PointOnDivlineSide(p.XY(), &dline) < 1;
+		bool pol = P_PointOnDivlineSide(x, y, &dline) < 1;
 		if (!pol) return false;
 	}
 
-	double ceilingZ = subsector->sector->ceilingplane.ZatPoint(p.X, p.Y);
-	if (p.Z > ceilingZ) return false;
+	double ceilingZ = subsector->sector->ceilingplane.ZatPoint(x, y);
+	if (z > ceilingZ) return false;
 
-	double floorZ = subsector->sector->floorplane.ZatPoint(p.X, p.Y);
-	if (p.Z < floorZ) return false;
+	double floorZ = subsector->sector->floorplane.ZatPoint(x, y);
+	if (z < floorZ) return false;
 
 	return true;
 }
 
-DEFINE_ACTION_FUNCTION(FLevelLocals, IsPointInMap)
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, IsPointInMap, IsPointInMap)
 {
 	PARAM_PROLOGUE;
 	PARAM_FLOAT(x);
 	PARAM_FLOAT(y);
 	PARAM_FLOAT(z);
-	ACTION_RETURN_BOOL(IsPointInMap(DVector3(x,y,z)));
+	ACTION_RETURN_BOOL(IsPointInMap(x, y, z));
 }
 
 template <typename T>
@@ -2213,6 +2214,7 @@ DEFINE_FIELD(FLevelLocals, fogdensity)
 DEFINE_FIELD(FLevelLocals, outsidefogdensity)
 DEFINE_FIELD(FLevelLocals, skyfog)
 DEFINE_FIELD(FLevelLocals, pixelstretch)
+DEFINE_FIELD(FLevelLocals, deathsequence)
 DEFINE_FIELD_BIT(FLevelLocals, flags, noinventorybar, LEVEL_NOINVENTORYBAR)
 DEFINE_FIELD_BIT(FLevelLocals, flags, monsterstelefrag, LEVEL_MONSTERSTELEFRAG)
 DEFINE_FIELD_BIT(FLevelLocals, flags, actownspecial, LEVEL_ACTOWNSPECIAL)
@@ -2227,6 +2229,8 @@ DEFINE_FIELD_BIT(FLevelLocals, flags2, nomonsters, LEVEL2_NOMONSTERS)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, frozen, LEVEL2_FROZEN)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, infinite_flight, LEVEL2_INFINITE_FLIGHT)
 DEFINE_FIELD_BIT(FLevelLocals, flags2, no_dlg_freeze, LEVEL2_CONV_SINGLE_UNFREEZE)
+DEFINE_FIELD_BIT(FLevelLocals, flags2, keepfullinventory, LEVEL2_KEEPFULLINVENTORY)
+DEFINE_FIELD_BIT(FLevelLocals, flags3, removeitems, LEVEL3_REMOVEITEMS)
 
 //==========================================================================
 //
@@ -2277,5 +2281,14 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, ChangeSky)
 	sky1texture = self->skytexture1 = FSetTextureID(sky1);
 	sky2texture = self->skytexture2 = FSetTextureID(sky2);
 	R_InitSkyMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(FLevelLocals, StartIntermission)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_NAME(seq);
+	PARAM_INT(state);
+	F_StartIntermission(seq, (uint8_t)state);
 	return 0;
 }

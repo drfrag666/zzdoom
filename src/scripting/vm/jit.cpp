@@ -30,10 +30,10 @@ JitFuncPtr JitCompile(VMScriptFunction *sfunc)
 
 		return reinterpret_cast<JitFuncPtr>(AddJitFunction(&code, func));
 	}
-	catch (const std::exception &e)
+	catch (const CRecoverableError &e)
 	{
 		OutputJitLog(logger);
-		I_FatalError("Unexpected JIT error: %s\n", e.what());
+		Printf("%s: Unexpected JIT error: %s\n",sfunc->PrintableName.GetChars(), e.what());
 		return nullptr;
 	}
 }
@@ -268,7 +268,7 @@ void JitCompiler::SetupSimpleFrame()
 	for (unsigned int i = 0; i < sfunc->Proto->ArgumentTypes.Size(); i++)
 	{
 		const PType *type = sfunc->Proto->ArgumentTypes[i];
-		if (sfunc->ArgFlags[i] & (VARF_Out | VARF_Ref))
+		if (sfunc->ArgFlags.Size() && sfunc->ArgFlags[i] & (VARF_Out | VARF_Ref))
 		{
 			cc.mov(regA[rega++], x86::ptr(args, argsPos++ * sizeof(VMValue) + offsetof(VMValue, a)));
 		}
@@ -316,19 +316,10 @@ void JitCompiler::SetupSimpleFrame()
 
 static VMFrameStack *CreateFullVMFrame(VMScriptFunction *func, VMValue *args, int numargs)
 {
-	try
-	{
-		VMFrameStack *stack = &GlobalVMStack;
-		VMFrame *newf = stack->AllocFrame(func);
-		CurrentJitExceptInfo->vmframes++;
-		VMFillParams(args, newf, numargs);
-		return stack;
-	}
-	catch (...)
-	{
-		VMThrowException(std::current_exception());
-		return nullptr;
-	}
+	VMFrameStack *stack = &GlobalVMStack;
+	VMFrame *newf = stack->AllocFrame(func);
+	VMFillParams(args, newf, numargs);
+	return stack;
 }
 
 void JitCompiler::SetupFullVMFrame()
@@ -362,15 +353,7 @@ void JitCompiler::SetupFullVMFrame()
 
 static void PopFullVMFrame(VMFrameStack *stack)
 {
-	try
-	{
-		stack->PopFrame();
-		CurrentJitExceptInfo->vmframes--;
-	}
-	catch (...)
-	{
-		VMThrowException(std::current_exception());
-	}
+	stack->PopFrame();
 }
 
 void JitCompiler::EmitPopFrame()
@@ -434,14 +417,7 @@ void JitCompiler::EmitNullPointerThrow(int index, EVMAbortException reason)
 
 void JitCompiler::ThrowException(VMScriptFunction *func, VMOP *line, int reason)
 {
-	try
-	{
-		ThrowAbortException(func, line, (EVMAbortException)reason, nullptr);
-	}
-	catch (...)
-	{
-		VMThrowException(std::current_exception());
-	}
+	ThrowAbortException(func, line, (EVMAbortException)reason, nullptr);
 }
 
 void JitCompiler::EmitThrowException(EVMAbortException reason)

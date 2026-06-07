@@ -495,13 +495,8 @@ void S_PrecacheLevel ()
 		{
 			IFVIRTUALPTR(actor, AActor, MarkPrecacheSounds)
 			{
-				// Without the type cast this picks the 'void *' assignment...
 				VMValue params[1] = { actor };
 				VMCall(func, params, 1, nullptr, 0);
-			}
-			else
-			{
-				actor->MarkPrecacheSounds();
 			}
 		}
 		for (auto snd : gameinfo.PrecachedSounds)
@@ -1819,8 +1814,9 @@ void S_RelinkSound (AActor *from, AActor *to)
 //
 //==========================================================================
 
-bool S_ChangeSoundVolume(AActor *actor, int channel, float volume)
+void S_ChangeSoundVolume(AActor *actor, int channel, double dvolume)
 {
+	float volume = float(dvolume);
 	// don't let volume get out of bounds
 	if (volume < 0.0)
 		volume = 0.0;
@@ -1835,10 +1831,10 @@ bool S_ChangeSoundVolume(AActor *actor, int channel, float volume)
 		{
 			GSnd->ChannelVolume(chan, volume);
 			chan->Volume = volume;
-			return true;
+			return;
 		}
 	}
-	return false;
+	return;
 }
 
 //==========================================================================

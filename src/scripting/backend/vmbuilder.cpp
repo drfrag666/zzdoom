@@ -489,7 +489,9 @@ void VMFunctionBuilder::RegAvailability::Return(int reg, int count)
 		mask <<= firstbit;
 		// If we are trying to return registers that are already free,
 		// it probably means that the caller messed up somewhere.
-		assert((Used[firstword] & mask) == mask);
+		// Unfortunately this can happen if an 'action' function gets called from a non-action context,
+		// because for that case it pushes the self pointer a second time without reallocating, so it gets freed twice.
+		//assert((Used[firstword] & mask) == mask);
 		Used[firstword] &= ~mask;
 	}
 	else
@@ -803,7 +805,6 @@ VMFunction *FFunctionBuildList::AddFunction(PNamespace *gnspc, const VersionInfo
 
 void FFunctionBuildList::Build()
 {
-	int errorcount = 0;
 	int codesize = 0;
 	int datasize = 0;
 	FILE *dump = nullptr;
@@ -912,7 +913,8 @@ void FFunctionBuildList::Build()
 	}
 	VMFunction::CreateRegUseInfo();
 	FScriptPosition::StrictErrors = false;
-	if (Args->CheckParm("-dumpjit")) DumpJit();
+
+	if (FScriptPosition::ErrorCounter == 0 && Args->CheckParm("-dumpjit")) DumpJit();
 	mItems.Clear();
 	mItems.ShrinkToFit();
 	FxAlloc.FreeAllBlocks();

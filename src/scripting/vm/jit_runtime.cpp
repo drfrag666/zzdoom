@@ -64,7 +64,7 @@ static TArray<uint16_t> CreateUnwindInfoWindows(asmjit::CCFunc *func)
 	FuncFrameLayout layout;
 	Error error = layout.init(func->getDetail(), func->getFrameInfo());
 	if (error != kErrorOk)
-		I_FatalError("FuncFrameLayout.init failed");
+		I_Error("FuncFrameLayout.init failed");
 
 	// We need a dummy emitter for instruction size calculations
 	CodeHolder code;
@@ -275,7 +275,7 @@ void *AddJitFunction(asmjit::CodeHolder* code, asmjit::CCFunc *func)
 	BOOLEAN result = RtlAddFunctionTable(table, 1, (DWORD64)baseaddr);
 	JitFrames.Push((uint8_t*)table);
 	if (result == 0)
-		I_FatalError("RtlAddFunctionTable failed");
+		I_Error("RtlAddFunctionTable failed");
 #endif
 
 	return p;
@@ -287,11 +287,52 @@ extern "C"
 {
 	void __register_frame(const void*);
 	void __deregister_frame(const void*);
-}
 
-static void WriteLength64(TArray<uint8_t> &stream, unsigned int pos, unsigned int v)
-{
-	*(uint64_t*)(&stream[pos]) = v;
+#if 0 // Someone needs to implement this if GDB/LLDB should produce correct call stacks
+	
+	// GDB JIT interface (GG guys! Thank you SO MUCH for not hooking into the above functions. Really appreciate it!)
+	
+	// To register code with GDB, the JIT should follow this protocol:
+	//
+	// * Generate an object file in memory with symbols and other desired debug information.
+	//   The file must include the virtual addresses of the sections. 
+	// * Create a code entry for the file, which gives the start and size of the symbol file. 
+	// * Add it to the linked list in the JIT descriptor.
+	// * Point the relevant_entry field of the descriptor at the entry.
+	// * Set action_flag to JIT_REGISTER and call __jit_debug_register_code.
+	
+	// Pure beauty! Now a JIT also has to create a full ELF object file. And is it a MACH-O on macOS? You guys ROCK!
+
+	typedef enum
+	{
+	  JIT_NOACTION = 0,
+	  JIT_REGISTER_FN,
+	  JIT_UNREGISTER_FN
+	} jit_actions_t;
+
+	struct jit_code_entry
+	{
+	  struct jit_code_entry *next_entry;
+	  struct jit_code_entry *prev_entry;
+	  const char *symfile_addr;
+	  uint64_t symfile_size;
+	};
+
+	struct jit_descriptor
+	{
+	  uint32_t version;
+	  // This type should be jit_actions_t, but we use uint32_t to be explicit about the bitwidth.
+	  uint32_t action_flag;
+	  struct jit_code_entry *relevant_entry;
+	  struct jit_code_entry *first_entry;
+	};
+
+	// GDB puts a breakpoint in this function.
+	void __attribute__((noinline)) __jit_debug_register_code() { };
+
+	// Make sure to specify the version statically, because the debugger may check the version before we can set it.
+	struct jit_descriptor __jit_debug_descriptor = { 1, 0, 0, 0 };
+#endif
 }
 
 static void WriteLength(TArray<uint8_t> &stream, unsigned int pos, unsigned int v)
@@ -369,95 +410,62 @@ static void WritePadding(TArray<uint8_t> &stream)
 	if (padding != 0)
 	{
 		padding = 8 - padding;
-		for (int i = 0; i <= padding; i++) WriteUInt8(stream, 0);
-	}
-}
-
-static void WriteEmptyAugmentation(TArray<uint8_t> &stream)
-{
-	int padding = (stream.Size() + 1) % 8;
-	if (padding == 0)
-	{
-		WriteULEB128(stream, 0);
-	}
-	else
-	{
-		padding = 8 - padding;
-		WriteULEB128(stream, padding);
-		for (int i = 0; i <= padding; i++) WriteUInt8(stream, 0);
+		for (int i = 0; i < padding; i++) WriteUInt8(stream, 0);
 	}
 }
 
 static void WriteCIE(TArray<uint8_t> &stream, const TArray<uint8_t> &cieInstructions, uint8_t returnAddressReg)
 {
-#ifdef USE_DWARF64
-	WriteUInt32(stream, 0xffffffff); // this is a 64-bit entry
-	unsigned int lengthPos = stream.Size();
-	WriteUInt64(stream, 0); // Length
-	WriteUInt64(stream, 0); // CIE ID
-#else
 	unsigned int lengthPos = stream.Size();
 	WriteUInt32(stream, 0); // Length
 	WriteUInt32(stream, 0); // CIE ID
-#endif
 	
 	WriteUInt8(stream, 1); // CIE Version
 	WriteUInt8(stream, 'z');
-	//WriteUInt8(stream, 'R'); // fde encoding
+	WriteUInt8(stream, 'R'); // fde encoding
 	WriteUInt8(stream, 0);
 	WriteULEB128(stream, 1);
-	WriteSLEB128(stream, -4);
-	WriteUInt8(stream, returnAddressReg);
+	WriteSLEB128(stream, -1);
+	WriteULEB128(stream, returnAddressReg);
 
-	WriteEmptyAugmentation(stream);
+	WriteULEB128(stream, 1); // LEB128 augmentation size
+	WriteUInt8(stream, 0); // DW_EH_PE_absptr (FDE uses absolute pointers)
 
 	for (unsigned int i = 0; i < cieInstructions.Size(); i++)
 		stream.Push(cieInstructions[i]);
 
 	WritePadding(stream);
-#ifdef USE_DWARF64
-	WriteLength64(stream, lengthPos, stream.Size() - lengthPos - 8);
-#else
 	WriteLength(stream, lengthPos, stream.Size() - lengthPos - 4);
-#endif
 }
 
 static void WriteFDE(TArray<uint8_t> &stream, const TArray<uint8_t> &fdeInstructions, uint32_t cieLocation, unsigned int &functionStart)
 {
-#ifdef USE_DWARF64
-	WriteUInt32(stream, 0xffffffff); // this is a 64-bit entry
-	unsigned int lengthPos = stream.Size();
-	WriteUInt64(stream, 0); // Length
-	uint32_t offsetToCIE = stream.Size() - cieLocation;
-	WriteUInt64(stream, offsetToCIE);
-#else
 	unsigned int lengthPos = stream.Size();
 	WriteUInt32(stream, 0); // Length
 	uint32_t offsetToCIE = stream.Size() - cieLocation;
 	WriteUInt32(stream, offsetToCIE);
-#endif
 	
 	functionStart = stream.Size();
 	WriteUInt64(stream, 0); // func start
 	WriteUInt64(stream, 0); // func size
-	
-	WriteEmptyAugmentation(stream);
+
+	WriteULEB128(stream, 0); // LEB128 augmentation size
 
 	for (unsigned int i = 0; i < fdeInstructions.Size(); i++)
 		stream.Push(fdeInstructions[i]);
 
 	WritePadding(stream);
-#ifdef USE_DWARF64
-	WriteLength64(stream, lengthPos, stream.Size() - lengthPos - 8);
-#else
 	WriteLength(stream, lengthPos, stream.Size() - lengthPos - 4);
-#endif
 }
 
 static void WriteAdvanceLoc(TArray<uint8_t> &fdeInstructions, uint64_t offset, uint64_t &lastOffset)
 {
 	uint64_t delta = offset - lastOffset;
-	if (delta < (1 << 8))
+	if (delta < (1 << 6))
+	{
+		WriteUInt8(fdeInstructions, (1 << 6) | delta); // DW_CFA_advance_loc
+	}
+	else if (delta < (1 << 8))
 	{
 		WriteUInt8(fdeInstructions, 2); // DW_CFA_advance_loc1
 		WriteUInt8(fdeInstructions, delta);
@@ -475,6 +483,25 @@ static void WriteAdvanceLoc(TArray<uint8_t> &fdeInstructions, uint64_t offset, u
 	lastOffset = offset;
 }
 
+static void WriteDefineCFA(TArray<uint8_t> &cieInstructions, int dwarfRegId, int stackOffset)
+{
+	WriteUInt8(cieInstructions, 0x0c); // DW_CFA_def_cfa
+	WriteULEB128(cieInstructions, dwarfRegId);
+	WriteULEB128(cieInstructions, stackOffset);
+}
+
+static void WriteDefineStackOffset(TArray<uint8_t> &fdeInstructions, int stackOffset)
+{
+	WriteUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
+	WriteULEB128(fdeInstructions, stackOffset);
+}
+
+static void WriteRegisterStackLocation(TArray<uint8_t> &instructions, int dwarfRegId, int stackLocation)
+{
+	WriteUInt8(instructions, (2 << 6) | dwarfRegId); // DW_CFA_offset
+	WriteULEB128(instructions, stackLocation);
+}
+
 static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &functionStart)
 {
 	using namespace asmjit;
@@ -485,6 +512,9 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	// The x64 specific details are described in "System V Application Binary Interface AMD64 Architecture Processor Supplement"
 	//
 	// See appendix D.6 "Call Frame Information Example" in the DWARF 5 spec.
+	//
+	// The CFI_Parser<A>::decodeFDE parser on the other side..
+	// https://github.com/llvm-mirror/libunwind/blob/master/src/DwarfParser.hpp
 	
 	// Asmjit -> DWARF register id
 	int dwarfRegId[16];
@@ -509,37 +539,24 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	
 	TArray<uint8_t> cieInstructions;
 	TArray<uint8_t> fdeInstructions;
-	uint64_t lastOffset = 0;
 
 	uint8_t returnAddressReg = dwarfRegRAId;
+	int stackOffset = 8; // Offset from RSP to the Canonical Frame Address (CFA) - stack position where the CALL return address is stored
 
-	// Do we need to write register defaults into the CIE or does the defaults match the x64 calling convention?
-	// Great! the "System V Application Binary Interface AMD64 Architecture Processor Supplement" doesn't say what the defaults are..
-	// This is basically just the x64 calling convention..
-	WriteUInt8(cieInstructions, 0x0c); // DW_CFA_def_cfa
-	WriteULEB128(cieInstructions, dwarfRegId[X86Gp::kIdSp]);
-	WriteULEB128(cieInstructions, 0);
-	for (auto regId : { X86Gp::kIdAx, X86Gp::kIdDx, X86Gp::kIdCx, X86Gp::kIdSi, X86Gp::kIdDi, X86Gp::kIdSp, X86Gp::kIdR8, X86Gp::kIdR9, X86Gp::kIdR10, X86Gp::kIdR11 })
-	{
-		WriteUInt8(cieInstructions, 0x07); // DW_CFA_undefined
-		WriteULEB128(cieInstructions, dwarfRegId[regId]);
-	}
-	for (auto regId : { X86Gp::kIdBx, X86Gp::kIdBp, X86Gp::kIdR12, X86Gp::kIdR13, X86Gp::kIdR14, X86Gp::kIdR15 })
-	{
-		WriteUInt8(cieInstructions, 0x08); // DW_CFA_same_value
-		WriteULEB128(cieInstructions, dwarfRegId[regId]);
-	}
-
+	WriteDefineCFA(cieInstructions, dwarfRegId[X86Gp::kIdSp], stackOffset);
+	WriteRegisterStackLocation(cieInstructions, returnAddressReg, stackOffset);
+	
 	FuncFrameLayout layout;
 	Error error = layout.init(func->getDetail(), func->getFrameInfo());
 	if (error != kErrorOk)
-		I_FatalError("FuncFrameLayout.init failed");
+		I_Error("FuncFrameLayout.init failed");
 
 	// We need a dummy emitter for instruction size calculations
 	CodeHolder code;
 	code.init(GetHostCodeInfo());
 	X86Assembler assembler(&code);
 	X86Emitter *emitter = assembler.asEmitter();
+	uint64_t lastOffset = 0;
 
 	// Note: the following code must match exactly what X86Internal::emitProlog does
 
@@ -550,8 +567,6 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	X86Gp saReg = emitter->zsp(); // Stack-arguments base register.
 	uint32_t gpSaved = layout.getSavedRegs(X86Reg::kKindGp);
 
-	int stackOffset = 0;
-
 	if (layout.hasPreservedFP())
 	{
 		// Emit: 'push zbp'
@@ -559,12 +574,10 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 		gpSaved &= ~Utils::mask(X86Gp::kIdBp);
 		emitter->push(zbp);
 
-		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
 		stackOffset += 8;
-		WriteUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
-		WriteULEB128(fdeInstructions, stackOffset);
-		WriteUInt8(fdeInstructions, (2 << 6) | dwarfRegId[X86Gp::kIdBp]); // DW_CFA_offset
-		WriteULEB128(fdeInstructions, stackOffset - 8);
+		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+		WriteDefineStackOffset(fdeInstructions, stackOffset);
+		WriteRegisterStackLocation(fdeInstructions, dwarfRegId[X86Gp::kIdBp], stackOffset);
 
 		emitter->mov(zbp, zsp);
 	}
@@ -578,12 +591,10 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 			gpReg.setId(regId);
 			emitter->push(gpReg);
 
-			WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
 			stackOffset += 8;
-			WriteUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
-			WriteULEB128(fdeInstructions, stackOffset);
-			WriteUInt8(fdeInstructions, (2 << 6) | dwarfRegId[regId]); // DW_CFA_offset
-			WriteULEB128(fdeInstructions, stackOffset - 8);
+			WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+			WriteDefineStackOffset(fdeInstructions, stackOffset);
+			WriteRegisterStackLocation(fdeInstructions, dwarfRegId[regId], stackOffset);
 		}
 	}
 
@@ -609,10 +620,9 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 		// Emit: 'sub zsp, StackAdjustment'.
 		emitter->sub(zsp, layout.getStackAdjustment());
 
-		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
 		stackOffset += layout.getStackAdjustment();
-		WriteUInt8(fdeInstructions, 0x0e); // DW_CFA_def_cfa_offset
-		WriteULEB128(fdeInstructions, stackOffset);
+		WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
+		WriteDefineStackOffset(fdeInstructions, stackOffset);
 	}
 
 	if (layout.hasDynamicAlignment() && layout.hasDsaSlotUsed())
@@ -625,7 +635,7 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 	uint32_t xmmSaved = layout.getSavedRegs(X86Reg::kKindVec);
 	if (xmmSaved)
 	{
-		stackOffset += layout.getVecStackOffset();
+		int vecOffset = layout.getVecStackOffset();
 		X86Mem vecBase = x86::ptr(zsp, layout.getVecStackOffset());
 		X86Reg vecReg = x86::xmm(0);
 		bool avx = layout.isAvxEnabled();
@@ -642,9 +652,8 @@ static TArray<uint8_t> CreateUnwindInfoUnix(asmjit::CCFunc *func, unsigned int &
 			vecBase.addOffsetLo32(static_cast<int32_t>(vecSize));
 
 			WriteAdvanceLoc(fdeInstructions, assembler.getOffset(), lastOffset);
-			WriteUInt8(fdeInstructions, (2 << 6) | (dwarfRegXmmId + regId)); // DW_CFA_offset
-			WriteULEB128(fdeInstructions, stackOffset);
-			stackOffset += 8;
+			WriteRegisterStackLocation(fdeInstructions, dwarfRegXmmId + regId, stackOffset - vecOffset);
+			vecOffset += static_cast<int32_t>(vecSize);
 		}
 	}
 

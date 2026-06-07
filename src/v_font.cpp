@@ -337,14 +337,6 @@ FFont *V_GetFont(const char *name)
 	return font;
 }
 
-DEFINE_ACTION_FUNCTION(FFont, GetFont)
-{
-	PARAM_PROLOGUE;
-	PARAM_NAME(name);
-	ACTION_RETURN_POINTER(V_GetFont(name.GetChars()));
-}
-
-
 //==========================================================================
 //
 // FFont :: FFont
@@ -527,13 +519,6 @@ FFont *FFont::FindFont (FName name)
 		font = font->Next;
 	}
 	return nullptr;
-}
-
-DEFINE_ACTION_FUNCTION(FFont, FindFont)
-{
-	PARAM_PROLOGUE;
-	PARAM_NAME(name);
-	ACTION_RETURN_POINTER(FFont::FindFont(name));
 }
 
 //==========================================================================
@@ -857,17 +842,21 @@ int FFont::GetCharWidth (int code) const
 	return (code < 0) ? SpaceWidth : Chars[code - FirstChar].XMove;
 }
 
-DEFINE_ACTION_FUNCTION(FFont, GetCharWidth)
-{
-	PARAM_SELF_STRUCT_PROLOGUE(FFont);
-	PARAM_INT(code);
-	ACTION_RETURN_INT(self->GetCharWidth(code));
-}
+//==========================================================================
+//
+// 
+//
+//==========================================================================
 
-DEFINE_ACTION_FUNCTION(FFont, GetHeight)
+double GetBottomAlignOffset(FFont *font, int c)
 {
-	PARAM_SELF_STRUCT_PROLOGUE(FFont);
-	ACTION_RETURN_INT(self->GetHeight());
+	int w;
+	FTexture *tex_zero = font->GetChar('0', &w);
+	FTexture *texc = font->GetChar(c, &w);
+	double offset = 0;
+	if (texc) offset += texc->GetScaledTopOffsetDouble(0);
+	if (tex_zero) offset += -tex_zero->GetScaledTopOffsetDouble(0) + tex_zero->GetScaledHeightDouble();
+	return offset;
 }
 
 //==========================================================================
@@ -913,15 +902,6 @@ int FFont::StringWidth(const uint8_t *string) const
 	}
 
 	return MAX(maxw, w);
-}
-
-DEFINE_ACTION_FUNCTION(FFont, StringWidth)
-{
-	PARAM_SELF_STRUCT_PROLOGUE(FFont);
-	PARAM_STRING(str);
-	const char *txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
-
-	ACTION_RETURN_INT(self->StringWidth(txt));
 }
 
 //==========================================================================
@@ -2589,13 +2569,6 @@ EColorRange V_FindFontColor (FName name)
 	return CR_UNTRANSLATED;
 }
 
-DEFINE_ACTION_FUNCTION(FFont, FindFontColor)
-{
-	PARAM_PROLOGUE;
-	PARAM_NAME(code);
-	ACTION_RETURN_INT((int)V_FindFontColor(code));
-}
-
 //==========================================================================
 //
 // V_LogColorFromColorRange
@@ -2770,8 +2743,3 @@ void V_ClearFonts()
 	SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = NULL;
 }
 
-DEFINE_ACTION_FUNCTION(FFont, GetCursor)
-{
-	PARAM_SELF_STRUCT_PROLOGUE(FFont);
-	ACTION_RETURN_STRING(FString(self->GetCursor()));
-}

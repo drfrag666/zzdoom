@@ -1039,22 +1039,22 @@ public:
 		}
 		wrapper->ForceHUDScale(script->huds[hud]->ForceScaled());
 
-		if (CPlayer->ReadyWeapon != NULL)
+		if (CPlayer->ReadyWeapon != nullptr)
 		{
-			ammo1 = CPlayer->ReadyWeapon->Ammo1;
-			ammo2 = CPlayer->ReadyWeapon->Ammo2;
-			if (ammo1 == NULL)
+			ammo1 = CPlayer->ReadyWeapon->PointerVar<AActor>(NAME_Ammo1);
+			ammo2 = CPlayer->ReadyWeapon->PointerVar<AActor>(NAME_Ammo2);
+			if (ammo1 == nullptr)
 			{
 				ammo1 = ammo2;
-				ammo2 = NULL;
+				ammo2 = nullptr;
 			}
 		}
 		else
 		{
-			ammo1 = ammo2 = NULL;
+			ammo1 = ammo2 = nullptr;
 		}
-		ammocount1 = ammo1 != NULL ? ammo1->Amount : 0;
-		ammocount2 = ammo2 != NULL ? ammo2->Amount : 0;
+		ammocount1 = ammo1 != nullptr ? ammo1->IntVar(NAME_Amount) : 0;
+		ammocount2 = ammo2 != nullptr ? ammo2->IntVar(NAME_Amount) : 0;
 
 		//prepare ammo counts
 		armor = CPlayer->mo->FindInventory(NAME_BasicArmor);
@@ -1467,9 +1467,15 @@ public:
 		return TRANSLATION(TRANSLATION_Players, int(CPlayer - players));
 	}
 
-	AInventory *ammo1, *ammo2;
+	PClassActor *AmmoType(int no) const
+	{
+		auto w = StatusBar->CPlayer->ReadyWeapon;
+		return w == nullptr ? nullptr : (w->PointerVar<PClassActor>(no == 1 ? NAME_AmmoType1 : NAME_AmmoType2));
+	}
+
+	AActor *ammo1, *ammo2;
 	int ammocount1, ammocount2;
-	AInventory *armor;
+	AActor *armor;
 	FImageCollection Images;
 	unsigned int invBarOffset;
 	player_t *CPlayer = nullptr;
@@ -1590,7 +1596,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DSBarInfo, ShowPop, SBarInfo_ShowPop)
 	return 0;
 }
 
-static int SBarInfo_GetProtrusion(DSBarInfo *self, float scale)
+static int SBarInfo_GetProtrusion(DSBarInfo *self, double scale)
 {
 	return self->_GetProtrusion(scale);
 }

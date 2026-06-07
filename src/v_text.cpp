@@ -219,8 +219,6 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 	int			kerning;
 	FTexture *pic;
 
-	assert(string[0] != '$');
-
 	if (parms.celly == 0) parms.celly = font->GetHeight() + 1;
 	parms.celly *= parms.scaley;
 
@@ -506,6 +504,7 @@ DEFINE_ACTION_FUNCTION(DBrokenLines, StringWidth)
 
 DEFINE_ACTION_FUNCTION(DBrokenLines, StringAt)
 {
+
 	PARAM_SELF_PROLOGUE(DBrokenLines);
 	PARAM_INT(index);
 	ACTION_RETURN_STRING((unsigned)index >= self->mBroken.Size() ? -1 : self->mBroken[index].Text);

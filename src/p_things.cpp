@@ -423,7 +423,7 @@ void P_RemoveThing(AActor * actor)
 	if (actor->player == NULL || actor != actor->player->mo)
 	{
 		// Don't also remove owned inventory items
-		if (actor->IsKindOf(RUNTIME_CLASS(AInventory)) && static_cast<AInventory*>(actor)->Owner != NULL) return;
+		if (!actor->IsMapActor())
 
 		// be friendly to the level statistics. ;)
 		actor->ClearCounters();
@@ -552,13 +552,6 @@ PClassActor *P_GetSpawnableType(int spawnnum)
 	return NULL;
 }
 
-DEFINE_ACTION_FUNCTION(AActor, GetSpawnableType)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(num);
-	ACTION_RETURN_POINTER(P_GetSpawnableType(num));
-}
-
 struct MapinfoSpawnItem
 {
 	FName classname;	// DECORATE is read after MAPINFO so we do not have the actual classes available here yet.
@@ -579,23 +572,22 @@ static int SpawnableSort(const void *a, const void *b)
 static void DumpClassMap(FClassMap &themap)
 {
 	FClassMap::Iterator it(themap);
-	FClassMap::Pair *pair, **allpairs;
+	FClassMap::Pair *pair;
+	TArray<FClassMap::Pair*> allpairs(themap.CountUsed(), true);
 	int i = 0;
 
 	// Sort into numerical order, since their arrangement in the map can
 	// be in an unspecified order.
-	allpairs = new FClassMap::Pair *[themap.CountUsed()];
 	while (it.NextPair(pair))
 	{
 		allpairs[i++] = pair;
 	}
-	qsort(allpairs, i, sizeof(*allpairs), SpawnableSort);
+	qsort(allpairs.Data(), i, sizeof(allpairs[0]), SpawnableSort);
 	for (int j = 0; j < i; ++j)
 	{
 		pair = allpairs[j];
 		Printf ("%d %s\n", pair->Key, pair->Value->TypeName.GetChars());
 	}
-	delete[] allpairs;
 }
 
 CCMD(dumpspawnables)
@@ -774,13 +766,11 @@ int P_Thing_CheckProximity(AActor *self, PClass *classname, double distance, int
 		else if (classname != mo->GetClass())
 			continue;
 
-		if (mo->IsKindOf(RUNTIME_CLASS(AInventory)))
+		if (!mo->IsMapActor())
 		{
 			// Skip owned item because its position could remain unchanged since attachment to owner
 			// Most likely it is the last location of this item in the world before pick up
-			AInventory *const inventory = static_cast<AInventory*>(mo);
-			if (inventory != nullptr && inventory->Owner != nullptr)
-				continue;
+			continue;
 		}
 
 		// [MC]Make sure it's in range and respect the desire for Z or not. The function forces it to use

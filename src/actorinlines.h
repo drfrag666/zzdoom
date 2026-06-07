@@ -2,6 +2,7 @@
 
 #include "actor.h"
 #include "r_defs.h"
+#include "g_levellocals.h"
 // These depend on both actor.h and r_defs.h so they cannot be in either file without creating a cross dependency.
 
 inline DVector3 AActor::PosRelative(int portalgroup) const
@@ -19,7 +20,7 @@ inline DVector3 AActor::PosRelative(sector_t *sec) const
 	return Pos() + Displacements.getOffset(Sector->PortalGroup, sec->PortalGroup);
 }
 
-inline DVector3 AActor::PosRelative(line_t *line) const
+inline DVector3 AActor::PosRelative(const line_t *line) const
 {
 	return Pos() + Displacements.getOffset(Sector->PortalGroup, line->frontsector->PortalGroup);
 }
@@ -53,3 +54,28 @@ inline double sector_t::LowestFloorAt(AActor *a, sector_t **resultsec)
 	return ::LowestFloorAt(this, a->X(), a->Y(), resultsec);
 }
 
+inline double AActor::GetBobOffset(double ticfrac) const
+{
+	if (!(flags2 & MF2_FLOATBOB))
+	{
+		return 0;
+	}
+	return BobSin(FloatBobPhase + level.maptime + ticfrac) * FloatBobStrength;
+}
+
+inline double AActor::GetCameraHeight() const
+{
+	return CameraHeight == INT_MIN ? Height / 2 : CameraHeight;
+}
+
+
+inline FDropItem *AActor::GetDropItems() const
+{
+	return GetInfo()->DropItems;
+}
+
+inline double AActor::GetGravity() const
+{
+	if (flags & MF_NOGRAVITY) return 0;
+	return level.gravity * Sector->gravity * Gravity * 0.00125;
+}
