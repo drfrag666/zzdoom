@@ -2735,7 +2735,6 @@ GLMNU_DYNLIGHT	= "Dynamic Light Options";
 
 // Dynamic Light Options
 GLLIGHTMNU_TITLE					= "DYNAMIC LIGHTS";
-GLLIGHTMNU_LIGHTDEFS				= "Enable light definitions";
 GLLIGHTMNU_LIGHTSPRITES				= "Lights affect sprites";
 
 // QZDoom exclusive:

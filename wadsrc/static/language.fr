@@ -2666,44 +2666,7 @@ GLTEXMNU_SORTDRAWLIST 	= "Ordonner liste de rendu par texture";
 
 // Dynamic Light Options
 GLLIGHTMNU_TITLE					= "LUMIERES DYNAMIQUES";
-GLLIGHTMNU_LIGHTSENABLED			= "Lumières Dynamiques (OpenGL)";
-GLLIGHTMNU_LIGHTDEFS				= "Activer les définitions GLDEFS";
-GLLIGHTMNU_CLIPLIGHTS				= "Limiter taille des lumières";
 GLLIGHTMNU_LIGHTSPRITES				= "Lumières affectent les sprites";
-GLLIGHTMNU_LIGHTPARTICLES			= "Lumières affectent les particules";
-GLLIGHTMNU_LIGHTSHADOWMAP			= "Shadowmaps";
-GLLIGHTMNU_LIGHTSHADOWMAPQUALITY	= "Qualité Shadowmap";
-
-// OpenGL Preferences
-GLPREFMNU_TITLE 				= "Préférences OpenGL";
-GLPREFMNU_SECLIGHTMODE 			= "Mode de lumière Secteur";
-GLPREFMNU_FOGMODE 				= "Mode du broullard";
-GLPREFMNU_FOGFORCEFULLBRIGHT 	= "Brouillard force fullbright";
-GLPREFMNU_WPNLIGHTSTR 			= "Intensité lumineuse des armes";
-GLPREFMNU_ENVIRONMENTMAPMIRROR 	= "Mappage environment sur les miroirs";
-GLPREFMNU_ENV 					= "Mode de vision nocture amélioré";
-GLPREFMNU_ENVSTEALTH 			= "VNA affiche monstres invisibles";
-GLPREFMNU_SPRBRIGHTFOG 			= "Forcer luminosité dans brouillard";
-GLPREFMNU_SPRCLIP 				= "Adjusted le clipping des sprites";
-GLPREFMNU_SPRBLEND 				= "Adoucir bords des sprites";
-GLPREFMNU_FUZZSTYLE 			= "Style de bruit blanc";
-GLPREFMNU_SPRBILLBOARD 			= "Etalage des sprites";
-GLPREFMNU_SPRBILLFACECAMERA 	= "Sprites font face à la caméra";
-GLPREFMNU_PARTICLESTYLE 		= "Style de particules";
-GLPREFMNU_AMBLIGHT 				= "Niveau de lumière ambiente";
-GLPREFMNU_RENDERQUALITY 		= "Qualité du rendu";
-GLPREFMNU_MENUBLUR				= "Flou menu";
-GLPREFMNU_VRMODE 				= "3D VR Stéréo";
-GLPREFMNU_VRQUADSTEREO 			= "Activer Quad Stereo";
-GLPREFMNU_TONEMAP				= "Mode Tonemap";
-GLPREFMNU_BLOOM					= "Effet surbrillance";
-GLPREFMNU_LENS					= "Effet distorsion de lentille";
-GLPREFMNU_SSAO					= "Qualité Occlusion Ambiente";
-GLPREFMNU_SSAO_PORTALS			= "OA pour les portails";
-GLPREFMNU_FXAA					= "Qualité FXAA";
-GLPREFMNU_PALTONEMAPORDER		= "Ordre des palettes tonemap";
-GLPREFMNU_PALTONEMAPPOWER		= "Exponent des palettes tonemap";
-GLPREFMNU_SWLMBANDED			= "Lumière bandées en Software";
 
 // Option Values
 OPTVAL_SMART 				= "Intelligent";
