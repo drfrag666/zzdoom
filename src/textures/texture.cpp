@@ -46,6 +46,7 @@
 #include "m_fixed.h"
 #include "textures/textures.h"
 #include "v_palette.h"
+#include "g_levellocals.h"
 
 // Make sprite offset adjustment user-configurable per renderer.
 int r_spriteadjustSW, r_spriteadjustHW;
@@ -1110,6 +1111,6 @@ void FTexCoordInfo::GetFromTexture(FTexture *tex, float x, float y)
 		mScale.Y = -mScale.Y;
 		mRenderHeight = -mRenderHeight;
 	}
-	mWorldPanning = tex->bWorldPanning;
+	mWorldPanning = tex->bWorldPanning || (level.flags3 & LEVEL3_FORCEWORLDPANNING);
 	mWidth = tex->GetWidth();
 }
