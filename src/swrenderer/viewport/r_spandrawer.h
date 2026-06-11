@@ -15,7 +15,7 @@ namespace swrenderer
 	public:
 		SpanDrawerArgs();
 
-		void SetStyle(bool masked, bool additive, fixed_t alpha);
+		void SetStyle(bool masked, bool additive, fixed_t alpha, FDynamicColormap *basecolormap);
 		void SetDestY(RenderViewport *viewport, int y) { ds_viewport = viewport; ds_y = y; }
 		void SetDestX1(int x) { ds_x1 = x; }
 		void SetDestX2(int x) { ds_x2 = x; }
@@ -29,7 +29,7 @@ namespace swrenderer
 
 		void DrawDepthSpan(RenderThread *thread, float idepth1, float idepth2);
 		void DrawSpan(RenderThread *thread);
-		void DrawTiltedSpan(RenderThread *thread, int y, int x1, int x2, const FVector3 &plane_sz, const FVector3 &plane_su, const FVector3 &plane_sv, bool plane_shade, int planeshade, float planelightfloat, fixed_t pviewx, fixed_t pviewy, FDynamicColormap *basecolormap);
+		void DrawTiltedSpan(RenderThread *thread, int y, int x1, int x2, const FVector3 &plane_sz, const FVector3 &plane_su, const FVector3 &plane_sv, bool plane_shade, int lightlevel, bool foggy, float planelightfloat, fixed_t pviewx, fixed_t pviewy, FDynamicColormap *basecolormap);
 		void DrawColoredSpan(RenderThread *thread, int y, int x1, int x2);
 		void DrawFogBoundaryLine(RenderThread *thread, int y, int x1, int x2);
 

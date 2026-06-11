@@ -46,7 +46,6 @@ namespace swrenderer
 		RenderWallPart(RenderThread *thread);
 
 		void Render(
-			const WallDrawerArgs &drawerargs,
 			sector_t *frontsector,
 			seg_t *curline,
 			const FWallCoords &WallC,
@@ -62,7 +61,9 @@ namespace swrenderer
 			double top,
 			double bottom,
 			bool mask,
-			int wallshade,
+			bool additive,
+			fixed_t alpha,
+			int lightlevel,
 			fixed_t xoffset,
 			float light,
 			float lightstep,
@@ -88,7 +89,7 @@ namespace swrenderer
 		FWallCoords WallC;
 
 		double yrepeat = 0.0;
-		int wallshade = 0;
+		int lightlevel = 0;
 		fixed_t xoffset = 0;
 		float light = 0.0f;
 		float lightstep = 0.0f;
@@ -96,6 +97,8 @@ namespace swrenderer
 		FDynamicColormap *basecolormap = nullptr;
 		FLightNode *light_list = nullptr;
 		bool mask = false;
+		bool additive = false;
+		fixed_t alpha = 0;
 
 		WallDrawerArgs drawerargs;
 	};

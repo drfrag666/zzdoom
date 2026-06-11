@@ -378,8 +378,14 @@ namespace swrenderer
 		}
 	}
 
-	bool SpriteDrawerArgs::SetStyle(RenderViewport *viewport, FRenderStyle style, fixed_t alpha, int translation, uint32_t color, FDynamicColormap *&basecolormap, fixed_t shadedlightshade)
+	bool SpriteDrawerArgs::SetStyle(RenderViewport *viewport, FRenderStyle style, fixed_t alpha, int translation, uint32_t color, const ColormapLight &light)
 	{
+		if (light.BaseColormap)
+			SetLight(light);
+
+		FDynamicColormap *basecolormap = light.BaseColormap ? static_cast<FDynamicColormap*>(light.BaseColormap) : nullptr;
+		fixed_t shadedlightshade = light.ColormapNum << FRACBITS;
+
 		fixed_t fglevel, bglevel;
 
 		drawer_needs_pal_input = false;
@@ -446,11 +452,13 @@ namespace swrenderer
 			{
 				fixed_t shade = shadedlightshade;
 				if (shade == 0) shade = cameraLight->FixedLightLevelShade();
-				SetLight(basecolormap, 0, shade);
+				SetBaseColormap(basecolormap);
+				SetLight(0, shade);
 			}
 			else
 			{
-				SetLight(basecolormap, 0, shadedlightshade);
+				SetBaseColormap(basecolormap);
+				SetLight(0, shadedlightshade);
 			}
 			return true;
 		}
@@ -478,15 +486,24 @@ namespace swrenderer
 			// dc_srccolor is used by the R_Fill* routines. It is premultiplied
 			// with the alpha.
 			dc_srccolor = ((((r*x) >> 4) << 20) | ((g*x) >> 4) | ((((b)*x) >> 4) << 10)) & 0x3feffbff;
-			SetLight(&identitycolormap, 0, 0);
+			SetBaseColormap(&identitycolormap);
+			SetLight(0, 0);
 		}
 
 		return SpriteDrawerArgs::SetBlendFunc(style.BlendOp, fglevel, bglevel, style.Flags);
 	}
 
-	bool SpriteDrawerArgs::SetStyle(RenderViewport *viewport, FRenderStyle style, float alpha, int translation, uint32_t color, FDynamicColormap *&basecolormap, fixed_t shadedlightshade)
+	bool SpriteDrawerArgs::SetStyle(RenderViewport *viewport, FRenderStyle style, float alpha, int translation, uint32_t color, const ColormapLight &light)
 	{
-		return SetStyle(viewport, style, FLOAT2FIXED(alpha), translation, color, basecolormap, shadedlightshade);
+		return SetStyle(viewport, style, FLOAT2FIXED(alpha), translation, color, light);
+	}
+
+// This one is to make r_swcanvas.cpp compile
+	bool SpriteDrawerArgs::SetStyle(RenderViewport *viewport, FRenderStyle style, float alpha, int translation, uint32_t color, FDynamicColormap *&basecolormap)
+	{
+		ColormapLight light;
+		light.BaseColormap = basecolormap;
+		return SetStyle(viewport, style, FLOAT2FIXED(alpha), translation, color, light);
 	}
 
 	void SpriteDrawerArgs::FillColumn(RenderThread *thread)

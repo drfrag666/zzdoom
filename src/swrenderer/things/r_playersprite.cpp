@@ -81,7 +81,6 @@ namespace swrenderer
 	void RenderPlayerSprites::Render()
 	{
 		int 		i;
-		int 		lightnum;
 		DPSprite*	psp;
 		DPSprite*	weapon;
 		sector_t*	sec = NULL;
@@ -139,8 +138,7 @@ namespace swrenderer
 		bool foggy = (level.fadeto || basecolormap->Fade || (level.flags & LEVEL_HASFADETABLE));
 
 		// get light level
-		lightnum = ((floorlight + ceilinglight) >> 1) + LightVisibility::ActualExtraLight(foggy, Thread->Viewport.get());
-		int spriteshade = LightVisibility::LightLevelToShade(lightnum, foggy) - 24 * FRACUNIT;
+		int lightlevel = (floorlight + ceilinglight) >> 1;
 
 		if (Thread->Viewport->viewpoint.camera->player != NULL)
 		{
@@ -185,7 +183,7 @@ namespace swrenderer
 
 				if ((psp->GetID() != PSP_TARGETCENTER || CrosshairImage == nullptr) && psp->GetCaller() != nullptr)
 				{
-					RenderSprite(psp, viewport->viewpoint.camera, bobx, boby, wx, wy, viewport->viewpoint.TicFrac, spriteshade, basecolormap, foggy);
+					RenderSprite(psp, viewport->viewpoint.camera, bobx, boby, wx, wy, viewport->viewpoint.TicFrac, lightlevel, basecolormap, foggy);
 				}
 
 				psp = psp->GetNext();
@@ -195,7 +193,7 @@ namespace swrenderer
 		}
 	}
 
-	void RenderPlayerSprites::RenderSprite(DPSprite *pspr, AActor *owner, float bobx, float boby, double wx, double wy, double ticfrac, int spriteshade, FDynamicColormap *basecolormap, bool foggy)
+	void RenderPlayerSprites::RenderSprite(DPSprite *pspr, AActor *owner, float bobx, float boby, double wx, double wy, double ticfrac, int lightlevel, FDynamicColormap *basecolormap, bool foggy)
 	{
 		double 				tx;
 		int 				x1;
@@ -349,7 +347,7 @@ namespace swrenderer
 			bool fullbright = !foggy && (psprState == nullptr ? false : psprState->GetFullbright());
 			bool fadeToBlack = (vis.RenderStyle.Flags & STYLEF_FadeToBlack) != 0;
 
-			vis.Light.SetColormap(0, spriteshade, basecolormap, fullbright, invertcolormap, fadeToBlack);
+			vis.Light.SetColormap(Thread, MINZ, lightlevel, foggy, basecolormap, fullbright, invertcolormap, fadeToBlack, true, false);
 
 			colormap_to_use = (FDynamicColormap*)vis.Light.BaseColormap;
 
@@ -501,11 +499,7 @@ namespace swrenderer
 		}
 
 		SpriteDrawerArgs drawerargs;
-		drawerargs.SetLight(Light.BaseColormap, 0, Light.ColormapNum << FRACBITS);
-
-		FDynamicColormap *basecolormap = static_cast<FDynamicColormap*>(Light.BaseColormap);
-
-		bool visible = drawerargs.SetStyle(thread->Viewport.get(), RenderStyle, Alpha, Translation, FillColor, basecolormap, Light.ColormapNum << FRACBITS);
+		bool visible = drawerargs.SetStyle(thread->Viewport.get(), RenderStyle, Alpha, Translation, FillColor, Light);
 		if (!visible)
 			return;
 

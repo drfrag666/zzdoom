@@ -305,8 +305,8 @@ FVoxel *R_LoadKVX(int lumpnum)
 	}
 
 	voxel->LumpNum = lumpnum;
-	voxel->Palette = new uint8_t[768];
-	memcpy(voxel->Palette, rawvoxel + voxelsize - 768, 768);
+	voxel->Palette.Resize(768);
+	memcpy(voxel->Palette.Data(), rawvoxel + voxelsize - 768, 768);
 
 	return voxel;
 }
@@ -374,22 +374,6 @@ FVoxelMipLevel::~FVoxelMipLevel()
 
 //==========================================================================
 //
-// FVoxel Constructor
-//
-//==========================================================================
-
-FVoxel::FVoxel()
-{
-	Palette = NULL;
-}
-
-FVoxel::~FVoxel()
-{
-	if (Palette != NULL) delete [] Palette;
-}
-
-//==========================================================================
-//
 // Create true color version of the slab data
 //
 //==========================================================================
@@ -418,7 +402,7 @@ void FVoxel::CreateBgraSlabData()
 				int colorIndex = src->col[j];
 
 				uint32_t red, green, blue;
-				if (Palette)
+				if (Palette.Size())
 				{
 					red = (Palette[colorIndex * 3 + 0] << 2) | (Palette[colorIndex * 3 + 0] >> 4);
 					green = (Palette[colorIndex * 3 + 1] << 2) | (Palette[colorIndex * 3 + 1] >> 4);
@@ -450,9 +434,9 @@ void FVoxel::CreateBgraSlabData()
 
 void FVoxel::Remap()
 {
-	if (Palette != NULL)
+	if (Palette.Size())
 	{
-		uint8_t *remap = GetVoxelRemap(Palette);
+		uint8_t *remap = GetVoxelRemap(Palette.Data());
 		for (int i = 0; i < NumMips; ++i)
 		{
 			RemapVoxelSlabs((kvxslab_t *)Mips[i].SlabData, Mips[i].OffsetX[Mips[i].SizeX], remap);
@@ -469,11 +453,7 @@ void FVoxel::Remap()
 
 void FVoxel::RemovePalette()
 {
-	if (Palette != NULL)
-	{
-		delete [] Palette;
-		Palette = NULL;
-	}
+	Palette.Reset();
 }
 
 
