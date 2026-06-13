@@ -45,7 +45,45 @@
 #include "p_destructible.h"
 #include "r_data/r_sections.h"
 
-struct FLevelLocals
+
+struct FLevelData
+{
+	TArray<vertex_t> vertexes;
+	TArray<sector_t> sectors;
+	TArray<line_t*> linebuffer;	// contains the line lists for the sectors.
+	TArray<line_t> lines;
+	TArray<side_t> sides;
+	TArray<seg_t> segs;
+	TArray<subsector_t> subsectors;
+	TArray<node_t> nodes;
+	TArray<subsector_t> gamesubsectors;
+	TArray<node_t> gamenodes;
+	node_t *headgamenode;
+	TArray<uint8_t> rejectmatrix;
+	TArray<zone_t>	Zones;
+
+	TArray<FSectorPortal> sectorPortals;
+	FSectionContainer sections;
+
+	// [ZZ] Destructible geometry information
+	TMap<int, FHealthGroup> healthGroups;
+
+	FBlockmap blockmap;
+
+	// These are copies of the loaded map data that get used by the savegame code to skip unaltered fields
+	// Without such a mechanism the savegame format would become too slow and large because more than 80-90% are normally still unaltered.
+	TArray<sector_t>	loadsectors;
+	TArray<line_t>	loadlines;
+	TArray<side_t>	loadsides;
+
+	// Maintain single and multi player starting spots.
+	TArray<FPlayerStart> deathmatchstarts;
+	FPlayerStart		playerstarts[MAXPLAYERS];
+	TArray<FPlayerStart> AllPlayerStarts;
+
+};
+
+struct FLevelLocals : public FLevelData
 {
 	void Tick();
 	void Mark();
@@ -75,45 +113,9 @@ struct FLevelLocals
 
 	uint64_t	ShaderStartTime = 0;	// tell the shader system when we started the level (forces a timer restart)
 
-	TArray<vertex_t> vertexes;
-	TArray<sector_t> sectors;
-	TArray<line_t*> linebuffer;	// contains the line lists for the sectors.
-	TArray<line_t> lines;
-	TArray<side_t> sides;
-	TArray<seg_t> segs;
-	TArray<subsector_t> subsectors;
-	TArray<node_t> nodes;
-	TArray<subsector_t> gamesubsectors;
-	TArray<node_t> gamenodes;
-	node_t *headgamenode;
-	TArray<uint8_t> rejectmatrix;
-
 	static const int BODYQUESIZE = 32;
 	TObjPtr<AActor*> bodyque[BODYQUESIZE];
 	int bodyqueslot;
-
-
-	TArray<FSectorPortal> sectorPortals;
-	FSectionContainer sections;
-
-	TArray<zone_t>	Zones;
-
-	// [ZZ] Destructible geometry information
-	TMap<int, FHealthGroup> healthGroups;
-
-	FBlockmap blockmap;
-
-	// These are copies of the loaded map data that get used by the savegame code to skip unaltered fields
-	// Without such a mechanism the savegame format would become too slow and large because more than 80-90% are normally still unaltered.
-	TArray<sector_t>	loadsectors;
-	TArray<line_t>	loadlines;
-	TArray<side_t>	loadsides;
-
-	// Maintain single and multi player starting spots.
-	TArray<FPlayerStart> deathmatchstarts;
-	FPlayerStart		playerstarts[MAXPLAYERS];
-	TArray<FPlayerStart> AllPlayerStarts;
-
 
 	uint32_t		flags;
 	uint32_t		flags2;
@@ -194,6 +196,8 @@ struct FLevelLocals
 			|| (info != nullptr && info->Snapshot.mBuffer != nullptr && info->isValid());
 	}
 };
+
+#ifndef NO_DEFINE_LEVEL
 
 extern FLevelLocals level;
 
@@ -321,3 +325,4 @@ inline bool line_t::hitSkyWall(AActor* mo) const
 		backsector->GetTexture(sector_t::ceiling) == skyflatnum &&
 		mo->Z() >= backsector->ceilingplane.ZatPoint(mo->PosRelative(this));
 }
+#endif
