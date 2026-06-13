@@ -470,6 +470,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 		level.time = 0;
 		level.maptime = 0;
 		level.totaltime = 0;
+		level.spawnindex = 0;
 
 		if (!multiplayer || !deathmatch)
 		{
@@ -844,6 +845,7 @@ void G_DoCompleted (void)
 		}
 		level.time = 0;
 		level.maptime = 0;
+		level.spawnindex = 0;
 	}
 
 	finishstate = mode;

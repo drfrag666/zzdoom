@@ -657,6 +657,7 @@ public:
 		walltop,
 		wallbottom,
 		sprites
+
 	};
 
 	struct splane
@@ -909,6 +910,12 @@ public:
 		SpecialColors[slot] = rgb;
 	}
 
+	void SetAdditiveColor(int slot, PalEntry rgb)
+	{
+		rgb.a = 255;
+		AdditiveColors[slot] = rgb;
+	}
+
 	inline bool PortalBlocksView(int plane);
 	inline bool PortalBlocksSight(int plane);
 	inline bool PortalBlocksMovement(int plane);
@@ -964,6 +971,7 @@ public:
 
 	// [RH] give floor and ceiling even more properties
 	PalEntry SpecialColors[5];
+	PalEntry AdditiveColors[5];
 	FColormap Colormap;
 
 private:
@@ -1150,7 +1158,8 @@ struct side_t
 			NoGradient = 1,
 			FlipGradient = 2,
 			ClampGradient = 4,
-			UseOwnColors = 8,
+			UseOwnSpecialColors = 8,
+			UseOwnAdditiveColor = 16,
 		};
 		double xOffset;
 		double yOffset;
@@ -1160,6 +1169,7 @@ struct side_t
 		FTextureID texture;
 		int flags;
 		PalEntry SpecialColors[2];
+		PalEntry AdditiveColor;
 
 		void InitFrom(const part &other)
 		{
@@ -1300,9 +1310,38 @@ struct side_t
 		auto &part = textures[which];
 		if (part.flags & part::NoGradient) slot = 0;
 		if (part.flags & part::FlipGradient) slot ^= 1;
-		return (part.flags & part::UseOwnColors) ? part.SpecialColors[slot] : frontsector->SpecialColors[sector_t::walltop + slot];
+		return (part.flags & part::UseOwnSpecialColors) ? part.SpecialColors[slot] : frontsector->SpecialColors[sector_t::walltop + slot];
 	}
 
+	void EnableAdditiveColor(int which, bool enable)
+	{
+		int flag = enable ? part::UseOwnAdditiveColor : 0;
+		if (enable)
+		{
+			textures[which].flags |= flag;
+		}
+		else
+		{
+			textures[which].flags &= (~flag);
+		}
+	}
+
+	void SetAdditiveColor(int which, PalEntry rgb)
+	{
+		rgb.a = 255;
+		textures[which].AdditiveColor = rgb;
+	}
+
+	PalEntry GetAdditiveColor(int which, sector_t *frontsector) const
+	{
+		if (textures[which].flags & part::UseOwnAdditiveColor) {
+			return textures[which].AdditiveColor;
+		}
+		else
+		{
+			return frontsector->AdditiveColors[sector_t::walltop]; // Used as additive color for all walls
+		}
+	}
 
 	DInterpolation *SetInterpolation(int position);
 	void StopInterpolation(int position);

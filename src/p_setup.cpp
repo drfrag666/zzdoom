@@ -1109,6 +1109,7 @@ void P_LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		ss->nextsec = -1;	//jff 2/26/98 add fields to support locking out
 		ss->prevsec = -1;	// stair retriggering until build completes
 		memset(ss->SpecialColors, -1, sizeof(ss->SpecialColors));
+		memset(ss->AdditiveColors, 0, sizeof(ss->AdditiveColors));
 
 		ss->SetAlpha(sector_t::floor, 1.);
 		ss->SetAlpha(sector_t::ceiling, 1.);
@@ -3711,6 +3712,9 @@ void P_SetupLevel(const char *lumpname, int position, bool newGame)
 		double fdy = FIXED2DBL(node.dy);
 		node.len = (float)g_sqrt(fdx * fdx + fdy * fdy);
 	}
+
+	// CreateVBO must be run on the plain 3D floor data.
+	P_ClearDynamic3DFloorData();
 
 	// This must be done BEFORE the PolyObj Spawn!!!
 	Renderer->PreprocessLevel();

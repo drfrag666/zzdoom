@@ -108,6 +108,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, side_t::part &part, si
 			("flags", part.flags, def->flags)
 			("color1", part.SpecialColors[0], def->SpecialColors[0])
 			("color2", part.SpecialColors[1], def->SpecialColors[1])
+			("addcolor", part.AdditiveColor, def->AdditiveColor)
 			.EndObject();
 	}
 	return arc;
@@ -294,6 +295,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, sector_t &p, sector_t 
 			("linked_ceiling", p.e->Linked.Ceiling.Sectors)
 			("colormap", p.Colormap, def->Colormap)
 			.Array("specialcolors", p.SpecialColors, def->SpecialColors, 5, true)
+			.Array("additivecolors", p.AdditiveColors, def->AdditiveColors, 5, true)
 			("gravity", p.gravity, def->gravity)
 			.Terrain("floorterrain", p.terrainnum[0], &def->terrainnum[0])
 			.Terrain("ceilingterrain", p.terrainnum[1], &def->terrainnum[1])
@@ -975,6 +977,7 @@ void G_SerializeLevel(FSerializer &arc, bool hubload)
 		("level.skyfog", level.skyfog)
 		("level.deathsequence", level.deathsequence)
 		("level.bodyqueslot", level.bodyqueslot)
+		("level.spawnindex", level.spawnindex)
 		.Array("level.bodyque", level.bodyque, level.BODYQUESIZE);
 
 	// Hub transitions must keep the current total time
