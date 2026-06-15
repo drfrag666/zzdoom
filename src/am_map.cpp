@@ -872,7 +872,7 @@ CCMD(am_togglegrid)
 
 CCMD(am_toggletexture)
 {
-	if (am_textured && hasglnodes)
+	if (am_textured)
 	{
 		textured = !textured;
 		Printf ("%s\n", GStrings(textured ? "AMSTR_TEXON" : "AMSTR_TEXOFF"));
@@ -2311,10 +2311,9 @@ void AM_showSS()
 			AM_drawSeg(sub->firstline + i, yellow);
 		}
 
-		for (int i = 0; i <po_NumPolyobjs; i++)
+		for (auto &poly : level.Polyobjects)
 		{
-			FPolyObj *po = &polyobjs[i];
-			FPolyNode *pnode = po->subsectorlinks;
+			FPolyNode *pnode = poly.subsectorlinks;
 
 			while (pnode != NULL)
 			{
@@ -3188,9 +3187,8 @@ void AM_drawAuthorMarkers ()
 		{
 			// Use more correct info if we have GL nodes available
 			if (mark->args[1] == 0 ||
-				(mark->args[1] == 1 && (hasglnodes ?
-				 marked->subsector->flags & SSECMF_DRAWN :
-				 marked->Sector->MoreFlags & SECMF_DRAWN)))
+				(mark->args[1] == 1 &&
+				 marked->subsector->flags & SSECMF_DRAWN))
 			{
 				DrawMarker (tex, marked->X(), marked->Y(), 0, flip, mark->Scale.X, mark->Scale.Y, mark->Translation,
 					mark->Alpha, mark->fillcolor, mark->RenderStyle);
@@ -3256,7 +3254,7 @@ void AM_Drawer (int bottom)
 	}
 	AM_activateNewScale();
 
-	if (am_textured && hasglnodes && textured && !viewactive)
+	if (am_textured && textured && !viewactive)
 		AM_drawSubsectors();
 
 	if (grid)	

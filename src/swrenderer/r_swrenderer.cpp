@@ -65,11 +65,6 @@ EXTERN_CVAR(Bool, r_drawvoxels)
 
 CUSTOM_CVAR(Bool, r_polyrenderer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
-	if (self == 1 && !hasglnodes)
-	{
-		Printf("No GL BSP detected. You must restart the map before rendering will be correct\n");
-	}
-
 	if (usergame)
 	{
 		// [SP] Update pitch limits to the netgame/gamesim.

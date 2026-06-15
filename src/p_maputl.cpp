@@ -566,41 +566,7 @@ void AActor::SetOrigin(double x, double y, double z, bool moving)
 	if (!moving) ClearInterpolation();
 }
 
-//===========================================================================
-//
-// FBlockNode - allows to link actors into multiple blocks in the blockmap
-//
-//===========================================================================
 
-FBlockNode *FBlockNode::FreeBlocks = NULL;
-
-FBlockNode *FBlockNode::Create (AActor *who, int x, int y, int group)
-{
-	FBlockNode *block;
-
-	if (FreeBlocks != NULL)
-	{
-		block = FreeBlocks;
-		FreeBlocks = block->NextBlock;
-	}
-	else
-	{
-		block = new FBlockNode;
-	}
-	block->BlockIndex = x + y*level.blockmap.bmapwidth;
-	block->Me = who;
-	block->NextActor = NULL;
-	block->PrevActor = NULL;
-	block->PrevBlock = NULL;
-	block->NextBlock = NULL;
-	return block;
-}
-
-void FBlockNode::Release ()
-{
-	NextBlock = FreeBlocks;
-	FreeBlocks = this;
-}
 
 //
 // BLOCK MAP ITERATORS
@@ -616,7 +582,6 @@ void FBlockNode::Release ()
 // FBlockLinesIterator
 //
 //===========================================================================
-extern polyblock_t **PolyBlockMap;
 
 FBlockLinesIterator::FBlockLinesIterator(int _minx, int _miny, int _maxx, int _maxy, bool keepvalidcount)
 {
@@ -656,7 +621,7 @@ void FBlockLinesIterator::StartBlock(int x, int y)
 	if (level.blockmap.isValidBlock(x, y))
 	{
 		int offset = y*level.blockmap.bmapwidth + x;
-		polyLink = PolyBlockMap? PolyBlockMap[offset] : NULL;
+		polyLink = level.PolyBlockMap.Size() > offset? level.PolyBlockMap[offset] : nullptr;
 		polyIndex = 0;
 
 		list = level.blockmap.GetLines(x, y);
