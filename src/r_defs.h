@@ -52,6 +52,7 @@ struct seg_t;
 struct sector_t;
 class AActor;
 struct FSection;
+struct FLevelLocals;
 
 #define MAXWIDTH 12000
 #define MAXHEIGHT 5000

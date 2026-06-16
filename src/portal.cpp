@@ -501,28 +501,6 @@ bool P_ChangePortal(line_t *ln, int thisid, int destid)
 
 //============================================================================
 //
-// clears all portal data for a new level start
-//
-//============================================================================
-
-void P_ClearPortals()
-{
-	Displacements.Create(1);
-	linePortals.Clear();
-	linkedPortals.Clear();
-	level.sectorPortals.Resize(2);
-	// The first entry must always be the default skybox. This is what every sector gets by default.
-	memset(&level.sectorPortals[0], 0, sizeof(level.sectorPortals[0]));
-	level.sectorPortals[0].mType = PORTS_SKYVIEWPOINT;
-	level.sectorPortals[0].mFlags = PORTSF_SKYFLATONLY;
-	// The second entry will be the default sky. This is for forcing a regular sky through the skybox picker
-	memset(&level.sectorPortals[1], 0, sizeof(level.sectorPortals[0]));
-	level.sectorPortals[1].mType = PORTS_SKYVIEWPOINT;
-	level.sectorPortals[1].mFlags = PORTSF_SKYFLATONLY;
-}
-
-//============================================================================
-//
 // check if this line is between portal and the viewer. clip away if it is.
 //
 //============================================================================

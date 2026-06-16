@@ -117,7 +117,7 @@ static void AddToList(uint8_t *hitlist, FTextureID texid, int bitmask)
 		}
 		for (int i = 0; i < switchdef->PairDef->NumFrames; i++)
 		{
-			hitlist[switchdef->frames[i].Texture.GetIndex()] |= (uint8_t)bitmask;
+			hitlist[switchdef->PairDef->frames[i].Texture.GetIndex()] |= (uint8_t)bitmask;
 		}
 	}
 
@@ -215,11 +215,98 @@ static void PrecacheLevel(FLevelLocals *Level)
 
 }
 
+//============================================================================
+//
+// clears all portal data for a new level start
+//
+//============================================================================
+
+void FLevelLocals::ClearPortals()
+{
+	Displacements.Create(1);
+	linePortals.Clear();
+	linkedPortals.Clear();
+	sectorPortals.Resize(2);
+	PortalBlockmap.Clear();
+
+	// The first entry must always be the default skybox. This is what every sector gets by default.
+	memset(&sectorPortals[0], 0, sizeof(sectorPortals[0]));
+	sectorPortals[0].mType = PORTS_SKYVIEWPOINT;
+	sectorPortals[0].mFlags = PORTSF_SKYFLATONLY;
+	// The second entry will be the default sky. This is for forcing a regular sky through the skybox picker
+	memset(&sectorPortals[1], 0, sizeof(sectorPortals[0]));
+	sectorPortals[1].mType = PORTS_SKYVIEWPOINT;
+	sectorPortals[1].mFlags = PORTSF_SKYFLATONLY;
+}
+
 //==========================================================================
 //
 //
 //
 //===========================================================================
+
+void FLevelLocals::ClearLevelData()
+{
+	total_monsters = total_items = total_secrets =
+		killed_monsters = found_items = found_secrets =
+		wminfo.maxfrags = 0;
+
+	// delete allocated data in the level arrays.
+	if (sectors.Size() > 0)
+	{
+		delete[] sectors[0].e;
+	}
+	for (auto &sub : subsectors)
+	{
+		if (sub.BSP != nullptr) delete sub.BSP;
+	}
+	ClearPortals();
+
+	sections.Clear();
+	segs.Clear();
+	sectors.Clear();
+	linebuffer.Clear();
+	subsectorbuffer.Clear();
+	lines.Clear();
+	sides.Clear();
+	segbuffer.Clear();
+	loadsectors.Clear();
+	loadlines.Clear();
+	loadsides.Clear();
+	vertexes.Clear();
+	nodes.Clear();
+	gamenodes.Reset();
+	subsectors.Clear();
+	gamesubsectors.Reset();
+	rejectmatrix.Clear();
+	Zones.Clear();
+	blockmap.Clear();
+	Polyobjects.Clear();
+
+	for (auto &pb : PolyBlockMap)
+	{
+		polyblock_t *link = pb;
+		while (link != nullptr)
+		{
+			polyblock_t *next = link->next;
+			delete link;
+			link = next;
+		}
+	}
+	PolyBlockMap.Reset();
+
+	deathmatchstarts.Clear();
+	AllPlayerStarts.Clear();
+	memset(playerstarts, 0, sizeof(playerstarts));
+	Scrolls.Clear();
+
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
 
 void P_FreeLevelData ()
 {
@@ -237,62 +324,12 @@ void P_FreeLevelData ()
 	FPolyObj::ClearAllSubsectorLinks(); // can't be done as part of the polyobj deletion process.
 	SN_StopAllSequences ();
 	DThinker::DestroyAllThinkers ();
-	P_ClearPortals();
 	tagManager.Clear();
-	level.total_monsters = level.total_items = level.total_secrets =
-		level.killed_monsters = level.found_items = level.found_secrets =
-		wminfo.maxfrags = 0;
-		
-	if (level.sectors.Size() > 0)
-	{
-		delete[] level.sectors[0].e;
-	}
-	for (auto &sub : level.subsectors)
-	{
-		if (sub.BSP != nullptr) delete sub.BSP;
-	}
 
 	FBehavior::StaticUnloadModules ();
-	level.sections.Clear();
-	level.segs.Clear();
-	level.sectors.Clear();
-	level.linebuffer.Clear();
-	level.subsectorbuffer.Clear();
-	level.lines.Clear();
-	level.sides.Clear();
-	level.segbuffer.Clear();
-	level.loadsectors.Clear();
-	level.loadlines.Clear();
-	level.loadsides.Clear();
-	level.vertexes.Clear();
-	level.nodes.Clear();
-	level.gamenodes.Reset();
-	level.subsectors.Clear();
-	level.gamesubsectors.Reset();
-	level.rejectmatrix.Clear();
-	level.Zones.Clear();
-	level.blockmap.Clear();
-	level.Polyobjects.Clear();
-
-	for(auto &pb : level.PolyBlockMap)
-	{
-		polyblock_t *link = pb;
-		while (link != nullptr)
-		{
-			polyblock_t *next = link->next;
-			delete link;
-			link = next;
-		}
-	}
-	level.PolyBlockMap.Reset();
-
-	level.deathmatchstarts.Clear();
-	level.AllPlayerStarts.Clear();
-	memset(level.playerstarts, 0, sizeof(level.playerstarts));
 
 	P_FreeStrifeConversations ();
-	level.Scrolls.Clear();
-	P_ClearUDMFKeys();
+	level.ClearLevelData();
 }
 
 //===========================================================================
@@ -506,12 +543,10 @@ void P_Init ()
 static void P_Shutdown ()
 {	
 	DThinker::DestroyThinkersInList(STAT_STATIC);	
-	P_DeinitKeyMessages ();
 	P_FreeLevelData ();
 	// [ZZ] delete global event handlers
 	E_Shutdown(false);
 	ST_Clear();
-	FS_Close();
 	for (auto &p : players)
 	{
 		if (p.psprites != nullptr) p.psprites->Destroy();
