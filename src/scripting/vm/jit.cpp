@@ -156,7 +156,7 @@ asmjit::CCFunc *JitCompiler::Codegen()
 		LineInfo[j] = info;
 	}
 
-	std::stable_sort(LineInfo.begin(), LineInfo.end(), [](const JitLineInfo &a, const JitLineInfo &b) { return a.InstructionIndex < b.InstructionIndex; });
+/*	std::stable_sort(LineInfo.begin(), LineInfo.end(), [](const JitLineInfo &a, const JitLineInfo &b) { return a.InstructionIndex < b.InstructionIndex; });FIXME*/
 
 	return func;
 }
