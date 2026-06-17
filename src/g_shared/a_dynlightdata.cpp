@@ -71,89 +71,8 @@ inline PClassActor * GetRealType(PClassActor * ti)
 	return ti;
 }
 
-
-
-//==========================================================================
-//
-// Light associations
-//
-//==========================================================================
-class FLightAssociation
-{
-public:
-	//FLightAssociation();
-	FLightAssociation(FName actorName, const char *frameName, FName lightName)
-		: m_ActorName(actorName), m_AssocLight(lightName)
-	{
-		strncpy(m_FrameName, frameName, 8);
-	}
-
-	FName ActorName() { return m_ActorName; }
-	const char *FrameName() { return m_FrameName; }
-	FName Light() { return m_AssocLight; }
-	void ReplaceLightName(FName newName) { m_AssocLight = newName; }
-protected:
-	char m_FrameName[8];
-	FName m_ActorName, m_AssocLight;
-};
-
 TArray<FLightAssociation> LightAssociations;
 static double lightSizeFactor = 1.;
-
-
-//==========================================================================
-//
-// Light definitions
-//
-//==========================================================================
-class FLightDefaults
-{
-public:
-   FLightDefaults(FName name, ELightType type);
-
-   void ApplyProperties(ADynamicLight * light) const;
-   FName GetName() const { return m_Name; }
-   void SetParameter(double p) { m_Param = p; }
-   void SetArg(int arg, int val) { m_Args[arg] = val; }
-   int GetArg(int arg) { return m_Args[arg]; }
-   uint8_t GetAttenuate() const { return m_attenuate; }
-   void SetOffset(float* ft) { m_Pos.X = ft[0]; m_Pos.Z = ft[1]; m_Pos.Y = ft[2]; }
-   void SetSubtractive(bool subtract) { m_subtractive = subtract; }
-   void SetAdditive(bool add) { m_additive = add; }
-   void SetDontLightSelf(bool add) { m_dontlightself = add; }
-   void SetAttenuate(bool on) { m_attenuate = on; }
-   void SetHalo(bool halo) { m_halo = halo; }
-   void SetDontLightActors(bool on) { m_dontlightactors = on; }
-   void SetSpot(bool spot) { m_spot = spot; }
-   void SetSpotInnerAngle(double angle) { m_spotInnerAngle = angle; }
-   void SetSpotOuterAngle(double angle) { m_spotOuterAngle = angle; }
-
-   void OrderIntensities()
-   {
-	   if (m_Args[LIGHT_INTENSITY] > m_Args[LIGHT_SECONDARY_INTENSITY])
-	   {
-		   std::swap(m_Args[LIGHT_INTENSITY], m_Args[LIGHT_SECONDARY_INTENSITY]);
-		   m_swapped = true;
-	   }
-   }
-
-protected:
-   FName m_Name;
-   int m_Args[5] = { 0,0,0,0,0 };
-   double m_Param = 0;
-   DVector3 m_Pos = { 0,0,0 };
-   ELightType m_type;
-   int8_t m_attenuate = -1;
-   bool m_subtractive = false;
-   bool m_additive = false;
-   bool m_halo = false;
-   bool m_dontlightself = false;
-   bool m_dontlightactors = false;
-   bool m_swapped = false;
-   bool m_spot = false;
-   double m_spotInnerAngle = 10.0;
-   double m_spotOuterAngle = 25.0;
-};
 
 TDeletingArray<FLightDefaults *> LightDefaults;
 
@@ -1024,24 +943,6 @@ bool ParseShader(FScanner &sc)
 	return false;
 }
 
-//==========================================================================
-//
-// Light associations per actor class
-//
-//==========================================================================
-
-class FInternalLightAssociation
-{
-public:
-	FInternalLightAssociation(FLightAssociation * asso);
-	int Sprite() const { return m_sprite; }
-	int Frame() const { return m_frame; }
-	const FLightDefaults *Light() const { return m_AssocLight; }
-protected:
-	int m_sprite;
-	int m_frame;
-	FLightDefaults * m_AssocLight;
-};
 
 //==========================================================================
 //
@@ -1139,147 +1040,12 @@ void InitializeActorLights()
 	ParsedStateLights.ShrinkToFit();
 }
 
-
 //==========================================================================
 //
 //
 //
 //==========================================================================
 
-void AActor::AttachLight(unsigned int count, const FLightDefaults *lightdef)
-{
-	ADynamicLight *light;
-
-	if (count < AttachedLights.Size()) 
-	{
-		light = barrier_cast<ADynamicLight*>(AttachedLights[count]);
-		assert(light != NULL);
-	}
-	else
-	{
-		light = Spawn<ADynamicLight>(Pos(), NO_REPLACE);
-		light->target = this;
-		light->owned = true;
-		light->ObjectFlags |= OF_Transient;
-		//light->lightflags |= LF_ATTENUATE;
-		AttachedLights.Push(light);
-	}
-	light->flags2&=~MF2_DORMANT;
-	lightdef->ApplyProperties(light);
-}
-
-//==========================================================================
-//
-// per-state light adjustment
-//
-//==========================================================================
-
-void AActor::SetDynamicLights()
-{
-	TArray<FInternalLightAssociation *> & LightAssociations = GetInfo()->LightAssociations;
-	unsigned int count = 0;
-
-	if (state == NULL) return;
-	if (LightAssociations.Size() > 0)
-	{
-		ADynamicLight *lights, *tmpLight;
-		unsigned int i;
-
-		lights = tmpLight = NULL;
-
-		for (i = 0; i < LightAssociations.Size(); i++)
-		{
-			if (LightAssociations[i]->Sprite() == sprite &&
-				(LightAssociations[i]->Frame()==frame || LightAssociations[i]->Frame()==-1))
-			{
-				AttachLight(count++, LightAssociations[i]->Light());
-			}
-		}
-	}
-	if (count == 0 && state->Light > 0)
-	{
-		for(int i= state->Light; StateLights[i] != NULL; i++)
-		{
-			if (StateLights[i] != (FLightDefaults*)-1)
-			{
-				AttachLight(count++, StateLights[i]);
-			}
-		}
-	}
-
-	for(;count<AttachedLights.Size();count++)
-	{
-		AttachedLights[count]->flags2 |= MF2_DORMANT;
-		memset(AttachedLights[count]->args, 0, 3*sizeof(args[0]));
-	}
-}
-
-//==========================================================================
-//
-// Needed for garbage collection
-//
-//==========================================================================
-
-size_t AActor::PropagateMark()
-{
-	for (unsigned i = 0; i<AttachedLights.Size(); i++)
-	{
-		GC::Mark(AttachedLights[i]);
-	}
-	return Super::PropagateMark();
-}
-
-//==========================================================================
-//
-// This is called before saving the game
-//
-//==========================================================================
-
-void AActor::DeleteAllAttachedLights()
-{
-	TThinkerIterator<AActor> it;
-	AActor * a;
-	ADynamicLight * l;
-
-	while ((a=it.Next())) 
-	{
-		a->AttachedLights.Clear();
-	}
-
-	TThinkerIterator<ADynamicLight> it2;
-
-	l=it2.Next();
-	while (l) 
-	{
-		ADynamicLight * ll = it2.Next();
-		if (l->owned) l->Destroy();
-		l=ll;
-	}
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-void AActor::RecreateAllAttachedLights()
-{
-	TThinkerIterator<AActor> it;
-	AActor * a;
-
-	while ((a=it.Next())) 
-	{
-		a->SetDynamicLights();
-	}
-}
-
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
 static void DoParseDefs(FScanner &sc, int workingLump)
 {
 	int recursion=0;
