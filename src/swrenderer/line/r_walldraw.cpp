@@ -362,7 +362,7 @@ namespace swrenderer
 		FLightNode *cur_node = light_list;
 		while (cur_node)
 		{
-			if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+			if (cur_node->lightsource->IsActive())
 				max_lights++;
 			cur_node = cur_node->nextLight;
 		}
@@ -374,7 +374,7 @@ namespace swrenderer
 		cur_node = light_list;
 		while (cur_node)
 		{
-			if (!(cur_node->lightsource->flags2&MF2_DORMANT))
+			if (cur_node->lightsource->IsActive())
 			{
 				double lightX = cur_node->lightsource->X() - viewport->viewpoint.Pos.X;
 				double lightY = cur_node->lightsource->Y() - viewport->viewpoint.Pos.Y;
@@ -385,7 +385,7 @@ namespace swrenderer
 				float lz = (float)lightZ;
 
 				// Precalculate the constant part of the dot here so the drawer doesn't have to.
-				bool is_point_light = (cur_node->lightsource->lightflags & LF_ATTENUATE) != 0;
+				bool is_point_light = cur_node->lightsource->IsAttenuated();
 				float lconstant = lx * lx + ly * ly;
 				float nlconstant = is_point_light ? lx * drawerargs.dc_normal.X + ly * drawerargs.dc_normal.Y : 0.0f;
 

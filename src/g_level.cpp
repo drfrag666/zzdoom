@@ -78,6 +78,7 @@
 #include "vm.h"
 #include "events.h"
 #include "i_music.h"
+#include "a_dynlight.h"
 
 #include "gi.h"
 
@@ -314,8 +315,8 @@ void G_NewInit ()
 	int i;
 
 	// Destory all old player refrences that may still exist
-	TThinkerIterator<APlayerPawn> it(STAT_TRAVELLING);
-	APlayerPawn *pawn, *next;
+	TThinkerIterator<AActor> it(NAME_PlayerPawn, STAT_TRAVELLING);
+	AActor *pawn, *next;
 
 	next = it.Next();
 	while ((pawn = next) != NULL)
@@ -1273,11 +1274,13 @@ void G_StartTravel ()
 				pawn->RemoveFromHash ();
 				pawn->tid = tid;		// Restore TID (but no longer linked into the hash chain)
 				pawn->ChangeStatNum (STAT_TRAVELLING);
+				pawn->DeleteAttachedLights();
 
 				for (inv = pawn->Inventory; inv != NULL; inv = inv->Inventory)
 				{
 					inv->ChangeStatNum (STAT_TRAVELLING);
 					inv->UnlinkFromWorld (nullptr);
+					inv->DeleteAttachedLights();
 				}
 			}
 		}
@@ -1299,15 +1302,15 @@ void G_StartTravel ()
 
 int G_FinishTravel ()
 {
-	TThinkerIterator<APlayerPawn> it (STAT_TRAVELLING);
-	APlayerPawn *pawn, *pawndup, *oldpawn, *next;
+	TThinkerIterator<AActor> it (NAME_PlayerPawn, STAT_TRAVELLING);
+	AActor *pawn, *pawndup, *oldpawn, *next;
 	AActor *inv;
 	FPlayerStart *start;
 	int pnum;
 	int failnum = 0;
 
 	// 
-	APlayerPawn* pawns[MAXPLAYERS];
+	AActor* pawns[MAXPLAYERS];
 	int pawnsnum = 0;
 
 	next = it.Next ();
@@ -1367,7 +1370,7 @@ int G_FinishTravel ()
 		pawn->lastenemy = NULL;
 		pawn->player->mo = pawn;
 		pawn->player->camera = pawn;
-		pawn->player->viewheight = pawn->ViewHeight;
+		pawn->player->viewheight = pawn->player->DefaultViewHeight();
 		pawn->flags2 &= ~MF2_BLASTED;
 		if (oldpawn != nullptr)
 		{
@@ -1506,6 +1509,7 @@ void G_InitLevelLocals ()
 	level.lightadditivesurfaces = !!info->lightadditivesurfaces;
 	level.notexturefill = !!info->notexturefill;
 
+	FLightDefaults::SetAttenuationForLevel();
 }
 
 //==========================================================================
@@ -1656,8 +1660,8 @@ void G_UnSnapshotLevel (bool hubLoad)
 		G_SerializeLevel (arc, hubLoad);
 		level.FromSnapshot = true;
 
-		TThinkerIterator<APlayerPawn> it;
-		APlayerPawn *pawn, *next;
+		TThinkerIterator<AActor> it(NAME_PlayerPawn);
+		AActor *pawn, *next;
 
 		next = it.Next();
 		while ((pawn = next) != 0)

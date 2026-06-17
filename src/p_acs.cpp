@@ -1816,10 +1816,7 @@ int CheckInventory (AActor *activator, const char *type, bool max)
 	{
 		if (max)
 		{
-			if (activator->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-				return static_cast<APlayerPawn *>(activator)->GetMaxHealth();
-			else
-				return activator->SpawnHealth();
+			return activator->GetMaxHealth();
 		}
 		return activator->health;
 	}
@@ -4233,8 +4230,8 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_JumpZ:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-			static_cast<APlayerPawn *>(actor)->JumpZ = ACSToDouble(value);
+		if (actor->IsKindOf(NAME_PlayerPawn))
+			actor->FloatVar(NAME_JumpZ) = ACSToDouble(value);
 		break; 	// [GRB]
 
 	case APROP_ChaseGoal:
@@ -4266,9 +4263,9 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 
 
 	case APROP_SpawnHealth:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+		if (actor->IsKindOf(NAME_PlayerPawn))
 		{
-			static_cast<APlayerPawn *>(actor)->MaxHealth = value;
+			actor->IntVar(NAME_MaxHealth) = value;
 		}
 		break;
 
@@ -4351,9 +4348,9 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_ViewHeight:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+		if (actor->IsKindOf(NAME_PlayerPawn))
 		{
-			static_cast<APlayerPawn *>(actor)->ViewHeight = ACSToDouble(value);
+			actor->FloatVar(NAME_ViewHeight) = ACSToDouble(value);
 			if (actor->player != NULL)
 			{
 				actor->player->viewheight = ACSToDouble(value);
@@ -4362,8 +4359,8 @@ void DLevelScript::DoSetActorProperty (AActor *actor, int property, int value)
 		break;
 
 	case APROP_AttackZOffset:
-		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-			static_cast<APlayerPawn *>(actor)->AttackZOffset = ACSToDouble(value);
+		if (actor->IsKindOf(NAME_PlayerPawn))
+			actor->FloatVar(NAME_AttackZOffset) = ACSToDouble(value);
 		break;
 
 	case APROP_StencilColor:
@@ -4428,18 +4425,11 @@ int DLevelScript::GetActorProperty (int tid, int property)
 	case APROP_Notarget:	return !!(actor->flags3 & MF3_NOTARGET);
 	case APROP_Notrigger:	return !!(actor->flags6 & MF6_NOTRIGGER);
 	case APROP_Dormant:		return !!(actor->flags2 & MF2_DORMANT);
-	case APROP_SpawnHealth: if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
-							{
-								return static_cast<APlayerPawn *>(actor)->GetMaxHealth();
-							}
-							else
-							{
-								return actor->SpawnHealth();
-							}
+	case APROP_SpawnHealth: return actor->GetMaxHealth();
 
-	case APROP_JumpZ:		if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+	case APROP_JumpZ:		if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->JumpZ);	// [GRB]
+								return DoubleToACS(actor->FloatVar(NAME_JumpZ));
 							}
 							else
 							{
@@ -4459,18 +4449,19 @@ int DLevelScript::GetActorProperty (int tid, int property)
 	case APROP_Radius:		return DoubleToACS(actor->radius);
 	case APROP_ReactionTime:return actor->reactiontime;
 	case APROP_MeleeRange:	return DoubleToACS(actor->meleerange);
-	case APROP_ViewHeight:	if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+	case APROP_ViewHeight:	if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->ViewHeight);
+								return DoubleToACS(actor->player->DefaultViewHeight());
 							}
 							else
 							{
 								return 0;
 							}
 	case APROP_AttackZOffset:
-							if (actor->IsKindOf (RUNTIME_CLASS (APlayerPawn)))
+							// Note that this is inconsistent with every other place, where the return for monsters is 8, not 0!
+							if (actor->IsKindOf(NAME_PlayerPawn))
 							{
-								return DoubleToACS(static_cast<APlayerPawn *>(actor)->AttackZOffset);
+								return DoubleToACS(actor->FloatVar(NAME_AttackZOffset));
 							}
 							else
 							{
@@ -5472,7 +5463,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 			{
 				if (actor->player != NULL)
 				{
-					return DoubleToACS(actor->player->mo->ViewHeight + actor->player->crouchviewdelta);
+					return DoubleToACS(actor->player->DefaultViewHeight() + actor->player->crouchviewdelta);
 				}
 				else
 				{

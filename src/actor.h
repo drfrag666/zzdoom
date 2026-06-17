@@ -53,6 +53,7 @@ struct FBlockNode;
 struct FPortalGroupArray;
 struct visstyle_t;
 class FLightDefaults;
+struct FDynamicLight;
 struct FSection;
 //
 // NOTES: AActor
@@ -742,11 +743,6 @@ public:
 	bool CallOkayToSwitchTarget(AActor *other);
 	bool OkayToSwitchTarget (AActor *other);
 
-	// Note: Although some of the inventory functions are virtual, this
-	// is not exposed to scripts, as the only class overriding them is 
-	// APlayerPawn for some specific handling for players. None of this
-	// should ever be overridden by custom classes.
-
 	// Uses an item and removes it from the inventory.
 	bool UseInventory (AActor *item);
 
@@ -821,7 +817,9 @@ public:
 	void Crash();
 
 	// Return starting health adjusted by skill level
+	double AttackOffset(double offset = 0);
 	int SpawnHealth() const;
+	virtual int GetMaxHealth(bool withupgrades = false) const;
 	int GetGibHealth() const;
 	double GetCameraHeight() const;
 
@@ -1106,7 +1104,7 @@ public:
 	int32_t			threshold;		// if > 0, the target will be chased
 	int32_t			DefThreshold;	// [MC] Default threshold which the actor will reset its threshold to after switching targets
 									// no matter what (even if shot)
-	player_t		*player;		// only valid if type of APlayerPawn
+	player_t		*player;		// only valid if type of PlayerPawn
 	TObjPtr<AActor*>	LastLookActor;	// Actor last looked for (if TIDtoHate != 0)
 	DVector3		SpawnPoint; 	// For nightmare respawn
 	uint16_t			SpawnAngle;
@@ -1235,7 +1233,7 @@ public:
 	DVector3 Prev;
 	DRotator PrevAngles;
 	int PrevPortalGroup;
-	TArray<TObjPtr<AActor*> > AttachedLights;
+	TArray<FDynamicLight *> AttachedLights;
 
 	// When was this actor spawned?
 	int SpawnTime;
@@ -1489,13 +1487,11 @@ public:
 
 	int ApplyDamageFactor(FName damagetype, int damage) const;
 	int GetModifiedDamage(FName damagetype, int damage, bool passive);
-
+	void DeleteAttachedLights();
 	static void DeleteAllAttachedLights();
 	static void RecreateAllAttachedLights();
 
 	bool				hasmodel;
-
-	size_t PropagateMark();
 };
 
 class FActorIterator
