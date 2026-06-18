@@ -180,6 +180,20 @@ public:
 		return *this;
 	}
 
+	T operator=(std::nullptr_t nul)
+	{
+		o = nullptr;
+		return nullptr;
+	}
+
+	// To allow NULL, too.
+	T operator=(const int val)
+	{
+		assert(val == 0);
+		o = nullptr;
+		return nullptr;
+	}
+
 	operator T() throw()
 	{
 		return GC::ReadBarrier(pp);
@@ -189,13 +203,6 @@ public:
 		T q = GC::ReadBarrier(pp);
 		assert(q != NULL);
 		return *q;
-	}
-	T *operator&() throw()
-	{
-		// Does not perform a read barrier. The only real use for this is with
-		// the DECLARE_POINTER macro, where a read barrier would be a very bad
-		// thing.
-		return &pp;
 	}
 	T operator->() throw()
 	{

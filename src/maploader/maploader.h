@@ -157,6 +157,8 @@ private:
 	bool DoLoadGLNodes(FileReader * lumps);
 	void CreateCachedNodes(MapData *map);
 
+	void CalcIndices();
+
 	void SetTexture(side_t *side, int position, const char *name, FMissingTextureTracker &track);
 	void SetTexture(sector_t *sector, int index, int position, const char *name, FMissingTextureTracker &track, bool truncate);
 	void SetTexture(side_t *side, int position, uint32_t *blend, const char *name);
@@ -177,6 +179,42 @@ private:
 	void SetMapThingUserData(AActor *actor, unsigned udi);
 	void CreateBlockMap();
 	void PO_Init(void);
+
+	// During map init the items' own Index functions should not be used.
+	inline int Index(vertex_t *v) const
+	{
+		return int(v - &Level->vertexes[0]);
+	}
+
+	inline int Index(side_t *v) const
+	{
+		return int(v - &Level->sides[0]);
+	}
+
+	inline int Index(line_t *v) const
+	{
+		return int(v - &Level->lines[0]);
+	}
+
+	inline int Index(seg_t *v) const
+	{
+		return int(v - &Level->segs[0]);
+	}
+
+	inline int Index(subsector_t *v) const
+	{
+		return int(v - &Level->subsectors[0]);
+	}
+
+	inline int Index(node_t *v) const
+	{
+		return int(v - &Level->nodes[0]);
+	}
+
+	inline int Index(sector_t *v) const
+	{
+		return int(v - &Level->sectors[0]);
+	}
 
 public:
 	void LoadMapinfoACSLump();

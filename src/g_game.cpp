@@ -1682,11 +1682,11 @@ void G_DoPlayerPop(int playernum)
 	}
 
 	// [RH] Make the player disappear
-	FBehavior::StaticStopMyScripts(players[playernum].mo);
+	level.Behaviors.StopMyScripts(players[playernum].mo);
 	// [ZZ] fire player disconnect hook
 	E_PlayerDisconnected(playernum);
 	// [RH] Let the scripts know the player left
-	FBehavior::StaticStartTypedScripts(SCRIPT_Disconnect, players[playernum].mo, true, playernum, true);
+	level.Behaviors.StartTypedScripts(SCRIPT_Disconnect, players[playernum].mo, true, playernum, true);
 	if (players[playernum].mo != NULL)
 	{
 		P_DisconnectEffect(players[playernum].mo);
@@ -1698,7 +1698,7 @@ void G_DoPlayerPop(int playernum)
 			players[playernum].mo->Destroy();
 		}
 		players[playernum].mo = NULL;
-		players[playernum].camera = NULL;
+		players[playernum].camera = nullptr;
 	}
 
 	players[playernum].DestroyPSprites();
@@ -2762,7 +2762,7 @@ bool G_CheckDemoStatus (void)
 		for (int i = 1; i < MAXPLAYERS; i++)
 			playeringame[i] = 0;
 		consoleplayer = 0;
-		players[0].camera = NULL;
+		players[0].camera = nullptr;
 		if (StatusBar != NULL)
 		{
 			StatusBar->AttachToPlayer (&players[0]);
