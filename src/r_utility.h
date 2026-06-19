@@ -13,6 +13,8 @@ struct FViewWindow;
 // There a 0-31, i.e. 32 LUT in the COLORMAP lump.
 #define NUMCOLORMAPS			32
 
+struct FLevelLocals;
+
 struct FRenderViewpoint
 {
 	FRenderViewpoint();

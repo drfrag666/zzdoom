@@ -79,6 +79,7 @@
 #include "events.h"
 #include "i_music.h"
 #include "a_dynlight.h"
+#include "p_conversation.h"
 
 #include "gi.h"
 
@@ -126,7 +127,8 @@ extern bool sendpause, sendsave, sendturn180, SendLand;
 
 void *statcopy;					// for statistics driver
 
-FLevelLocals level;			// info about current level
+FLevelLocals level;				// info about current level
+FLevelLocals *currentUILevel = &level;	// level for which to display the user interface.
 
 
 //==========================================================================
@@ -734,6 +736,9 @@ void G_DoCompleted (void)
 
 	if (automapactive)
 		AM_Stop ();
+	
+	// Close the conversation menu if open.
+	P_FreeStrifeConversations ();
 
 	wminfo.finished_ep = level.cluster - 1;
 	wminfo.LName0 = TexMan.CheckForTexture(level.info->PName, ETextureType::MiscPatch);
@@ -917,7 +922,7 @@ void G_DoLoadLevel (int position, bool autosave, bool newGame)
 	else
 		lastposition = position;
 
-	G_InitLevelLocals ();
+	level.Init();
 	StatusBar->DetachAllMessages ();
 
 	// Force 'teamplay' to 'true' if need be.
@@ -989,9 +994,8 @@ void G_DoLoadLevel (int position, bool autosave, bool newGame)
 		E_NewGame(EventHandlerType::Global);
 	}
 
-	P_SetupLevel (level.MapName, position, newGame);
+	P_SetupLevel (&level, position, newGame);
 
-	AM_LevelInit();
 
 	// [RH] Start lightning, if MAPINFO tells us to
 	if (level.flags & LEVEL_STARTLIGHTNING)
@@ -1096,6 +1100,7 @@ void G_DoLoadLevel (int position, bool autosave, bool newGame)
 	{
 		I_Error("no start for player %d found.", pnumerr);
 	}
+	P_ResetSightCounters(true);
 }
 
 
@@ -1420,94 +1425,91 @@ int G_FinishTravel ()
 //
 //==========================================================================
 
-void G_InitLevelLocals ()
+void FLevelLocals::Init()
 {
-	level_info_t *info;
-
 	BaseBlendA = 0.0f;		// Remove underwater blend effect, if any
 
-	level.gravity = sv_gravity * 35/TICRATE;
-	level.aircontrol = sv_aircontrol;
-	level.teamdamage = teamdamage;
-	level.flags = 0;
-	level.flags2 = 0;
-	level.flags3 = 0;
+	gravity = sv_gravity * 35/TICRATE;
+	aircontrol = sv_aircontrol;
+	teamdamage = teamdamage;
+	flags = 0;
+	flags2 = 0;
+	flags3 = 0;
 
-	info = FindLevelInfo (level.MapName);
+	info = FindLevelInfo (MapName);
 
-	level.info = info;
-	level.skyspeed1 = info->skyspeed1;
-	level.skyspeed2 = info->skyspeed2;
-	level.skytexture1 = TexMan.GetTexture(info->SkyPic1, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
-	level.skytexture2 = TexMan.GetTexture(info->SkyPic2, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
-	level.fadeto = info->fadeto;
-	level.cdtrack = info->cdtrack;
-	level.cdid = info->cdid;
-	level.FromSnapshot = false;
-	if (level.fadeto == 0)
+	skyspeed1 = info->skyspeed1;
+	skyspeed2 = info->skyspeed2;
+	skytexture1 = TexMan.GetTexture(info->SkyPic1, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
+	skytexture2 = TexMan.GetTexture(info->SkyPic2, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
+	fadeto = info->fadeto;
+	cdtrack = info->cdtrack;
+	cdid = info->cdid;
+	FromSnapshot = false;
+	if (fadeto == 0)
 	{
 		if (strnicmp (info->FadeTable, "COLORMAP", 8) != 0)
 		{
-			level.flags |= LEVEL_HASFADETABLE;
+			flags |= LEVEL_HASFADETABLE;
 		}
 	}
-	level.airsupply = info->airsupply*TICRATE;
-	level.outsidefog = info->outsidefog;
-	level.WallVertLight = info->WallVertLight*2;
-	level.WallHorizLight = info->WallHorizLight*2;
+	airsupply = info->airsupply*TICRATE;
+	outsidefog = info->outsidefog;
+	WallVertLight = info->WallVertLight*2;
+	WallHorizLight = info->WallHorizLight*2;
 	if (info->gravity != 0.f)
 	{
-		level.gravity = info->gravity * 35/TICRATE;
+		gravity = info->gravity * 35/TICRATE;
 	}
 	if (info->aircontrol != 0.f)
 	{
-		level.aircontrol = info->aircontrol;
+		aircontrol = info->aircontrol;
 	}
 	if (info->teamdamage != 0.f)
 	{
-		level.teamdamage = info->teamdamage;
+		teamdamage = info->teamdamage;
 	}
 
 	G_AirControlChanged ();
 
 	cluster_info_t *clus = FindClusterInfo (info->cluster);
 
-	level.partime = info->partime;
-	level.sucktime = info->sucktime;
-	level.cluster = info->cluster;
-	level.clusterflags = clus ? clus->flags : 0;
-	level.flags |= info->flags;
-	level.flags2 |= info->flags2;
-	level.flags3 |= info->flags3;
-	level.levelnum = info->levelnum;
-	level.Music = info->Music;
-	level.musicorder = info->musicorder;
-	level.MusicVolume = 1.f;
+	partime = info->partime;
+	sucktime = info->sucktime;
+	cluster = info->cluster;
+	clusterflags = clus ? clus->flags : 0;
+	flags |= info->flags;
+	flags2 |= info->flags2;
+	flags3 |= info->flags3;
+	levelnum = info->levelnum;
+	Music = info->Music;
+	musicorder = info->musicorder;
+	MusicVolume = 1.f;
 
-	level.LevelName = level.info->LookupLevelName();
-	level.NextMap = info->NextMap;
-	level.NextSecretMap = info->NextSecretMap;
-	level.F1Pic = info->F1Pic;
-	level.hazardcolor = info->hazardcolor;
-	level.hazardflash = info->hazardflash;
+	LevelName = info->LookupLevelName();
+	NextMap = info->NextMap;
+	NextSecretMap = info->NextSecretMap;
+	F1Pic = info->F1Pic;
+	hazardcolor = info->hazardcolor;
+	hazardflash = info->hazardflash;
 	
 	// GL fog stuff modifiable by SetGlobalFogParameter.
-	level.fogdensity = info->fogdensity;
-	level.outsidefogdensity = info->outsidefogdensity;
-	level.skyfog = info->skyfog;
-	level.deathsequence = info->deathsequence;
+	fogdensity = info->fogdensity;
+	outsidefogdensity = info->outsidefogdensity;
+	skyfog = info->skyfog;
+	deathsequence = info->deathsequence;
 
-	level.pixelstretch = info->pixelstretch;
+	pixelstretch = info->pixelstretch;
 
 	compatflags.Callback();
 	compatflags2.Callback();
 
-	level.DefaultEnvironment = info->DefaultEnvironment;
+	DefaultEnvironment = info->DefaultEnvironment;
 
-	level.lightMode = info->lightmode;
-	level.brightfog = !!info->brightfog;
-	level.lightadditivesurfaces = !!info->lightadditivesurfaces;
-	level.notexturefill = !!info->notexturefill;
+	lightMode = info->lightmode;
+	brightfog = !!info->brightfog;
+	lightadditivesurfaces = !!info->lightadditivesurfaces;
+	notexturefill = !!info->notexturefill;
 
 	FLightDefaults::SetAttenuationForLevel();
 }
@@ -1630,7 +1632,7 @@ void G_SnapshotLevel ()
 		if (arc.OpenWriter(save_formatted))
 		{
 			SaveVersion = SAVEVER;
-			G_SerializeLevel(arc, false);
+			G_SerializeLevel(arc, &level, false);
 			level.info->Snapshot = arc.GetCompressedOutput();
 		}
 	}
@@ -1657,7 +1659,7 @@ void G_UnSnapshotLevel (bool hubLoad)
 			return;
 		}
 
-		G_SerializeLevel (arc, hubLoad);
+		G_SerializeLevel (arc, &level, hubLoad);
 		level.FromSnapshot = true;
 
 		TThinkerIterator<AActor> it(NAME_PlayerPawn);
@@ -1945,6 +1947,7 @@ void FLevelLocals::Mark()
 	GC::Mark(SpotState);
 	GC::Mark(FraggleScriptThinker);
 	GC::Mark(ACSThinker);
+	GC::Mark(automap);
 	for (auto &c : CorpseQueue)
 	{
 		GC::Mark(c);
@@ -2116,7 +2119,7 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, SphericalCoords)
 
 	ACTION_RETURN_VEC3(DVector3(
 		deltaangle(vecTo.Angle(), viewYaw).Degrees,
-		deltaangle(-vecTo.Pitch(), viewPitch).Degrees,
+		deltaangle(vecTo.Pitch(), viewPitch).Degrees,
 		vecTo.Length()
 	));
 }

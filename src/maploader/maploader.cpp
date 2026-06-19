@@ -111,8 +111,6 @@ void P_ClearUDMFKeys();
 
 extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
 
-extern void P_TranslateTeleportThings (void);
-
 EXTERN_CVAR(Bool, am_textured)
 
 CVAR (Bool, genblockmap, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
@@ -122,6 +120,61 @@ inline bool P_LoadBuildMap(uint8_t *mapdata, size_t len, FMapThing **things, int
 {
 	return false;
 }
+
+//===========================================================================
+//
+// Now that ZDoom again gives the option of using Doom's original teleport
+// behavior, only teleport dests in a sector with a 0 tag need to be
+// given a TID. And since Doom format maps don't have TIDs, we can safely
+// give them TID 1.
+//
+//===========================================================================
+
+void MapLoader::TranslateTeleportThings ()
+{
+	AActor *dest;
+	auto iterator = Level->GetThinkerIterator<AActor>(NAME_TeleportDest);
+	bool foundSomething = false;
+	
+	while ( (dest = iterator.Next()) )
+	{
+		if (!Level->SectorHasTags(dest->Sector))
+		{
+			dest->tid = 1;
+			dest->AddToHash ();
+			foundSomething = true;
+		}
+	}
+	
+	if (foundSomething)
+	{
+		for (auto &line : Level->lines)
+		{
+			if (line.special == Teleport)
+			{
+				if (line.args[1] == 0)
+				{
+					line.args[0] = 1;
+				}
+			}
+			else if (line.special == Teleport_NoFog)
+			{
+				if (line.args[2] == 0)
+				{
+					line.args[0] = 1;
+				}
+			}
+			else if (line.special == Teleport_ZombieChanger)
+			{
+				if (line.args[1] == 0)
+				{
+					line.args[0] = 1;
+				}
+			}
+		}
+	}
+}
+
 
 //===========================================================================
 //
@@ -648,7 +701,7 @@ void MapLoader::LoadZNodes(FileReader &data, int glnodes)
 //
 //===========================================================================
 
-void MapLoader::LoadExtendedNodes (FileReader &dalump, uint32_t id)
+bool MapLoader::LoadExtendedNodes (FileReader &dalump, uint32_t id)
 {
 	int type;
 	bool compressed;
@@ -696,21 +749,40 @@ void MapLoader::LoadExtendedNodes (FileReader &dalump, uint32_t id)
 		break;
 
 	default:
-		return;
+		return false;
 	}
 	
-	if (compressed)
+	try
 	{
-		FileReader zip;
-		if (zip.OpenDecompressor(dalump, -1, METHOD_ZLIB, false))
+		if (compressed)
 		{
-			LoadZNodes(zip, type);
+			FileReader zip;
+			if (zip.OpenDecompressor(dalump, -1, METHOD_ZLIB, false))
+			{
+				LoadZNodes(zip, type);
+			}
+			else
+			{
+				Printf("Error loading nodes: Corrupt data.\n");
+				return false;
+			}
 		}
+		else
+		{
+			LoadZNodes(dalump, type);
+		}
+		return true;
 	}
-	else
+	catch (CRecoverableError &error)
 	{
-		LoadZNodes(dalump, type);
+		Printf("Error loading nodes: %s\n", error.GetMessage());
+		
+		Level->subsectors.Clear();
+		Level->segs.Clear();
+		Level->nodes.Clear();
+		return false;
 	}
+
 }
 
 
@@ -748,7 +820,7 @@ struct badseg
 };
 
 template<class segtype>
-void MapLoader::LoadSegs (MapData * map)
+bool MapLoader::LoadSegs (MapData * map)
 {
 	uint32_t numvertexes = Level->vertexes.Size();
 	TArray<uint8_t> vertchanged(numvertexes, true);
@@ -767,8 +839,7 @@ void MapLoader::LoadSegs (MapData * map)
 		Printf ("This map has no segs.\n");
 		Level->subsectors.Clear();
 		Level->nodes.Clear();
-		ForceNodeBuild = true;
-		return;
+		return false;
 	}
 
 	Level->segs.Alloc(numsegs);
@@ -919,8 +990,9 @@ void MapLoader::LoadSegs (MapData * map)
 		Level->segs.Clear();
 		Level->subsectors.Clear();
 		Level->nodes.Clear();
-		ForceNodeBuild = true;
+		return false;
 	}
+	return true;
 }
 
 
@@ -931,7 +1003,7 @@ void MapLoader::LoadSegs (MapData * map)
 //===========================================================================
 
 template<class subsectortype, class segtype>
-void MapLoader::LoadSubsectors (MapData * map)
+bool MapLoader::LoadSubsectors (MapData * map)
 {
 	uint32_t maxseg = map->Size(ML_SEGS) / sizeof(segtype);
 
@@ -941,8 +1013,7 @@ void MapLoader::LoadSubsectors (MapData * map)
 	{
 		Printf ("This map has an incomplete BSP tree.\n");
 		Level->nodes.Clear();
-		ForceNodeBuild = true;
-		return;
+		return false;
 	}
 
 	auto &subsectors = Level->subsectors;
@@ -963,8 +1034,7 @@ void MapLoader::LoadSubsectors (MapData * map)
 			Printf ("Subsector %i is empty.\n", i);
 			Level->subsectors.Clear();
 			Level->nodes.Clear();
-			ForceNodeBuild = true;
-			return;
+			return false;
 		}
 
 		subsectors[i].numlines = subd.numsegs;
@@ -975,22 +1045,22 @@ void MapLoader::LoadSubsectors (MapData * map)
 			Printf ("Subsector %d contains invalid segs %u-%u\n"
 				"The BSP will be rebuilt.\n", i, (unsigned)((size_t)subsectors[i].firstline),
 				(unsigned)((size_t)subsectors[i].firstline) + subsectors[i].numlines - 1);
-			ForceNodeBuild = true;
 			Level->nodes.Clear();
 			Level->subsectors.Clear();
-			break;
+			return false;
 		}
 		else if ((size_t)subsectors[i].firstline + subsectors[i].numlines > maxseg)
 		{
 			Printf ("Subsector %d contains invalid segs %u-%u\n"
 				"The BSP will be rebuilt.\n", i, maxseg,
 				(unsigned)((size_t)subsectors[i].firstline) + subsectors[i].numlines - 1);
-			ForceNodeBuild = true;
+
 			Level->nodes.Clear();
 			Level->subsectors.Clear();
-			break;
+			return false;
 		}
 	}
+	return true;
 }
 
 
@@ -1039,7 +1109,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 			ss->special = LittleShort(ms->special);
 		else	// [RH] Translate to new sector special
 			ss->special = P_TranslateSectorSpecial (LittleShort(ms->special));
-		tagManager.AddSectorTag(i, LittleShort(ms->tag));
+		Level->tagManager.AddSectorTag(i, LittleShort(ms->tag));
 		ss->thinglist = nullptr;
 		ss->touching_thinglist = nullptr;		// phares 3/14/98
 		ss->sectorportal_thinglist = nullptr;
@@ -1099,7 +1169,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 //===========================================================================
 
 template<class nodetype, class subsectortype>
-void MapLoader::LoadNodes (MapData * map)
+bool MapLoader::LoadNodes (MapData * map)
 {
 	FMemLump	data;
 	int 		j;
@@ -1114,8 +1184,7 @@ void MapLoader::LoadNodes (MapData * map)
 
 	if ((numnodes == 0 && maxss != 1) || maxss == 0)
 	{
-		ForceNodeBuild = true;
-		return;
+		return false;
 	}
 	
 	auto &nodes = Level->nodes;
@@ -1143,9 +1212,8 @@ void MapLoader::LoadNodes (MapData * map)
 				{
 					Printf ("BSP node %d references invalid subsector %d.\n"
 						"The BSP will be rebuilt.\n", i, child);
-					ForceNodeBuild = true;
 					Level->nodes.Clear();
-					return;
+					return false;
 				}
 				no->children[j] = (uint8_t *)&Level->subsectors[child] + 1;
 			}
@@ -1153,18 +1221,16 @@ void MapLoader::LoadNodes (MapData * map)
 			{
 				Printf ("BSP node %d references invalid node %d.\n"
 					"The BSP will be rebuilt.\n", i, Index(((node_t *)no->children[j])));
-				ForceNodeBuild = true;
 				Level->nodes.Clear();
-				return;
+				return false;
 			}
 			else if (used[child])
 			{
 				Printf ("BSP node %d references node %d,\n"
 					"which is already used by node %d.\n"
 					"The BSP will be rebuilt.\n", i, child, used[child]-1);
-				ForceNodeBuild = true;
 				Level->nodes.Clear();
-				return;
+				return false;
 			}
 			else
 			{
@@ -1177,6 +1243,7 @@ void MapLoader::LoadNodes (MapData * map)
 			}
 		}
 	}
+	return true;
 }
 
 //===========================================================================
@@ -1459,7 +1526,7 @@ void MapLoader::SetLineID (int i, line_t *ld)
 		}
 		if (setid != -1)
 		{
-			tagManager.AddLineID(i, setid);
+			Level->tagManager.AddLineID(i, setid);
 		}
 	}
 }
@@ -1553,7 +1620,7 @@ void MapLoader::FinishLoadingLineDef(line_t *ld, int alpha)
 		{
 			for (unsigned j = 0; j < Level->lines.Size(); j++)
 			{
-				if (tagManager.LineHasID(j, ld->args[0]))
+				if (Level->LineHasId(j, ld->args[0]))
 				{
 					Level->lines[j].alpha = dalpha;
 					if (additive)
@@ -1679,11 +1746,11 @@ void MapLoader::LoadLineDefs (MapData * map)
 		mld->special = LittleShort(mld->special);
 		mld->tag = LittleShort(mld->tag);
 		mld->flags = LittleShort(mld->flags);
-		P_TranslateLineDef (ld, mld, -1);
+		Level->TranslateLineDef (ld, mld, -1);
 		// do not assign the tag for Extradata lines.
 		if (ld->special != Static_Init || (ld->args[1] != Init_EDLine && ld->args[1] != Init_EDSector))
 		{
-			tagManager.AddLineID(i, mld->tag);
+			Level->tagManager.AddLineID(i, mld->tag);
 		}
 #ifndef NO_EDATA
 		if (ld->special == Static_Init && ld->args[1] == Init_EDLine)
@@ -2057,7 +2124,7 @@ void MapLoader::ProcessSideTextures(bool checktranmap, side_t *sd, sector_t *sec
 			{
 				for (unsigned s = 0; s < Level->sectors.Size(); s++)
 				{
-					if (tagManager.SectorHasTag(s, tag))
+					if (Level->SectorHasTag(s, tag))
 					{
 						if (colorgood)
 						{
@@ -2683,9 +2750,9 @@ void MapLoader::GroupLines (bool buildmap)
 	{
 		if (sector->Lines.Count == 0)
 		{
-			Printf ("Sector %i (tag %i) has no lines\n", i, tagManager.GetFirstSectorTag(Index(sector)));
+			Printf ("Sector %i (tag %i) has no lines\n", i, Level->GetFirstSectorTag(Index(sector)));
 			// 0 the sector's tag so that no specials can use it
-			tagManager.RemoveSectorTags(i);
+			Level->tagManager.RemoveSectorTags(i);
 		}
 		else
 		{
@@ -2740,7 +2807,7 @@ void MapLoader::GroupLines (bool buildmap)
 	}
 
 	// killough 1/30/98: Create xref tables for tags
-	tagManager.HashTags();
+	Level->tagManager.HashTags();
 
 	if (!buildmap)
 	{
@@ -2976,7 +3043,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	LoadMapinfoACSLump();
 
 
-	P_LoadStrifeConversations(map, lumpname);
+	P_LoadStrifeConversations(Level, map, lumpname);
 
 	FMissingTextureTracker missingtex;
 
@@ -3037,22 +3104,11 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 			idcheck6 = MAKE_ID('X', 'G', 'L', '3');
 		}
 
+		bool NodesLoaded = false;
 		if (fr != nullptr && fr->isOpen()) fr->Read(&id, 4);
 		if (id != 0 && (id == idcheck || id == idcheck2 || id == idcheck3 || id == idcheck4 || id == idcheck5 || id == idcheck6))
 		{
-			try
-			{
-				LoadExtendedNodes(*fr, id);
-			}
-			catch (CRecoverableError &error)
-			{
-				Printf("Error loading nodes: %s\n", error.GetMessage());
-
-				ForceNodeBuild = true;
-				Level->subsectors.Clear();
-				Level->segs.Clear();
-				Level->nodes.Clear();
-			}
+			NodesLoaded = LoadExtendedNodes(*fr, id);
 		}
 		else if (!map->isText)	// regular nodes are not supported for text maps
 		{
@@ -3062,29 +3118,26 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 			{
 				if (!P_CheckV4Nodes(map))
 				{
-					LoadSubsectors<mapsubsector_t, mapseg_t>(map);
-					if (!ForceNodeBuild) LoadNodes<mapnode_t, mapsubsector_t>(map);
-					if (!ForceNodeBuild) LoadSegs<mapseg_t>(map);
+					NodesLoaded = LoadSubsectors<mapsubsector_t, mapseg_t>(map) &&
+						LoadNodes<mapnode_t, mapsubsector_t>(map) &&
+					 	LoadSegs<mapseg_t>(map);
 				}
 				else
 				{
-					LoadSubsectors<mapsubsector4_t, mapseg4_t>(map);
-					if (!ForceNodeBuild) LoadNodes<mapnode4_t, mapsubsector4_t>(map);
-					if (!ForceNodeBuild) LoadSegs<mapseg4_t>(map);
+					NodesLoaded = LoadSubsectors<mapsubsector4_t, mapseg4_t>(map) &&
+						LoadNodes<mapnode4_t, mapsubsector4_t>(map) &&
+						LoadSegs<mapseg4_t>(map);
 				}
 			}
-			else ForceNodeBuild = true;
 		}
-		else ForceNodeBuild = true;
 
 		// If loading the regular nodes failed try GL nodes before considering a rebuild
-		if (ForceNodeBuild)
+		if (!NodesLoaded)
 		{
 			if (LoadGLNodes(map))
-			{
-				ForceNodeBuild = false;
 				reloop = true;
-			}
+			else
+				ForceNodeBuild = true;
 		}
 	}
 	else reloop = true;
@@ -3102,6 +3155,11 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	if (ForceNodeBuild)
 	{
 		BuildGLNodes = true;
+		// In case the compatibility handler made changes to the map's layout
+		for(auto &line : Level->lines)
+		{
+			line.AdjustLine();
+		}
 
 		startTime = I_msTime();
 		TArray<FNodeBuilder::FPolyStart> polyspots, anchors;
@@ -3114,9 +3172,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 			0, 0, 0, 0
 		};
 		leveldata.FindMapBounds();
-		// We need GL nodes if am_textured is on.
-		// In case a sync critical game mode is started, also build GL nodes to avoid problems
-		// if the different machines' am_textured setting differs.
+
 		FNodeBuilder builder(leveldata, polyspots, anchors, BuildGLNodes);
 		builder.Extract(*Level);
 		endTime = I_msTime();
@@ -3152,7 +3208,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	// use in P_PointInSubsector to avoid problems with maps that depend on the specific
 	// nodes they were built with (P:AR E1M3 is a good example for a map where this is the case.)
 	reloop |= CheckNodes(map, BuildGLNodes, (uint32_t)(endTime - startTime));
-
+	
 	// set the head node for gameplay purposes. If the separate gamenodes array is not empty, use that, otherwise use the render nodes.
 	Level->headgamenode = Level->gamenodes.Size() > 0 ? &Level->gamenodes[Level->gamenodes.Size() - 1] : Level->nodes.Size() ? &Level->nodes[Level->nodes.Size() - 1] : nullptr;
 
@@ -3180,7 +3236,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	CopySlopes();
 
 	// Spawn 3d floors - must be done before spawning things so it can't be done in P_SpawnSpecials
-	P_Spawn3DFloors();
+	Spawn3DFloors();
 
 	SpawnThings(position);
 
@@ -3190,7 +3246,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 			players[i].health = players[i].mo->health;
 	}
 	if (!map->HasBehavior && !map->isText)
-		P_TranslateTeleportThings();	// [RH] Assign teleport destination TIDs
+		TranslateTeleportThings();	// [RH] Assign teleport destination TIDs
 
 	if (oldvertextable != nullptr)
 	{
@@ -3198,7 +3254,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	}
 
 	// set up world state
-	P_SpawnSpecials(this);
+	SpawnSpecials();
 
 	// disable reflective planes on sloped sectors.
 	for (auto &sec : Level->sectors)
@@ -3226,5 +3282,5 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	if (reloop) LoopSidedefs(false);
 	PO_Init();				// Initialize the polyobjs
 	if (!Level->IsReentering())
-		P_FinalizePortals();	// finalize line portals after polyobjects have been initialized. This info is needed for properly flagging them.
+		Level->FinalizePortals();	// finalize line portals after polyobjects have been initialized. This info is needed for properly flagging them.
 }

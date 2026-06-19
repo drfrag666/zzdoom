@@ -792,7 +792,7 @@ public:
 				mld.flags = 0;
 				mld.special = th->special;
 				mld.tag = th->args[0];
-				P_TranslateLineDef(&ld, &mld);
+				Level->TranslateLineDef(&ld, &mld);
 				th->special = ld.special;
 				memcpy(th->args, ld.args, sizeof (ld.args));
 			}
@@ -856,7 +856,7 @@ public:
 
 			case NAME_Id:
 				lineid = CheckInt(key);
-				tagManager.AddLineID(index, lineid);
+				Level->tagManager.AddLineID(index, lineid);
 				continue;
 
 			case NAME_Sidefront:
@@ -1127,7 +1127,7 @@ public:
 			// scan the string as long as valid numbers can be found
 			while (sc.CheckNumber())
 			{
-				if (sc.Number != 0)	tagManager.AddLineID(index, sc.Number);
+				if (sc.Number != 0)	Level->tagManager.AddLineID(index, sc.Number);
 			}
 		}
 
@@ -1139,7 +1139,7 @@ public:
 			memset(&mld, 0, sizeof(mld));
 			mld.special = ld->special;
 			mld.tag = ld->args[0];
-			P_TranslateLineDef(ld, &mld);
+			Level->TranslateLineDef(ld, &mld);
 			ld->flags = saved | (ld->flags&(ML_MONSTERSCANACTIVATE|ML_REPEAT_SPECIAL|ML_FIRSTSIDEONLY));
 		}
 		if (passuse && (ld->activation & SPAC_Use)) 
@@ -1512,7 +1512,7 @@ public:
 				continue;
 
 			case NAME_Id:
-				tagManager.AddSectorTag(index, CheckInt(key));
+				Level->tagManager.AddSectorTag(index, CheckInt(key));
 				continue;
 
 			default:
@@ -1907,7 +1907,7 @@ public:
 			// scan the string as long as valid numbers can be found
 			while (sc.CheckNumber())
 			{
-				if (sc.Number != 0)	tagManager.AddSectorTag(index, sc.Number);
+				if (sc.Number != 0)	Level->tagManager.AddSectorTag(index, sc.Number);
 			}
 		}
 
@@ -2284,12 +2284,12 @@ public:
 			const double scrollfactor = 1 / 3.2;	// I hope this is correct, it's just a guess taken from Eternity's code.
 			if (scroll.type == NAME_Both || scroll.type == NAME_Visual)
 			{
-				P_CreateScroller(scroll.ceiling ? EScroll::sc_ceiling : EScroll::sc_floor, scroll.x * scrollfactor, scroll.y * scrollfactor, &Level->sectors[scroll.index], 0);
+				loader->CreateScroller(scroll.ceiling ? EScroll::sc_ceiling : EScroll::sc_floor, scroll.x * scrollfactor, scroll.y * scrollfactor, &Level->sectors[scroll.index], 0);
 			}
 			if (scroll.type == NAME_Both || scroll.type == NAME_Physical)
 			{
 				// sc_carry_ceiling doesn't do anything yet.
-				P_CreateScroller(scroll.ceiling ? EScroll::sc_carry_ceiling : EScroll::sc_carry, scroll.x * scrollfactor, scroll.y * scrollfactor, &Level->sectors[scroll.index], 0);
+				loader->CreateScroller(scroll.ceiling ? EScroll::sc_carry_ceiling : EScroll::sc_carry, scroll.x * scrollfactor, scroll.y * scrollfactor, &Level->sectors[scroll.index], 0);
 			}
 		}
 

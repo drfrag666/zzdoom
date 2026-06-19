@@ -39,8 +39,6 @@
 #include "g_levellocals.h"
 #include "vm.h"
 
-FTagManager tagManager;
-
 //-----------------------------------------------------------------------------
 //
 //
@@ -90,6 +88,28 @@ void FTagManager::RemoveSectorTags(int sect)
 		if (start >= 0)
 		{
 			while (allTags[start].target == sect)
+			{
+				allTags[start].tag = allTags[start].target = -1;
+				start++;
+			}
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+//
+//
+//
+//-----------------------------------------------------------------------------
+
+void FTagManager::RemoveLineIDs(int line)
+{
+	if (startForLine.Size() > (unsigned int)line)
+	{
+		int start = startForLine[line];
+		if (start >= 0)
+		{
+			while (allIDs[start].target == line)
 			{
 				allTags[start].tag = allTags[start].target = -1;
 				start++;
@@ -296,7 +316,7 @@ void FTagManager::DumpTags()
 
 CCMD(dumptags)
 {
-	tagManager.DumpTags();
+	level.tagManager.DumpTags();
 }
 
 //-----------------------------------------------------------------------------
@@ -349,7 +369,7 @@ int FSectorTagIterator::NextCompat(bool compat, int start)
 
 	for (unsigned i = start + 1; i < level.sectors.Size(); i++)
 	{
-		if (tagManager.SectorHasTag(i, searchtag)) return i;
+		if (level.SectorHasTag(i, searchtag)) return i;
 	}
 	return -1;
 }

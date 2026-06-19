@@ -46,6 +46,7 @@
 #include "d_player.h"
 #include "p_setup.h"
 #include "i_music.h"
+#include "am_map.h"
 
 DVector2 AM_GetPosition();
 int Net_GetLatency(int *ld, int *ad);
@@ -2483,10 +2484,28 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetSpotState, GetSpotState)
 	ACTION_RETURN_POINTER(GetSpotState(self, create));
 }
 
+
+//---------------------------------------------------------------------------
+//
+// Format the map name, include the map label if wanted
+//
+//---------------------------------------------------------------------------
+
+EXTERN_CVAR(Int, am_showmaplabel)
+
 static void FormatMapName(FLevelLocals *self, int cr, FString *result)
 {
 	char mapnamecolor[3] = { '\34', char(cr + 'A'), 0 };
-	ST_FormatMapName(*result, mapnamecolor);
+
+	cluster_info_t *cluster = FindClusterInfo(self->cluster);
+	bool ishub = (cluster != nullptr && (cluster->flags & CLUSTER_HUB));
+
+	*result = "";
+	if (am_showmaplabel == 1 || (am_showmaplabel == 2 && !ishub))
+	{
+		*result << self->MapName << ": ";
+	}
+	*result << mapnamecolor << self->LevelName;
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, FormatMapName, FormatMapName)
@@ -2498,15 +2517,17 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, FormatMapName, FormatMapName)
 	ACTION_RETURN_STRING(rets);
 }
 
-static void GetAutomapPosition(DVector2 *pos)
+static void GetAutomapPosition(FLevelLocals *self, DVector2 *pos)
 {
-	*pos = AM_GetPosition();
+ 	*pos = self->automap->GetPosition();
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, GetAutomapPosition, GetAutomapPosition)
 {
-	PARAM_PROLOGUE;
-	ACTION_RETURN_VEC2(AM_GetPosition());
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	DVector2 result;
+	GetAutomapPosition(self, &result);
+	ACTION_RETURN_VEC2(result);
 }
 
 static int ZGetUDMFInt(FLevelLocals *self, int type, int index, int key)
@@ -2572,7 +2593,7 @@ static void Vec2Offset(double x, double y, double dx, double dy, bool absolute, 
 	}
 	else
 	{
-		*result = P_GetOffsetPosition(x, y, dx, dy);
+		*result = level.GetPortalOffsetPosition(x, y, dx, dy);
 	}
 }
 
@@ -2597,7 +2618,7 @@ static void Vec2OffsetZ(double x, double y, double dx, double dy, double atz, bo
 	}
 	else
 	{
-		DVector2 v = P_GetOffsetPosition(x, y, dx, dy);
+		DVector2 v = level.GetPortalOffsetPosition(x, y, dx, dy);
 		*result = (DVector3(v, atz));
 	}
 }
@@ -2624,7 +2645,7 @@ static void Vec3Offset(double x, double y, double z, double dx, double dy, doubl
 	}
 	else
 	{
-		DVector2 v = P_GetOffsetPosition(x, y, dx, dy);
+		DVector2 v = level.GetPortalOffsetPosition(x, y, dx, dy);
 		*result = (DVector3(v, z + dz));
 	}
 }
@@ -2683,6 +2704,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(_AltHUD, GetLatency, Net_GetLatency)
 //
 //==========================================================================
 DEFINE_GLOBAL(level);
+DEFINE_GLOBAL(currentUILevel);
 DEFINE_FIELD(FLevelLocals, sectors)
 DEFINE_FIELD(FLevelLocals, lines)
 DEFINE_FIELD(FLevelLocals, sides)

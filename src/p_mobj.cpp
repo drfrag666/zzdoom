@@ -401,16 +401,6 @@ void AActor::PostSerialize()
 
 
 
-AActor::AActor () throw()
-{
-}
-
-AActor::AActor (const AActor &other) throw()
-	: DThinker()
-{
-	memcpy (&snext, &other.snext, (uint8_t *)&this[1] - (uint8_t *)&snext);
-}
-
 AActor &AActor::operator= (const AActor &other)
 {
 	memcpy (&snext, &other.snext, (uint8_t *)&this[1] - (uint8_t *)&snext);
@@ -2899,19 +2889,6 @@ void P_NightmareRespawn (AActor *mobj)
 }
 
 
-AActor *AActor::TIDHash[128];
-
-//
-// P_ClearTidHashes
-//
-// Clears the tid hashtable.
-//
-
-void AActor::ClearTIDHashes ()
-{
-	memset(TIDHash, 0, sizeof(TIDHash));
-}
-
 //
 // P_AddMobjToHash
 //
@@ -2929,10 +2906,11 @@ void AActor::AddToHash ()
 	else
 	{
 		int hash = TIDHASH (tid);
+		auto &slot = level.TIDHash[hash];
 
-		inext = TIDHash[hash];
-		iprev = &TIDHash[hash];
-		TIDHash[hash] = this;
+		inext = slot;
+		iprev = &slot;
+		slot = this;
 		if (inext)
 		{
 			inext->iprev = &inext;
@@ -2969,9 +2947,9 @@ void AActor::RemoveFromHash ()
 //
 //==========================================================================
 
-bool P_IsTIDUsed(int tid)
+bool FLevelLocals::IsTIDUsed(int tid)
 {
-	AActor *probe = AActor::TIDHash[tid & 127];
+	AActor *probe = TIDHash[tid & 127];
 	while (probe != NULL)
 	{
 		if (probe->tid == tid)
@@ -2994,7 +2972,7 @@ bool P_IsTIDUsed(int tid)
 //
 //==========================================================================
 
-int P_FindUniqueTID(int start_tid, int limit)
+int FLevelLocals::FindUniqueTID(int start_tid, int limit)
 {
 	int tid;
 
@@ -3010,7 +2988,7 @@ int P_FindUniqueTID(int start_tid, int limit)
 		}
 		for (tid = start_tid; tid <= limit; ++tid)
 		{
-			if (tid != 0 && !P_IsTIDUsed(tid))
+			if (tid != 0 && !IsTIDUsed(tid))
 			{
 				return tid;
 			}
@@ -3032,7 +3010,7 @@ int P_FindUniqueTID(int start_tid, int limit)
 	{
 		// Use a positive starting TID.
 		tid = pr_uniquetid.GenRand32() & INT_MAX;
-		tid = P_FindUniqueTID(tid == 0 ? 1 : tid, 5);
+		tid = FindUniqueTID(tid == 0 ? 1 : tid, 5);
 		if (tid != 0)
 		{
 			return tid;
@@ -3046,7 +3024,7 @@ int P_FindUniqueTID(int start_tid, int limit)
 CCMD(utid)
 {
 	Printf("%d\n",
-		P_FindUniqueTID(argv.argc() > 1 ? atoi(argv[1]) : 0,
+		level.FindUniqueTID(argv.argc() > 1 ? atoi(argv[1]) : 0,
 		(argv.argc() > 2 && atoi(argv[2]) >= 0) ? atoi(argv[2]) : 0));
 }
 
@@ -3789,7 +3767,7 @@ void AActor::Tick ()
 					}
 					else if (scrolltype == Scroll_StrifeCurrent)
 					{ // Strife scroll special
-						int anglespeed = tagManager.GetFirstSectorTag(sec) - 100;
+						int anglespeed = level.GetFirstSectorTag(sec) - 100;
 						double carryspeed = (anglespeed % 10) / (16 * CARRYFACTOR);
 						DAngle angle = ((anglespeed / 10) * 45.);
 						scrollv += angle.ToVector(carryspeed);
@@ -4399,10 +4377,10 @@ AActor *AActor::StaticSpawn (PClassActor *type, const DVector3 &pos, replace_t a
 	actor->SpawnOrder = level.spawnindex++;
 
 	// Set default dialogue
-	actor->ConversationRoot = GetConversation(actor->GetClass()->TypeName);
+	actor->ConversationRoot = level.GetConversation(actor->GetClass()->TypeName);
 	if (actor->ConversationRoot != -1)
 	{
-		actor->Conversation = StrifeDialogues[actor->ConversationRoot];
+		actor->Conversation = level.StrifeDialogues[actor->ConversationRoot];
 	}
 	else
 	{
@@ -5487,11 +5465,11 @@ AActor *P_SpawnMapThing (FMapThing *mthing, int position)
 	if (mthing->Conversation > 0)
 	{
 		// Make sure that this does not partially overwrite the default dialogue settings.
-		int root = GetConversation(mthing->Conversation);
+		int root = level.GetConversation(mthing->Conversation);
 		if (root != -1)
 		{
 			mobj->ConversationRoot = root;
-			mobj->Conversation = StrifeDialogues[mobj->ConversationRoot];
+			mobj->Conversation = level.StrifeDialogues[mobj->ConversationRoot];
 		}
 	}
 

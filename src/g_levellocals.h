@@ -44,12 +44,52 @@
 #include "p_local.h"
 #include "po_man.h"
 #include "p_acs.h"
+#include "p_tags.h"
+#include "p_spec.h"
+#include "actor.h"
 #include "p_destructible.h"
 #include "r_data/r_sections.h"
+
+//============================================================================
+//
+// This is used to mark processed portals for some collection functions.
+//
+//============================================================================
+
+struct FPortalBits
+{
+	TArray<uint32_t> data;
+
+	void setSize(int num)
+	{
+		data.Resize((num + 31) / 32);
+		clear();
+	}
+
+	void clear()
+	{
+		memset(&data[0], 0, data.Size() * sizeof(uint32_t));
+	}
+
+	void setBit(int group)
+	{
+		data[group >> 5] |= (1 << (group & 31));
+	}
+
+	int getBit(int group)
+	{
+		return data[group >> 5] & (1 << (group & 31));
+	}
+};
 
 class DACSThinker;
 class DFraggleThinker;
 class DSpotState;
+struct FStrifeDialogueNode;
+class DAutomapBase;
+
+typedef TMap<int, int> FDialogueIDMap;				// maps dialogue IDs to dialogue array index (for ACS)
+typedef TMap<FName, int> FDialogueMap;				// maps actor class names to dialogue array index
 
 struct FLevelData
 {
@@ -97,10 +137,21 @@ struct FLevelData
 	TArray<FPlayerStart> AllPlayerStarts;
 
 	FBehaviorContainer Behaviors;
+	FTagManager tagManager;
+	AActor *TIDHash[128];
+	
+	TArray<FStrifeDialogueNode *> StrifeDialogues;
+	FDialogueIDMap DialogueRoots;
+	FDialogueMap ClassRoots;
+
+
 };
+
 
 struct FLevelLocals : public FLevelData
 {
+	friend class MapLoader;
+
 	void Tick();
 	void Mark();
 	void AddScroller(int secnum);
@@ -108,6 +159,175 @@ struct FLevelLocals : public FLevelData
 	void SetMusicVolume(float v);
 	void ClearLevelData();
 	void ClearPortals();
+	bool CheckIfExitIsGood(AActor *self, level_info_t *newmap);
+	void FormatMapName(FString &mapname, const char *mapnamecolor);
+	void ClearAllSubsectorLinks();
+	void TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid = -1);
+	bool IsTIDUsed(int tid);
+	int FindUniqueTID(int start_tid, int limit);
+	int GetConversation(int conv_id);
+	int GetConversation(FName classname);
+	void SetConversation(int convid, PClassActor *Class, int dlgindex);
+	int FindNode (const FStrifeDialogueNode *node);
+	void Init();
+
+private:
+	line_t *FindPortalDestination(line_t *src, int tag);
+	void BuildPortalBlockmap();
+	void UpdatePortal(FLinePortal *port);
+	void CollectLinkedPortals();
+	void CreateLinkedPortals();
+	bool ChangePortalLine(line_t *line, int destid);
+	void AddDisplacementForPortal(FSectorPortal *portal);
+	void AddDisplacementForPortal(FLinePortal *portal);
+	bool ConnectPortalGroups();
+public:
+	void FinalizePortals();
+	bool ChangePortal(line_t *ln, int thisid, int destid);
+	unsigned GetSkyboxPortal(AActor *actor);
+	unsigned GetPortal(int type, int plane, sector_t *orgsec, sector_t *destsec, const DVector2 &displacement);
+	unsigned GetStackPortal(AActor *point, int plane);
+	DVector2 GetPortalOffsetPosition(double x, double y, double dx, double dy);
+	bool CollectConnectedGroups(int startgroup, const DVector3 &position, double upperz, double checkradius, FPortalGroupArray &out);
+
+	void ActivateInStasisPlat(int tag);
+	bool CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush);
+	void ActivateInStasisCeiling(int tag);
+	bool CreateFloor(sector_t *sec, DFloor::EFloor floortype, line_t *line, double speed, double height, int crush, int change, bool hexencrush, bool hereticlower);
+
+	bool EV_DoPlat(int tag, line_t *line, DPlat::EPlatType type, double height, double speed, int delay, int lip, int change);
+	void EV_StopPlat(int tag, bool remove);
+	bool EV_DoPillar(DPillar::EPillar type, line_t *line, int tag, double speed, double height, double height2, int crush, bool hexencrush);
+	bool EV_DoDoor(DDoor::EVlDoor type, line_t *line, AActor *thing, int tag, double speed, int delay, int lock, int lightTag, bool boomgen = false, int topcountdown = 0);
+	bool EV_SlidingDoor(line_t *line, AActor *thing, int tag, int speed, int delay, DAnimatedDoor::EADType type);
+	bool EV_DoCeiling(DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush = DCeiling::ECrushMode::crushDoom);
+	bool EV_CeilingCrushStop(int tag, bool remove);
+	bool EV_StopCeiling(int tag, line_t *line);
+	bool EV_BuildStairs(int tag, DFloor::EStair type, line_t *line, double stairsize, double speed, int delay, int reset, int igntxt, int usespecials);
+	bool EV_DoFloor(DFloor::EFloor floortype, line_t *line, int tag, double speed, double height, int crush, int change, bool hexencrush, bool hereticlower = false);
+	bool EV_FloorCrushStop(int tag, line_t *line);
+	bool EV_StopFloor(int tag, line_t *line);
+	bool EV_DoDonut(int tag, line_t *line, double pillarspeed, double slimespeed);
+	bool EV_DoElevator(line_t *line, DElevator::EElevator type, double speed, double height, int tag);
+	bool EV_StartWaggle(int tag, line_t *line, int height, int speed, int offset, int timer, bool ceiling);
+	bool EV_DoChange(line_t *line, EChange changetype, int tag);
+
+private:
+	// Work data for CollectConnectedGroups.
+	FPortalBits processMask;
+	TArray<FLinePortal*> foundPortals;
+	TArray<int> groupsToCheck;
+
+public:
+
+	FSectorTagIterator GetSectorTagIterator(int tag)
+	{
+		return FSectorTagIterator(tagManager, tag);
+	}
+	FSectorTagIterator GetSectorTagIterator(int tag, line_t *line)
+	{
+		return FSectorTagIterator(tagManager, tag, line);
+	}
+	FLineIdIterator GetLineIdIterator(int tag)
+	{
+		return FLineIdIterator(tagManager, tag);
+	}
+	template<class T> TThinkerIterator<T> GetThinkerIterator(FName subtype = NAME_None, int statnum = MAX_STATNUM+1)
+	{
+		if (subtype == NAME_None) return TThinkerIterator<T>(statnum);
+		else return TThinkerIterator<T>(subtype, statnum);
+	}
+	FActorIterator GetActorIterator(int tid)
+	{
+		return FActorIterator(TIDHash, tid);
+	}
+	FActorIterator GetActorIterator(int tid, AActor *start)
+	{
+		return FActorIterator(TIDHash, tid, start);
+	}
+	NActorIterator GetActorIterator(FName type, int tid)
+	{
+		return NActorIterator(TIDHash, type, tid);
+	}
+	AActor *SingleActorFromTID(int tid, AActor *defactor)
+	{
+		return tid == 0 ? defactor : GetActorIterator(tid).Next();
+	}
+
+	bool SectorHasTags(sector_t *sector)
+	{
+		return tagManager.SectorHasTags(sector);
+	}
+	bool SectorHasTag(sector_t *sector, int tag)
+	{
+		return tagManager.SectorHasTag(sector, tag);
+	}
+	bool SectorHasTag(int sector, int tag)
+	{
+		return tagManager.SectorHasTag(sector, tag);
+	}
+	int GetFirstSectorTag(const sector_t *sect) const
+	{
+		return tagManager.GetFirstSectorTag(sect);
+	}
+	int GetFirstSectorTag(int i) const
+	{
+		return tagManager.GetFirstSectorTag(i);
+	}
+	int GetFirstLineId(const line_t *sect) const
+	{
+		return tagManager.GetFirstLineID(sect);
+	}
+
+	bool LineHasId(int line, int tag)
+	{
+		return tagManager.LineHasID(line, tag);
+	}
+	bool LineHasId(line_t *line, int tag)
+	{
+		return tagManager.LineHasID(line, tag);
+	}
+
+	int FindFirstSectorFromTag(int tag)
+	{
+		auto it = GetSectorTagIterator(tag);
+		return it.Next();
+	}
+	
+	int FindFirstLineFromID(int tag)
+	{
+		auto it = GetLineIdIterator(tag);
+		return it.Next();
+	}
+
+	sector_t *PointInSector(const DVector2 &pos)
+	{
+		return P_PointInSector(pos);
+	}
+	
+	FPolyObj *GetPolyobj (int polyNum)
+	{
+		auto index = Polyobjects.FindEx([=](const auto &poly) { return poly.tag == polyNum; });
+		return index == Polyobjects.Size()? nullptr : &Polyobjects[index];
+	}
+
+
+	void ClearTIDHashes ()
+	{
+		memset(TIDHash, 0, sizeof(TIDHash));
+	}
+
+
+	bool CheckReject(sector_t *s1, sector_t *s2)
+	{
+		if (rejectmatrix.Size() > 0)
+		{
+			int pnum = int(s1->Index()) * sectors.Size() + int(s2->Index());
+			return !(rejectmatrix[pnum >> 3] & (1 << (pnum & 7)));
+		}
+		return true;
+	}
+
 
 	uint8_t		md5[16];			// for savegame validation. If the MD5 does not match the savegame won't be loaded.
 	int			time;			// time in the hub
@@ -134,6 +354,7 @@ struct FLevelLocals : public FLevelData
 
 	static const int BODYQUESIZE = 32;
 	TObjPtr<AActor*> bodyque[BODYQUESIZE];
+	TObjPtr<DAutomapBase*> automap;
 	int bodyqueslot;
 
 	uint32_t		flags;
@@ -194,6 +415,7 @@ struct FLevelLocals : public FLevelData
 	bool		brightfog;
 	bool		lightadditivesurfaces;
 	bool		notexturefill;
+	int			ImpactDecalCount;
 
 	FDynamicLight *lights;
 
@@ -225,9 +447,9 @@ struct FLevelLocals : public FLevelData
 	}
 };
 
-#ifndef NO_DEFINE_LEVEL
 
 extern FLevelLocals level;
+extern FLevelLocals *currentUILevel;	// level for which to display the user interface. This will always be the one the current consoleplayer is in.
 
 inline FSectorPortal *line_t::GetTransferredPortal()
 {
@@ -285,31 +507,35 @@ inline bool sector_t::PortalIsLinked(int plane)
 	return (GetPortalType(plane) == PORTS_LINKEDPORTAL);
 }
 
+inline FLevelLocals *line_t::GetLevel() const
+{
+	return &level;
+}
 inline FLinePortal *line_t::getPortal() const
 {
-	return portalindex >= level.linePortals.Size() ? (FLinePortal*)NULL : &level.linePortals[portalindex];
+	return portalindex >= GetLevel()->linePortals.Size() ? (FLinePortal*)nullptr : &GetLevel()->linePortals[portalindex];
 }
 
 // returns true if the portal is crossable by actors
 inline bool line_t::isLinePortal() const
 {
-	return portalindex >= level.linePortals.Size() ? false : !!(level.linePortals[portalindex].mFlags & PORTF_PASSABLE);
+	return portalindex >= GetLevel()->linePortals.Size() ? false : !!(GetLevel()->linePortals[portalindex].mFlags & PORTF_PASSABLE);
 }
 
 // returns true if the portal needs to be handled by the renderer
 inline bool line_t::isVisualPortal() const
 {
-	return portalindex >= level.linePortals.Size() ? false : !!(level.linePortals[portalindex].mFlags & PORTF_VISIBLE);
+	return portalindex >= GetLevel()->linePortals.Size() ? false : !!(GetLevel()->linePortals[portalindex].mFlags & PORTF_VISIBLE);
 }
 
 inline line_t *line_t::getPortalDestination() const
 {
-	return portalindex >= level.linePortals.Size() ? (line_t*)NULL : level.linePortals[portalindex].mDestination;
+	return portalindex >= GetLevel()->linePortals.Size() ? (line_t*)nullptr : GetLevel()->linePortals[portalindex].mDestination;
 }
 
 inline int line_t::getPortalAlignment() const
 {
-	return portalindex >= level.linePortals.Size() ? 0 : level.linePortals[portalindex].mAlign;
+	return portalindex >= GetLevel()->linePortals.Size() ? 0 : GetLevel()->linePortals[portalindex].mAlign;
 }
 
 inline bool line_t::hitSkyWall(AActor* mo) const
@@ -318,4 +544,3 @@ inline bool line_t::hitSkyWall(AActor* mo) const
 		backsector->GetTexture(sector_t::ceiling) == skyflatnum &&
 		mo->Z() >= backsector->ceilingplane.ZatPoint(mo->PosRelative(this));
 }
-#endif

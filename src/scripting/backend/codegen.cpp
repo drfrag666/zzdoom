@@ -1881,6 +1881,12 @@ FxExpression *FxMinusSign::Resolve(FCompileContext& ctx)
 			delete this;
 			return e;
 		}
+		else if (Operand->ValueType == TypeBool)
+		{
+			Operand = new FxIntCast(Operand, true);
+			Operand = Operand->Resolve(ctx);
+			assert(Operand != nullptr);
+		}
 		ValueType = Operand->ValueType;
 		return this;
 	}
@@ -5138,28 +5144,85 @@ FxExpression *FxNew::Resolve(FCompileContext &ctx)
 
 //==========================================================================
 //
-//
+// The CVAR is for finding places where thinkers are created.
+// Those will require code changes in ZScript 4.0.
 //
 //==========================================================================
+CVAR(Bool, vm_warnthinkercreation, false, 0)
+
+static DObject *BuiltinNew(PClass *cls, int outerside, int backwardscompatible)
+{
+	if (cls == nullptr)
+	{
+		ThrowAbortException(X_OTHER, "New without a class");
+		return nullptr;
+	}
+	if (cls->ConstructNative == nullptr)
+	{
+		ThrowAbortException(X_OTHER, "Class %s requires native construction", cls->TypeName.GetChars());
+		return nullptr;
+	}
+	if (cls->bAbstract)
+	{
+		ThrowAbortException(X_OTHER, "Cannot instantiate abstract class %s", cls->TypeName.GetChars());
+		return nullptr;
+	}
+	// Creating actors here must be outright prohibited,
+	if (cls->IsDescendantOf(NAME_Actor))
+	{
+		ThrowAbortException(X_OTHER, "Cannot create actors with 'new'");
+		return nullptr;
+	}
+	if (vm_warnthinkercreation && cls->IsDescendantOf(NAME_Thinker))
+	{
+		// This must output a diagnostic warning
+		//ThrowAbortException(X_OTHER, "Cannot create actors with 'new'");
+		//return nullptr;
+	}
+	// [ZZ] validate readonly and between scope construction
+	if (outerside) FScopeBarrier::ValidateNew(cls, outerside - 1);
+	auto object = cls->CreateNew();
+	if (backwardscompatible && object->IsKindOf(NAME_Thinker))
+	{
+		// Todo: Link thinker to current primary level.
+	}
+	return object;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DObject, BuiltinNew, BuiltinNew)
+{
+	PARAM_PROLOGUE;
+	PARAM_CLASS(cls, DObject);
+	PARAM_INT(outerside);
+	PARAM_INT(compatible);
+	ACTION_RETURN_OBJECT(BuiltinNew(cls, outerside, compatible));
+}
 
 ExpEmit FxNew::Emit(VMFunctionBuilder *build)
 {
-	ExpEmit from = val->Emit(build);
-	from.Free(build);
 	ExpEmit to(build, REGT_POINTER);
 
-	if (!from.Konst)
+	// Call DecoRandom to generate a random number.
+	VMFunction *callfunc;
+	auto sym = FindBuiltinFunction(NAME_BuiltinNew);
+	
+	assert(sym);
+	callfunc = sym->Variants[0].Implementation;
+	
+	FunctionCallEmitter emitters(callfunc);
+
+	int outerside = -1;
+	if (!val->isConstant())
 	{
 		int outerside = FScopeBarrier::SideFromFlags(CallingFunction->Variants[0].Flags);
 		if (outerside == FScopeBarrier::Side_Virtual)
 			outerside = FScopeBarrier::SideFromObjectFlags(CallingFunction->OwningClass->ScopeFlags);
-		build->Emit(OP_NEW, to.RegNum, from.RegNum, outerside+1);	// +1 to ensure it's not 0
 	}
-	else
-	{
-		build->Emit(OP_NEW_K, to.RegNum, from.RegNum);
-	}
-	return to;
+	emitters.AddParameter(build, val);
+	emitters.AddParameterIntConst(outerside + 1);
+	emitters.AddParameterIntConst(1);	// Todo: 1 only if version < 4.0.0
+	emitters.AddReturn(REGT_POINTER);
+	return emitters.EmitCall(build);
 }
 
 //==========================================================================
@@ -5971,11 +6034,10 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 		{
 			if (ctx.Function == nullptr)
 			{
-				ScriptPosition.Message(MSG_ERROR, "Unable to access class member %s from constant declaration", sym->SymbolName.GetChars());
+				ScriptPosition.Message(MSG_ERROR, "Unable to access class member %s from constant declaration", Identifier.GetChars());
 				delete this;
 				return nullptr;
 			}
-
 			FxExpression *self = new FxSelf(ScriptPosition);
 			self = self->Resolve(ctx);
 			newex = ResolveMember(ctx, ctx.Function->Variants[0].SelfClass, self, ctx.Function->Variants[0].SelfClass);
@@ -5999,29 +6061,36 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			delete this;
 			return nullptr;
 		}
-		// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
-		else if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
+		// The following only applies to non-static content.
+		// Static functions have no access to non-static parts of a class and should be able to see global identifiers of the same name.
+		else if (ctx.Function->Variants[0].SelfClass != nullptr)
 		{
-			FxExpression *self = new FxSelf(ScriptPosition, true);
-			self = self->Resolve(ctx);
-			newex = ResolveMember(ctx, ctx.Class, self, ctx.Class);
-			ABORT(newex);
-			ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
-			ctx.Unsafe = true;
-			goto foundit;
-		}
-		else
-		{
-			if (sym->IsKindOf(RUNTIME_CLASS(PFunction)))
+			// Do this check for ZScript as well, so that a clearer error message can be printed. MSG_OPTERROR will default to MSG_ERROR there.
+			if (ctx.Function->Variants[0].SelfClass != ctx.Class && sym->IsKindOf(RUNTIME_CLASS(PField)))
 			{
-				ScriptPosition.Message(MSG_ERROR, "Function '%s' used without ().\n", Identifier.GetChars());
+				FxExpression *self = new FxSelf(ScriptPosition, true);
+				self = self->Resolve(ctx);
+				newex = ResolveMember(ctx, ctx.Class, self, ctx.Class);
+				ABORT(newex);
+				ScriptPosition.Message(MSG_OPTERROR, "Self pointer used in ambiguous context; VM execution may abort!");
+				ctx.Unsafe = true;
+				goto foundit;
 			}
 			else
 			{
-				ScriptPosition.Message(MSG_ERROR, "Invalid member identifier '%s'.\n", Identifier.GetChars());
+				if (sym->IsKindOf(RUNTIME_CLASS(PFunction)))
+				{
+					ScriptPosition.Message(MSG_ERROR, "Function '%s' used without ().\n", Identifier.GetChars());
+					delete this;
+					return nullptr;
+				}
+				else
+				{
+					ScriptPosition.Message(MSG_ERROR, "Invalid member identifier '%s'.\n", Identifier.GetChars());
+					delete this;
+					return nullptr;
+				}
 			}
-			delete this;
-			return nullptr;
 		}
 	}
 
@@ -6054,6 +6123,15 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 
 			// internally defined global variable
 			ScriptPosition.Message(MSG_DEBUGLOG, "Resolving name '%s' as global variable\n", Identifier.GetChars());
+
+			if ((vsym->Flags & VARF_Deprecated))
+			{
+				if (sym->mVersion <= ctx.Version)
+				{
+					ScriptPosition.Message(MSG_WARNING, "Accessing deprecated global variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				}
+			}
+
 			newex = new FxGlobalVariable(static_cast<PField *>(sym), ScriptPosition);
 			goto foundit;
 		}
@@ -6141,9 +6219,12 @@ FxExpression *FxIdentifier::ResolveMember(FCompileContext &ctx, PContainerType *
 				object = nullptr;
 				return nullptr;
 			}
-			if ((vsym->Flags & VARF_Deprecated) && sym->mVersion <= ctx.Version)
+			if ((vsym->Flags & VARF_Deprecated))
 			{
-				ScriptPosition.Message(MSG_WARNING, "Accessing deprecated member variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				if (sym->mVersion <= ctx.Version)
+				{
+					ScriptPosition.Message(MSG_WARNING, "Accessing deprecated member variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
+				}
 			}
 
 			// We have 4 cases to consider here:
@@ -8530,9 +8611,9 @@ FxExpression *FxActionSpecialCall::Resolve(FCompileContext& ctx)
 //
 //==========================================================================
 
-void BuiltinCallLineSpecial(int special, AActor *activator, int arg1, int arg2, int arg3, int arg4, int arg5)
+int BuiltinCallLineSpecial(int special, AActor *activator, int arg1, int arg2, int arg3, int arg4, int arg5)
 {
-	P_ExecuteSpecial(special, nullptr, activator, 0, arg1, arg2, arg3, arg4, arg5);
+	return P_ExecuteSpecial(special, nullptr, activator, 0, arg1, arg2, arg3, arg4, arg5);
 }
 
 DEFINE_ACTION_FUNCTION_NATIVE(DObject, BuiltinCallLineSpecial, BuiltinCallLineSpecial)
@@ -8564,6 +8645,7 @@ ExpEmit FxActionSpecialCall::Emit(VMFunctionBuilder *build)
 
 	emitters.AddParameterIntConst(abs(Special));			// pass special number
 	emitters.AddParameter(build, Self);
+
 
 	for (; i < ArgList.Size(); ++i)
 	{
@@ -8651,9 +8733,12 @@ bool FxVMFunctionCall::CheckAccessibility(const VersionInfo &ver)
 		ScriptPosition.Message(MSG_ERROR, "%s not accessible to %s", Function->SymbolName.GetChars(), VersionString.GetChars());
 		return false;
 	}
-	if ((Function->Variants[0].Flags & VARF_Deprecated) && Function->mVersion <= ver)
+	if ((Function->Variants[0].Flags & VARF_Deprecated))
 	{
-		ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
+		if (Function->mVersion <= ver)
+		{
+			ScriptPosition.Message(MSG_WARNING, "Accessing deprecated function %s - deprecated since %d.%d.%d", Function->SymbolName.GetChars(), Function->mVersion.major, Function->mVersion.minor, Function->mVersion.revision);
+		}
 	}
 	return true;
 }

@@ -222,6 +222,12 @@ EXTERN_CVAR (Int, team)
 
 CVAR (Bool, teamplay, false, CVAR_SERVERINFO)
 
+// Workaround for x64 code generation bug in MSVC 2015 
+// Optimized targets contain illegal instructions in the function below
+#if defined _M_X64 && _MSC_VER < 1910
+#pragma optimize("", off)
+#endif // _M_X64 && _MSC_VER < 1910
+
 // [RH] Allow turbo setting anytime during game
 CUSTOM_CVAR (Float, turbo, 100.f, CVAR_NOINITCALL)
 {
@@ -243,6 +249,10 @@ CUSTOM_CVAR (Float, turbo, 100.f, CVAR_NOINITCALL)
 		sidemove[1] = (int)(gameinfo.normsidemove[1]*scale);
 	}
 }
+
+#if defined _M_X64 && _MSC_VER < 1910
+#pragma optimize("", on)
+#endif // _M_X64 && _MSC_VER < 1910
 
 CCMD (turnspeeds)
 {
@@ -945,7 +955,7 @@ bool G_Responder (event_t *ev)
 	{
 		if (ST_Responder (ev))
 			return true;		// status window ate it
-		if (!viewactive && AM_Responder (ev, false))
+		if (!viewactive && currentUILevel->automap->Responder (ev, false))
 			return true;		// automap ate it
 	}
 	else if (gamestate == GS_FINALE)
@@ -976,7 +986,7 @@ bool G_Responder (event_t *ev)
 	// the events *last* so that any bound keys get precedence.
 
 	if (gamestate == GS_LEVEL && viewactive)
-		return AM_Responder (ev, true);
+		return currentUILevel->automap->Responder (ev, true);
 
 	return (ev->type == EV_KeyDown ||
 			ev->type == EV_Mouse);
@@ -1169,7 +1179,7 @@ void G_Ticker ()
 	{
 	case GS_LEVEL:
 		P_Ticker ();
-		AM_Ticker ();
+		currentUILevel->automap->Ticker ();
 		break;
 
 	case GS_TITLELEVEL:
@@ -2048,12 +2058,12 @@ static void PutSaveWads (FSerializer &arc)
 	name = Wads.GetWadName (Wads.GetIwadNum());
 	arc.AddString("Game WAD", name);
 
-	// Name of wad the map resides in
+		// Name of wad the map resides in
 	if (Wads.GetLumpFile (level.lumpnum) > Wads.GetIwadNum())
-	{
+		{
 		name = Wads.GetWadName (Wads.GetLumpFile (level.lumpnum));
 		arc.AddString("Map WAD", name);
-	}
+		}
 }
 
 static void PutSaveComment (FSerializer &arc)
@@ -2069,14 +2079,14 @@ static void PutSaveComment (FSerializer &arc)
 
 	arc.AddString("Creation Time", comment);
 
-	// Get level name
+		// Get level name
 	//strcpy (comment, level.level_name);
 	comment.Format("%s - %s\n", level.MapName.GetChars(), level.LevelName.GetChars());
 
 	// Append elapsed time
+	const char *const time = GStrings("SAVECOMMENT_TIME");
 	levelTime = level.time / TICRATE;
-	comment.AppendFormat("time: %02d:%02d:%02d",
-		levelTime/3600, (levelTime%3600)/60, levelTime%60);
+	comment.AppendFormat("%s: %02d:%02d:%02d", time, levelTime/3600, (levelTime%3600)/60, levelTime%60);
 
 	// Write out the comment
 	arc.AddString("Comment", comment);

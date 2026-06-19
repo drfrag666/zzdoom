@@ -254,7 +254,7 @@ enum ELevelFlags : unsigned int
 struct FSpecialAction
 {
 	FName Type;					// this is initialized before the actors...
-	uint8_t Action;
+	int Action;
 	int Args[5];
 };
 
@@ -476,8 +476,6 @@ void G_StartTravel ();
 int G_FinishTravel ();
 
 void G_DoLoadLevel (int position, bool autosave, bool newGame);
-
-void G_InitLevelLocals (void);
 
 void G_AirControlChanged ();
 

@@ -1348,13 +1348,18 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 						}
 						else
 						{
+
 							// This is a global variable.
 							if (fd->BitValue != 0) thisfieldtype = fd->FieldSize == 1 ? TypeUInt8 : fd->FieldSize == 2 ? TypeUInt16 : TypeUInt32;
-							PField *field = Create<PField>(name->Name, thisfieldtype, varflags | VARF_Native | VARF_Static, fd->FieldOffset, fd->BitValue);
+							PField *f = Create<PField>(name->Name, thisfieldtype, varflags | VARF_Native | VARF_Static, fd->FieldOffset, fd->BitValue);
+							if (f->Flags & (ZCC_Version | ZCC_Deprecated))
+							{
+								f->mVersion = field->Version;
+							}
 
-							if (OutNamespace->Symbols.AddSymbol(field) == nullptr)
+							if (OutNamespace->Symbols.AddSymbol(f) == nullptr)
 							{ // name is already in use
-								field->Destroy();
+								f->Destroy();
 								return false;
 							}
 						}
@@ -1364,10 +1369,14 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 				{
 					Error(field, "Cannot add field %s to %s. %s has native children which means it size may not change", FName(name->Name).GetChars(), type->TypeName.GetChars(), type->TypeName.GetChars());
 				}
-				else
+				else if (type != nullptr)
 				{
 					auto f = type->AddField(name->Name, thisfieldtype, varflags);
 					if (field->Flags & (ZCC_Version | ZCC_Deprecated)) f->mVersion = field->Version;
+				}
+				else
+				{
+					Error(field, "Cannot declare non-native global variables. Tried to declare %s", FName(name->Name).GetChars());
 				}
 			}
 			name = static_cast<ZCC_VarName*>(name->SiblingNext);
@@ -1833,6 +1842,17 @@ PType *ZCCCompiler::ResolveArraySize(PType *baseType, ZCC_Expression *arraysize,
 	{
 		*nosize = true;
 		return baseType;
+	}
+
+	if (mVersion >= MakeVersion(3, 7, 2))
+	{
+		TArray<ZCC_Expression *> fixedIndices;
+		for (auto node : indices)
+		{
+			fixedIndices.Insert (0, node);
+		}
+
+		indices = std::move(fixedIndices);
 	}
 
 	FCompileContext ctx(OutNamespace, cls, false);

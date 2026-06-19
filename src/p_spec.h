@@ -63,7 +63,6 @@ enum EScrollPos : int
 	scw_all = 7,
 };
 
-void P_CreateScroller(EScroll type, double dx, double dy, sector_t *affectee, int accel, EScrollPos scrollpos = EScrollPos::scw_all);
 
 
 //jff 2/23/98 identify the special classes that can share sectors
@@ -87,17 +86,10 @@ const double CARRYFACTOR = 3 / 32.;
 #define DAMAGE_NO_ARMOR				16
 
 
-// [RH] If a deathmatch game, checks to see if noexit is enabled.
-//		If so, it kills the player and returns false. Otherwise,
-//		it returns true, and the player is allowed to live.
-bool	CheckIfExitIsGood (AActor *self, level_info_t *info);
-
 class MapLoader;
-// at map load
-void	P_SpawnSpecials (MapLoader *ml);
 
 // every tic
-void	P_UpdateSpecials (void);
+void	P_UpdateSpecials (FLevelLocals *);
 
 // when needed
 bool	P_ActivateLine (line_t *ld, AActor *mo, int side, int activationType, DVector3 *optpos = NULL);
@@ -106,10 +98,10 @@ bool	P_PredictLine (line_t *ld, AActor *mo, int side, int activationType);
 
 void 	P_PlayerInSpecialSector (player_t *player, sector_t * sector=NULL);
 void	P_PlayerOnSpecialFlat (player_t *player, int floorType);
-void	P_SectorDamage(int tag, int amount, FName type, PClassActor *protectClass, int flags);
-void	P_SetSectorFriction (int tag, int amount, bool alterFlag);
+void	P_SectorDamage(FLevelLocals *Level, int tag, int amount, FName type, PClassActor *protectClass, int flags);
+void	P_SetSectorFriction (FLevelLocals *level, int tag, int amount, bool alterFlag);
 double FrictionToMoveFactor(double friction);
-void P_GiveSecret(AActor *actor, bool printmessage, bool playsound, int sectornum);
+void P_GiveSecret(FLevelLocals *Level, AActor *actor, bool printmessage, bool playsound, int sectornum);
 
 //
 // getNextSector()
@@ -135,7 +127,7 @@ class DLighting : public DSectorEffect
 public:
 	DLighting(sector_t *sector);
 protected:
-	DLighting();
+	DLighting() = default;
 };
 
 void	EV_StartLightFlickering (int tag, int upper, int lower);
@@ -218,18 +210,10 @@ protected:
 	void Stop ();
 
 private:
-	DPlat ();
+	DPlat() = default;
 
-	friend bool	EV_DoPlat (int tag, line_t *line, EPlatType type,
-						   double height, double speed, int delay, int lip, int change);
-	friend void EV_StopPlat (int tag, bool remove);
-	friend void P_ActivateInStasis (int tag);
+	friend struct FLevelLocals;
 };
-
-bool EV_DoPlat (int tag, line_t *line, DPlat::EPlatType type,
-				double height, double speed, int delay, int lip, int change);
-void EV_StopPlat (int tag, bool remove);
-void P_ActivateInStasis (int tag);
 
 //
 // [RH]
@@ -267,11 +251,9 @@ protected:
 	TObjPtr<DInterpolation*> m_Interp_Floor;
 
 private:
-	DPillar ();
+	DPillar() = default;
 };
 
-bool EV_DoPillar (DPillar::EPillar type, line_t *line, int tag,
-				  double speed, double height, double height2, int crush, bool hexencrush);
 
 //
 // P_DOORS
@@ -315,18 +297,11 @@ protected:
 
 	void DoorSound (bool raise, class DSeqNode *curseq=NULL) const;
 
-	friend bool	EV_DoDoor (DDoor::EVlDoor type, line_t *line, AActor *thing,
-						   int tag, double speed, int delay, int lock,
-						   int lightTag, bool boomgen, int topcountdown);
 private:
-	DDoor ();
+	friend struct FLevelLocals;
+	DDoor() = default;
 
 };
-
-bool EV_DoDoor (DDoor::EVlDoor type, line_t *line, AActor *thing,
-				int tag, double speed, int delay, int lock,
-				int lightTag, bool boomgen = false, int topcountdown = 0);
-
 
 class DAnimatedDoor : public DMovingCeiling
 {
@@ -365,15 +340,13 @@ protected:
 	int m_Delay;
 	bool m_SetBlocking1, m_SetBlocking2;
 
-	friend bool EV_SlidingDoor (line_t *line, AActor *thing, int tag, int speed, int delay, EADType type);
+	friend struct FLevelLocals;
 private:
-	DAnimatedDoor ();
+	DAnimatedDoor() = default;
 };
 
-bool EV_SlidingDoor (line_t *line, AActor *thing, int tag, int speed, int delay, DAnimatedDoor::EADType type);
-
 //
-// P_CEILNG
+// P_CEILING
 //
 
 // [RH] Changed these
@@ -449,21 +422,10 @@ protected:
 	void PlayCeilingSound ();
 
 private:
-	DCeiling ();
+	DCeiling() = default;
+	friend struct FLevelLocals;
 
-	friend bool P_CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush);
-	friend bool EV_CeilingCrushStop (int tag, bool remove);
-	friend void P_ActivateInStasisCeiling (int tag);
 };
-
-bool P_CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush);
-bool EV_DoCeiling (DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush = DCeiling::ECrushMode::crushDoom);
-
-bool EV_CeilingCrushStop (int tag, bool remove);
-bool EV_StopCeiling(int tag, line_t *line);
-void P_ActivateInStasisCeiling (int tag);
-
-
 
 //
 // P_FLOOR
@@ -552,29 +514,11 @@ public:
 
 	void StartFloorSound ();
 	void SetFloorChangeType (sector_t *sec, int change);
+	friend struct FLevelLocals;
 
-	friend bool EV_BuildStairs (int tag, DFloor::EStair type, line_t *line,
-		double stairsize, double speed, int delay, int reset, int igntxt,
-		int usespecials);
-	friend bool EV_DoFloor (DFloor::EFloor floortype, line_t *line, int tag,
-		double speed, double height, int crush, int change, bool hexencrush, bool hereticlower);
-	friend bool EV_DoDonut (int tag, line_t *line, double pillarspeed, double slimespeed);
 private:
-	DFloor ();
+	DFloor() = default;
 };
-
-bool P_CreateFloor(sector_t *sec, DFloor::EFloor floortype, line_t *line,
-	double speed, double height, int crush, int change, bool hexencrush, bool hereticlower);
-
-bool EV_BuildStairs (int tag, DFloor::EStair type, line_t *line,
-	double stairsize, double speed, int delay, int reset, int igntxt,
-	int usespecials);
-bool EV_DoFloor(DFloor::EFloor floortype, line_t *line, int tag,
-	double speed, double height, int crush, int change, bool hexencrush, bool hereticlower = false);
-
-bool EV_FloorCrushStop (int tag, line_t *line);
-bool EV_StopFloor(int tag, line_t *line);
-bool EV_DoDonut (int tag, line_t *line, double pillarspeed, double slimespeed);
 
 class DElevator : public DMover
 {
@@ -607,13 +551,11 @@ protected:
 	TObjPtr<DInterpolation*> m_Interp_Floor;
 
 	void StartFloorSound ();
-
-	friend bool EV_DoElevator (line_t *line, DElevator::EElevator type, double speed, double height, int tag);
+	friend struct FLevelLocals;
 private:
-	DElevator ();
+	DElevator() = default;
 };
 
-bool EV_DoElevator (line_t *line, DElevator::EElevator type, double speed, double height, int tag);
 
 class DWaggleBase : public DMover
 {
@@ -634,15 +576,10 @@ protected:
 	int m_Ticker;
 	int m_State;
 
-	friend bool EV_StartWaggle (int tag, line_t *line, int height, int speed,
-		int offset, int timer, bool ceiling);
-
+	friend struct FLevelLocals;
 	void DoWaggle (bool ceiling);
-	DWaggleBase ();
+	DWaggleBase() = default;
 };
-
-bool EV_StartWaggle (int tag, line_t *line, int height, int speed,
-	int offset, int timer, bool ceiling);
 
 class DFloorWaggle : public DWaggleBase
 {
@@ -651,7 +588,7 @@ public:
 	DFloorWaggle (sector_t *sec);
 	void Tick ();
 private:
-	DFloorWaggle ();
+	DFloorWaggle() = default;
 };
 
 class DCeilingWaggle : public DWaggleBase
@@ -661,7 +598,7 @@ public:
 	DCeilingWaggle (sector_t *sec);
 	void Tick ();
 private:
-	DCeilingWaggle ();
+	DCeilingWaggle() = default;
 };
 
 //jff 3/15/98 pure texture/type change for better generalized support
@@ -670,10 +607,6 @@ enum EChange
 	trigChangeOnly,
 	numChangeOnly,
 };
-
-bool EV_DoChange (line_t *line, EChange changetype, int tag);
-
-
 
 //
 // P_TELEPT

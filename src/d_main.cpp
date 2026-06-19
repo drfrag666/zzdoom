@@ -538,7 +538,7 @@ CUSTOM_CVAR (Int, compatflags, 0, CVAR_ARCHIVE|CVAR_SERVERINFO)
 	i_compatflags = GetCompatibility(self) | ii_compatflags;
 	if ((old ^ i_compatflags) & COMPATF_POLYOBJ)
 	{
-		FPolyObj::ClearAllSubsectorLinks();
+		level.ClearAllSubsectorLinks();
 	}
 }
 
@@ -705,7 +705,7 @@ void D_Display ()
 			C_NewModeAdjust ();
 			// Reload crosshair if transitioned to a different size
 			ST_LoadCrosshair (true);
-			AM_NewResolution ();
+			currentUILevel->automap->NewResolution();
 			// Reset the mouse cursor in case the bit depth changed
 			vid_cursor.Callback();
 		}
@@ -818,7 +818,7 @@ void D_Display ()
 			screen->DrawBlendingRect();
 			if (automapactive)
 			{
-				AM_Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
+				currentUILevel->automap->Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
 			}
 			if (!automapactive || viewactive)
 			{

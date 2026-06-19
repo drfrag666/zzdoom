@@ -56,7 +56,7 @@ typedef enum
 	PushMany,
 } triggertype_e;
 
-void P_TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid)
+void FLevelLocals::TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid)
 {
 	uint32_t special = mld->special;
 	short tag = mld->tag;
@@ -288,56 +288,6 @@ void P_TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid)
 	ld->special = 0;
 	ld->flags = flags;
 	memset (ld->args, 0, sizeof(ld->args));
-}
-
-// Now that ZDoom again gives the option of using Doom's original teleport
-// behavior, only teleport dests in a sector with a 0 tag need to be
-// given a TID. And since Doom format maps don't have TIDs, we can safely
-// give them TID 1.
-
-void P_TranslateTeleportThings ()
-{
-	AActor *dest;
-	TThinkerIterator<AActor> iterator(NAME_TeleportDest);
-	bool foundSomething = false;
-
-	while ( (dest = iterator.Next()) )
-	{
-		if (!tagManager.SectorHasTags(dest->Sector))
-		{
-			dest->tid = 1;
-			dest->AddToHash ();
-			foundSomething = true;
-		}
-	}
-
-	if (foundSomething)
-	{
-		for (auto &line : level.lines)
-		{
-			if (line.special == Teleport)
-			{
-				if (line.args[1] == 0)
-				{
-					line.args[0] = 1;
-				}
-			}
-			else if (line.special == Teleport_NoFog)
-			{
-				if (line.args[2] == 0)
-				{
-					line.args[0] = 1;
-				}
-			}
-			else if (line.special == Teleport_ZombieChanger)
-			{
-				if (line.args[1] == 0)
-				{
-					line.args[0] = 1;
-				}
-			}
-		}
-	}
 }
 
 int P_TranslateSectorSpecial (int special)
