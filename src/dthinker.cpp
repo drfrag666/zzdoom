@@ -659,7 +659,7 @@ void DThinker::RunThinkers ()
 			sorted.Push({ pair->Key.GetChars(), pair->Value.numcalls, pair->Value.timer.TimeMS() });
 		}
 
-/*		std::sort(sorted.begin(), sorted.end(), [](const SortedProfileInfo& left, const SortedProfileInfo& right)
+		std::sort(sorted.begin(), sorted.end(), [](const SortedProfileInfo& left, const SortedProfileInfo& right)
 		{
 			switch (profilethinkers)
 			{
@@ -680,7 +680,7 @@ void DThinker::RunThinkers ()
 			default: // total time, descending
 				return right.time < left.time;
 			}
-		});FIXME*/
+		});
 
 		Printf(TEXTCOLOR_YELLOW "Total, ms   Averg, ms   Calls   Actor class\n");
 		Printf(TEXTCOLOR_YELLOW "----------  ----------  ------  --------------------\n");
