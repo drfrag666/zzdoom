@@ -50,6 +50,7 @@
 
 struct FTraceInfo
 {
+	FLevelLocals *Level;
 	DVector3 Start;
 	DVector3 Vec;
 	ActorFlags ActorMask;
@@ -116,7 +117,7 @@ static void GetPortalTransition(DVector3 &pos, sector_t *&sec)
 		if (pos.Z > sec->GetPortalPlaneZ(sector_t::ceiling))
 		{
 			pos += sec->GetPortalDisplacement(sector_t::ceiling);
-			sec = P_PointInSector(pos);
+			sec = sec->Level->PointInSector(pos);
 			moved = true;
 		}
 		else break;
@@ -128,7 +129,7 @@ static void GetPortalTransition(DVector3 &pos, sector_t *&sec)
 			if (pos.Z <= sec->GetPortalPlaneZ(sector_t::floor))
 			{
 				pos += sec->GetPortalDisplacement(sector_t::floor);
-				sec = P_PointInSector(pos);
+				sec = sec->Level->PointInSector(pos);
 			}
 			else break;
 		}
@@ -158,6 +159,7 @@ bool Trace(const DVector3 &start, sector_t *sector, const DVector3 &direction, d
 	memset(&tempResult, 0, sizeof(tempResult));
 	tempResult.Fraction = tempResult.Distance = NO_VALUE;
 
+	inf.Level = sector->Level;
 	inf.Start = start;
 	GetPortalTransition(inf.Start, sector);
 	inf.ptflags = actorMask ? PT_ADDLINES|PT_ADDTHINGS|PT_COMPATIBLE : PT_ADDLINES;
@@ -220,7 +222,7 @@ void FTraceInfo::EnterSectorPortal(FPathTraverse &pt, int position, double frac,
 	DVector3 enter = exit + displacement;
 
 	Start += displacement;
-	CurSector = P_PointInSector(enter);
+	CurSector = entersec->Level->PointInSector(enter);
 	inshootthrough = true;
 	startfrac = frac;
 	EnterDist = enterdist;
@@ -259,7 +261,7 @@ void FTraceInfo::EnterLinePortal(FPathTraverse &pt, intercept_t *in)
 	P_TranslatePortalVXVY(li, Vec.X, Vec.Y);
 	P_TranslatePortalZ(li, limitz);
 
-	CurSector = P_PointInSector(Start + enterdist * Vec);
+	CurSector = li->GetLevel()->PointInSector(Start + enterdist * Vec);
 	EnterDist = enterdist;
 	inshootthrough = true;
 	startfrac = frac;
@@ -419,7 +421,7 @@ bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool spec
 
 		// For backwards compatibility: Ignore lines with the same sector on both sides.
 		// This is the way Doom.exe did it and some WADs (e.g. Alien Vendetta MAP15) need it.
-		if (i_compatflags & COMPATF_TRACE && in->d.line->backsector == in->d.line->frontsector && !special3dpass)
+		if (Level->i_compatflags & COMPATF_TRACE && in->d.line->backsector == in->d.line->frontsector && !special3dpass)
 		{
 			// We must check special activation here because the code below is never reached.
 			if (TraceFlags & TRACE_PCross)
@@ -452,7 +454,7 @@ bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool spec
 		// hit crossed a water plane
 		if (CheckSectorPlane(hsec, true))
 		{
-			Results->CrossedWater = &level.sectors[CurSector->sectornum];
+			Results->CrossedWater = &Level->sectors[CurSector->sectornum];
 			Results->CrossedWaterPos = Results->HitPos;
 			Results->Distance = 0;
 		}
@@ -583,7 +585,7 @@ cont:
 	if (Results->HitType != TRACE_HitNone)
 	{
 		// We hit something, so figure out where exactly
-		Results->Sector = &level.sectors[CurSector->sectornum];
+		Results->Sector = &Level->sectors[CurSector->sectornum];
 
 		if (Results->HitType != TRACE_HitWall &&
 			!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor))
@@ -720,7 +722,7 @@ bool FTraceInfo::ThingCheck(intercept_t *in, double dist, DVector3 hit)
 
 		// the trace hit a 3D floor before the thing.
 		// Calculate an intersection and abort.
-		Results->Sector = &level.sectors[CurSector->sectornum];
+		Results->Sector = &Level->sectors[CurSector->sectornum];
 		if (!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor))
 		{
 			Results->HitType = TRACE_HitNone;
@@ -777,7 +779,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 	// Do a 3D floor check in the starting sector
 	Setup3DFloors();
 
-	FPathTraverse it(&level, Start.X, Start.Y, Vec.X * MaxDist, Vec.Y * MaxDist, ptflags | PT_DELTA, startfrac);
+	FPathTraverse it(Level, Start.X, Start.Y, Vec.X * MaxDist, Vec.Y * MaxDist, ptflags | PT_DELTA, startfrac);
 	intercept_t *in;
 	int lastsplashsector = -1;
 
@@ -872,7 +874,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 	}
 
 	// check for intersection with floor/ceiling
-	Results->Sector = &level.sectors[CurSector->sectornum];
+	Results->Sector = &Level->sectors[CurSector->sectornum];
 
 	if (Results->CrossedWater == NULL &&
 		CurSector->heightsec != NULL &&
@@ -886,7 +888,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 
 		if (CheckSectorPlane(CurSector->heightsec, true))
 		{
-			Results->CrossedWater = &level.sectors[CurSector->sectornum];
+			Results->CrossedWater = &Level->sectors[CurSector->sectornum];
 			Results->CrossedWaterPos = Results->HitPos;
 			Results->Distance = 0;
 		}
@@ -1020,7 +1022,7 @@ DEFINE_ACTION_FUNCTION(DLineTracer, Trace)
 	PARAM_FLOAT(start_x);
 	PARAM_FLOAT(start_y);
 	PARAM_FLOAT(start_z);
-	PARAM_POINTER(sector, sector_t);
+	PARAM_POINTER_NOT_NULL(sector, sector_t);
 	PARAM_FLOAT(direction_x);
 	PARAM_FLOAT(direction_y);
 	PARAM_FLOAT(direction_z);

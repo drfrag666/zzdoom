@@ -143,8 +143,8 @@ void FScriptLoader::ParseInfoCmd(char *line, FString &scriptsrc)
 			sc.MustGetStringName("=");
 			sc.MustGetString();
 		
-			sky2texture = sky1texture = Level->skytexture1 = Level->skytexture2 = TexMan.GetTexture (sc.String, ETextureType::Wall, FTextureManager::TEXMAN_Overridable|FTextureManager::TEXMAN_ReturnFirst);
-			R_InitSkyMap ();
+			Level->skytexture1 = Level->skytexture2 = TexMan.GetTexture (sc.String, ETextureType::Wall, FTextureManager::TEXMAN_Overridable|FTextureManager::TEXMAN_ReturnFirst);
+			InitSkyMap (Level);
 		}
 		else if (sc.Compare("interpic"))
 		{
@@ -262,7 +262,7 @@ bool FScriptLoader::ParseInfo(MapData * map)
 			I_Error("Only one FraggleThinker is allowed to exist at a time.\nCheck your code.");
 		}
 
-		auto th = Create<DFraggleThinker>();
+		auto th = Level->CreateThinker<DFraggleThinker>();
 		th->LevelScript->data = copystring(scriptsrc.GetChars());
 		Level->FraggleScriptThinker = th;
 

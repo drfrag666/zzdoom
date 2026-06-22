@@ -213,7 +213,7 @@ void DScroller::Tick ()
 
 		// [RH] Don't actually carry anything here. That happens later.
 		case EScroll::sc_carry:
-			level.Scrolls[m_Sector->Index()] += { dx, dy };
+			Level->Scrolls[m_Sector->Index()] += { dx, dy };
 			// mark all potentially affected things here so that the very expensive calculation loop in AActor::Tick does not need to run for actors which do not touch a scrolling sector.
 			for (auto n = m_Sector->touching_thinglist; n; n = n->m_snext)
 			{
@@ -246,8 +246,7 @@ void DScroller::Tick ()
 //
 //-----------------------------------------------------------------------------
 
-DScroller::DScroller (EScroll type, double dx, double dy,  sector_t *ctrl, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos)
-	: DThinker (STAT_SCROLLER)
+void DScroller::Construct (EScroll type, double dx, double dy,  sector_t *ctrl, sector_t *sec, side_t *side, int accel, EScrollPos scrollpos)
 {
 	m_Type = type;
 	m_dx = dx;
@@ -268,7 +267,7 @@ DScroller::DScroller (EScroll type, double dx, double dy,  sector_t *ctrl, secto
 	{
 	case EScroll::sc_carry:
 		assert(sec != nullptr);
-		level.AddScroller (sec->Index());
+		Level->AddScroller (sec->Index());
 		break;
 
 	case EScroll::sc_side:
@@ -328,8 +327,7 @@ void DScroller::OnDestroy ()
 //
 //-----------------------------------------------------------------------------
 
-DScroller::DScroller (double dx, double dy, const line_t *l, sector_t * control, int accel, EScrollPos scrollpos)
-	: DThinker (STAT_SCROLLER)
+void DScroller::Construct(double dx, double dy, const line_t *l, sector_t * control, int accel, EScrollPos scrollpos)
 {
 	double x = fabs(l->Delta().X), y = fabs(l->Delta().Y), d;
 	if (y > x) d = x, x = y, y = d;
@@ -383,7 +381,7 @@ void SetWallScroller (FLevelLocals *Level, int id, int sidechoice, double dx, do
 	if (dx == 0 && dy == 0)
 	{
 		// Special case: Remove the scroller, because the deltas are both 0.
-		TThinkerIterator<DScroller> iterator (STAT_SCROLLER);
+		auto iterator = Level->GetThinkerIterator<DScroller>(NAME_None, STAT_SCROLLER);
 		DScroller *scroller;
 
 		while ( (scroller = iterator.Next ()) )
@@ -402,7 +400,7 @@ void SetWallScroller (FLevelLocals *Level, int id, int sidechoice, double dx, do
 		// their rates.
 		TArray<DScroller *> Collection;
 		{
-			TThinkerIterator<DScroller> iterator (STAT_SCROLLER);
+			auto iterator = Level->GetThinkerIterator<DScroller>(NAME_None, STAT_SCROLLER);
 			DScroller *scroll;
 
 			while ( (scroll = iterator.Next ()) )
@@ -432,7 +430,7 @@ void SetWallScroller (FLevelLocals *Level, int id, int sidechoice, double dx, do
 			{
 				if (Collection.FindEx([=](const DScroller *element) { return element->GetWall() == side; }) == Collection.Size())
 				{
-					Create<DScroller> (EScroll::sc_side, dx, dy, nullptr, nullptr, side, 0, Where);
+					Level->CreateThinker<DScroller> (EScroll::sc_side, dx, dy, nullptr, nullptr, side, 0, Where);
 				}
 			}
 		}
@@ -441,7 +439,7 @@ void SetWallScroller (FLevelLocals *Level, int id, int sidechoice, double dx, do
 
 void SetScroller (FLevelLocals *Level, int tag, EScroll type, double dx, double dy)
 {
-	TThinkerIterator<DScroller> iterator (STAT_SCROLLER);
+	auto iterator = Level->GetThinkerIterator<DScroller>(NAME_None, STAT_SCROLLER);
 	DScroller *scroller;
 	int i;
 
@@ -472,6 +470,6 @@ void SetScroller (FLevelLocals *Level, int tag, EScroll type, double dx, double 
 	auto itr = Level->GetSectorTagIterator(tag);
 	while ((i = itr.Next()) >= 0)
 	{
-		Create<DScroller> (type, dx, dy, nullptr, &Level->sectors[i], nullptr, 0);
+		Level->CreateThinker<DScroller> (type, dx, dy, nullptr, &Level->sectors[i], nullptr, 0);
 	}
 }

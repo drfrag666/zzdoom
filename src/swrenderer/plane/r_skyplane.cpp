@@ -68,16 +68,17 @@ namespace swrenderer
 	{
 		FTextureID sky1tex, sky2tex;
 		double frontdpos = 0, backdpos = 0;
+		auto Level = Thread->Viewport->Level();
 
-		if ((level.flags & LEVEL_SWAPSKIES) && !(level.flags & LEVEL_DOUBLESKY))
+		if ((Level->flags & LEVEL_SWAPSKIES) && !(Level->flags & LEVEL_DOUBLESKY))
 		{
-			sky1tex = sky2texture;
+			sky1tex = Level->skytexture2;
 		}
 		else
 		{
-			sky1tex = sky1texture;
+			sky1tex = Level->skytexture1;
 		}
-		sky2tex = sky2texture;
+		sky2tex = Level->skytexture2;
 		skymid = skytexturemid;
 		skyangle = Thread->Viewport->viewpoint.Angles.Yaw.BAMs();
 
@@ -87,13 +88,13 @@ namespace swrenderer
 			{	// use sky1
 			sky1:
 				frontskytex = TexMan(sky1tex, true);
-				if (level.flags & LEVEL_DOUBLESKY)
+				if (Level->flags & LEVEL_DOUBLESKY)
 					backskytex = TexMan(sky2tex, true);
 				else
 					backskytex = NULL;
 				skyflip = 0;
-				frontdpos = sky1pos;
-				backdpos = sky2pos;
+				frontdpos = Level->sky1pos;
+				backdpos = Level->sky2pos;
 				frontcyl = sky1cyl;
 				backcyl = sky2cyl;
 			}
@@ -103,12 +104,12 @@ namespace swrenderer
 				backskytex = NULL;
 				frontcyl = sky2cyl;
 				skyflip = 0;
-				frontdpos = sky2pos;
+				frontdpos = Level->sky2pos;
 			}
 			else
 			{	// MBF's linedef-controlled skies
 				// Sky Linedef
-				const line_t *l = &level.lines[(pl->sky & ~PL_SKYFLAT) - 1];
+				const line_t *l = &Level->lines[(pl->sky & ~PL_SKYFLAT) - 1];
 
 				// Sky transferred from first sidedef
 				const side_t *s = l->sidedef[0];
@@ -116,7 +117,7 @@ namespace swrenderer
 
 				// Texture comes from upper texture of reference sidedef
 				// [RH] If swapping skies, then use the lower sidedef
-				if (level.flags & LEVEL_SWAPSKIES && s->GetTexture(side_t::bottom).isValid())
+				if (Level->flags & LEVEL_SWAPSKIES && s->GetTexture(side_t::bottom).isValid())
 				{
 					pos = side_t::bottom;
 				}
@@ -150,7 +151,7 @@ namespace swrenderer
 
 				int frontxscale = int(frontskytex->Scale.X * 1024);
 				frontcyl = MAX(frontskytex->GetWidth(), frontxscale);
-				if (skystretch)
+				if (Level->skystretch)
 				{
 					skymid = skymid * frontskytex->GetScaledHeightDouble() / SKYSTRETCH_HEIGHT;
 				}
@@ -174,6 +175,7 @@ namespace swrenderer
 	{
 		RenderPortal *renderportal = Thread->Portal.get();
 		auto viewport = Thread->Viewport.get();
+		auto Level = viewport->Level();
 
 		uint32_t height = frontskytex->GetHeight();
 
@@ -208,7 +210,7 @@ namespace swrenderer
 		drawerargs.SetTextureVPos(uv_pos);
 		drawerargs.SetDest(viewport, start_x, y1);
 		drawerargs.SetCount(y2 - y1);
-		drawerargs.SetFadeSky(r_skymode == 2 && !(level.flags & LEVEL_FORCETILEDSKY));
+		drawerargs.SetFadeSky(r_skymode == 2 && !(Level->flags & LEVEL_FORCETILEDSKY));
 		drawerargs.SetSolidTop(frontskytex->GetSkyCapColor(false));
 		drawerargs.SetSolidBottom(frontskytex->GetSkyCapColor(true));
 

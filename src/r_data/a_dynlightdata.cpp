@@ -75,6 +75,7 @@ TArray<FLightAssociation> LightAssociations;
 static double lightSizeFactor = 1.;
 
 TDeletingArray<FLightDefaults *> LightDefaults;
+int AttenuationIsSet = -1;
 
 //-----------------------------------------------------------------------------
 //
@@ -109,7 +110,7 @@ void FLightDefaults::ApplyProperties(FDynamicLight * light) const
 	{
 		float pulseTime = float(m_Param / TICRATE);
 
-		light->m_lastUpdate = level.maptime;
+		light->m_lastUpdate = light->Level->maptime;
 		if (m_swapped) light->m_cycler.SetParams(float(m_Args[LIGHT_SECONDARY_INTENSITY]), float(m_Args[LIGHT_INTENSITY]), pulseTime, oldtype == PulseLight);
 		else light->m_cycler.SetParams(float(m_Args[LIGHT_INTENSITY]), float(m_Args[LIGHT_SECONDARY_INTENSITY]), pulseTime, oldtype == PulseLight);
 		light->m_cycler.ShouldCycle(true);
@@ -121,14 +122,18 @@ void FLightDefaults::ApplyProperties(FDynamicLight * light) const
 	light->SetOffset(m_Pos);	// this must be the last thing to do.
 }
 
-void FLightDefaults::SetAttenuationForLevel()
+void FLightDefaults::SetAttenuationForLevel(bool yes)
 {
-	for (auto ldef : LightDefaults)
+	if (AttenuationIsSet != int(yes))
 	{
-		if (ldef->m_attenuate == -1)
+		for (auto ldef : LightDefaults)
 		{
-			if (level.flags3 & LEVEL3_ATTENUATE)  ldef->m_lightFlags |= LF_ATTENUATE; else ldef->m_lightFlags &= ~LF_ATTENUATE;
+			if (ldef->m_attenuate == -1)
+			{
+				if (yes)  ldef->m_lightFlags |= LF_ATTENUATE; else ldef->m_lightFlags &= ~LF_ATTENUATE;
+			}
 		}
+		AttenuationIsSet = yes;
 	}
 }
 
@@ -1186,6 +1191,7 @@ void ParseGLDefs()
 
 	LightAssociations.Clear();
 	LightDefaults.Clear();
+	AttenuationIsSet = -1;
 	// gl_DestroyUserShaders();
 	switch (gameinfo.gametype)
 	{

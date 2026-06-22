@@ -47,8 +47,10 @@
 #include "p_tags.h"
 #include "p_spec.h"
 #include "actor.h"
+#include "p_effect.h"
 #include "p_destructible.h"
 #include "r_data/r_sections.h"
+#include "r_data/r_interpolate.h"
 
 //============================================================================
 //
@@ -85,71 +87,22 @@ struct FPortalBits
 class DACSThinker;
 class DFraggleThinker;
 class DSpotState;
+class DSeqNode;
 struct FStrifeDialogueNode;
 class DAutomapBase;
+struct wbstartstruct_t;
+class DSectorMarker;
 
 typedef TMap<int, int> FDialogueIDMap;				// maps dialogue IDs to dialogue array index (for ACS)
 typedef TMap<FName, int> FDialogueMap;				// maps actor class names to dialogue array index
+typedef TMap<int, FUDMFKeys> FUDMFKeyMap;
 
-struct FLevelData
+struct FLevelLocals
 {
-	TArray<vertex_t> vertexes;
-	TArray<sector_t> sectors;
-	TArray<line_t*> linebuffer;	// contains the line lists for the sectors.
-	TArray<subsector_t*> subsectorbuffer;	// contains the subsector lists for the sectors.
-	TArray<line_t> lines;
-	TArray<side_t> sides;
-	TArray<seg_t *> segbuffer;	// contains the seg links for the sidedefs.
-	TArray<seg_t> segs;
-	TArray<subsector_t> subsectors;
-	TArray<node_t> nodes;
-	TArray<subsector_t> gamesubsectors;
-	TArray<node_t> gamenodes;
-	node_t *headgamenode;
-	TArray<uint8_t> rejectmatrix;
-	TArray<zone_t>	Zones;
-	TArray<FPolyObj> Polyobjects;
+	void *level;
+	void *Level;	// bug catchers.
+	FLevelLocals() : Behaviors(this), tagManager(this) {}
 
-	TArray<FSectorPortal> sectorPortals;
-	TArray<FLinePortal> linePortals;
-
-	FDisplacementTable Displacements;
-	FPortalBlockmap PortalBlockmap;
-	TArray<FLinePortal*> linkedPortals;	// only the linked portals, this is used to speed up looking for them in P_CollectConnectedGroups.
-
-	FSectionContainer sections;
-
-	// [ZZ] Destructible geometry information
-	TMap<int, FHealthGroup> healthGroups;
-
-	FBlockmap blockmap;
-	TArray<polyblock_t *> PolyBlockMap;
-
-	// These are copies of the loaded map data that get used by the savegame code to skip unaltered fields
-	// Without such a mechanism the savegame format would become too slow and large because more than 80-90% are normally still unaltered.
-	TArray<sector_t>	loadsectors;
-	TArray<line_t>	loadlines;
-	TArray<side_t>	loadsides;
-
-	// Maintain single and multi player starting spots.
-	TArray<FPlayerStart> deathmatchstarts;
-	FPlayerStart		playerstarts[MAXPLAYERS];
-	TArray<FPlayerStart> AllPlayerStarts;
-
-	FBehaviorContainer Behaviors;
-	FTagManager tagManager;
-	AActor *TIDHash[128];
-	
-	TArray<FStrifeDialogueNode *> StrifeDialogues;
-	FDialogueIDMap DialogueRoots;
-	FDialogueMap ClassRoots;
-
-
-};
-
-
-struct FLevelLocals : public FLevelData
-{
 	friend class MapLoader;
 
 	void Tick();
@@ -169,6 +122,8 @@ struct FLevelLocals : public FLevelData
 	int GetConversation(FName classname);
 	void SetConversation(int convid, PClassActor *Class, int dlgindex);
 	int FindNode (const FStrifeDialogueNode *node);
+    int GetInfighting();
+	void SetCompatLineOnSide(bool state);
 	void Init();
 
 private:
@@ -182,6 +137,9 @@ private:
 	void AddDisplacementForPortal(FLinePortal *portal);
 	bool ConnectPortalGroups();
 public:
+	void SnapshotLevel();
+	void UnSnapshotLevel(bool hubLoad);
+
 	void FinalizePortals();
 	bool ChangePortal(line_t *ln, int thisid, int destid);
 	unsigned GetSkyboxPortal(AActor *actor);
@@ -194,6 +152,26 @@ public:
 	bool CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t *line, int tag, double speed, double speed2, double height, int crush, int silent, int change, DCeiling::ECrushMode hexencrush);
 	void ActivateInStasisCeiling(int tag);
 	bool CreateFloor(sector_t *sec, DFloor::EFloor floortype, line_t *line, double speed, double height, int crush, int change, bool hexencrush, bool hereticlower);
+	void DoDeferedScripts();
+	void AdjustPusher(int tag, int magnitude, int angle, bool wind);
+	int Massacre(bool baddies = false, FName cls = NAME_None);
+	AActor *SpawnMapThing(FMapThing *mthing, int position);
+	AActor *SpawnMapThing(int index, FMapThing *mt, int position);
+	AActor *SpawnPlayer(FPlayerStart *mthing, int playernum, int flags = 0);
+	void StartLightning();
+	void ForceLightning(int mode);
+	void ClearDynamic3DFloorData();
+	void WorldDone(void);
+	void AirControlChanged();
+	AActor *SelectTeleDest(int tid, int tag, bool norandom);
+	bool AlignFlat(int linenum, int side, int fc);
+	void ReplaceTextures(const char *fromname, const char *toname, int flags);
+
+	bool EV_Thing_Spawn(int tid, AActor *source, int type, DAngle angle, bool fog, int newtid);
+	bool EV_Thing_Move(int tid, AActor *source, int mapspot, bool fog);
+	bool EV_Thing_Projectile(int tid, AActor *source, int type, const char *type_name, DAngle angle,
+		double speed, double vspeed, int dest, AActor *forcedest, int gravity, int newtid, bool leadTarget);
+	int EV_Thing_Damage(int tid, AActor *whofor0, int amount, FName type);
 
 	bool EV_DoPlat(int tag, line_t *line, DPlat::EPlatType type, double height, double speed, int delay, int lip, int change);
 	void EV_StopPlat(int tag, bool remove);
@@ -211,6 +189,52 @@ public:
 	bool EV_DoElevator(line_t *line, DElevator::EElevator type, double speed, double height, int tag);
 	bool EV_StartWaggle(int tag, line_t *line, int height, int speed, int offset, int timer, bool ceiling);
 	bool EV_DoChange(line_t *line, EChange changetype, int tag);
+
+	void EV_StartLightFlickering(int tag, int upper, int lower);
+	void EV_StartLightStrobing(int tag, int upper, int lower, int utics, int ltics);
+	void EV_StartLightStrobing(int tag, int utics, int ltics);
+	void EV_TurnTagLightsOff(int tag);
+	void EV_LightTurnOn(int tag, int bright);
+	void EV_LightTurnOnPartway(int tag, double frac);
+	void EV_LightChange(int tag, int value);
+	void EV_StartLightGlowing(int tag, int upper, int lower, int tics);
+	void EV_StartLightFading(int tag, int value, int tics);
+	void EV_StopLightEffect(int tag);
+
+	bool EV_Teleport(int tid, int tag, line_t *line, int side, AActor *thing, int flags);
+	bool EV_SilentLineTeleport(line_t *line, int side, AActor *thing, int id, INTBOOL reverse);
+	bool EV_TeleportOther(int other_tid, int dest_tid, bool fog);
+	bool EV_TeleportGroup(int group_tid, AActor *victim, int source_tid, int dest_tid, bool moveSource, bool fog);
+	bool EV_TeleportSector(int tag, int source_tid, int dest_tid, bool fog, int group_tid);
+
+	void RecalculateDrawnSubsectors();
+	FSerializer &SerializeSubsectors(FSerializer &arc, const char *key);
+	void SpawnExtraPlayers();
+	void Serialize(FSerializer &arc, bool hubload);
+	DThinker *FirstThinker (int statnum);
+
+	// g_Game
+	void PlayerReborn (int player);
+	bool CheckSpot (int playernum, FPlayerStart *mthing);
+	void DoReborn (int playernum, bool freshbot);
+	void QueueBody (AActor *body);
+	double PlayersRangeFromSpot (FPlayerStart *spot);
+	FPlayerStart *SelectFarthestDeathmatchSpot (size_t selections);
+	FPlayerStart *SelectRandomDeathmatchSpot (int playernum, unsigned int selections);
+	void DeathMatchSpawnPlayer (int playernum);
+	FPlayerStart *PickPlayerStart(int playernum, int flags = 0);
+	bool DoCompleted(FString nextlevel, wbstartstruct_t &wminfo);
+	void StartTravel();
+	int FinishTravel();
+	void ChangeLevel(const char *levelname, int position, int flags, int nextSkill = -1);
+	const char *GetSecretExitMap();
+	void ExitLevel(int position, bool keepFacing);
+	void SecretExitLevel(int position);
+	void DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool newGame);
+
+	void DeleteAllAttachedLights();
+	void RecreateAllAttachedLights();
+
 
 private:
 	// Work data for CollectConnectedGroups.
@@ -236,6 +260,10 @@ public:
 	{
 		if (subtype == NAME_None) return TThinkerIterator<T>(statnum);
 		else return TThinkerIterator<T>(subtype, statnum);
+	}
+	template<class T> TThinkerIterator<T> GetThinkerIterator(FName subtype, int statnum, AActor *prev)
+	{
+		return TThinkerIterator<T>(subtype, statnum, prev);
 	}
 	FActorIterator GetActorIterator(int tid)
 	{
@@ -300,11 +328,32 @@ public:
 		return it.Next();
 	}
 
+	int isFrozen()
+	{
+		return frozenstate;
+	}
+
+private:	// The engine should never ever access subsectors of the game nodes. This is only needed for actually implementing PointInSector.
+	subsector_t *PointInSubsector(double x, double y);
+public:
+	sector_t *PointInSectorBuggy(double x, double y);
+	subsector_t *PointInRenderSubsector (fixed_t x, fixed_t y);
+
 	sector_t *PointInSector(const DVector2 &pos)
 	{
-		return P_PointInSector(pos);
+		return PointInSubsector(pos.X, pos.Y)->sector;
 	}
-	
+
+	sector_t *PointInSector(double x, double y)
+	{
+		return PointInSubsector(x, y)->sector;
+	}
+
+	subsector_t *PointInRenderSubsector (const DVector2 &pos)
+	{
+		return PointInRenderSubsector(FloatToFixed(pos.X), FloatToFixed(pos.Y));
+	}
+
 	FPolyObj *GetPolyobj (int polyNum)
 	{
 		auto index = Polyobjects.FindEx([=](const auto &poly) { return poly.tag == polyNum; });
@@ -328,10 +377,92 @@ public:
 		return true;
 	}
 
+	DThinker *CreateThinker(PClass *cls, int statnum = STAT_DEFAULT)
+	{
+		DThinker *thinker = static_cast<DThinker*>(cls->CreateNew());
+		assert(thinker->IsKindOf(RUNTIME_CLASS(DThinker)));
+		thinker->ObjectFlags |= OF_JustSpawned;
+		DThinker::FreshThinkers[statnum].AddTail(thinker);
+		thinker->Level = this;
+		return thinker;
+	}
+
+	template<typename T, typename... Args>
+	T* CreateThinker(Args&&... args)
+	{
+		auto thinker = static_cast<T*>(CreateThinker(RUNTIME_CLASS(T), T::DEFAULT_STAT));
+		thinker->Construct(std::forward<Args>(args)...);
+		return thinker;
+	}
+	
+	void SetMusic()
+	{
+		if (cdtrack == 0 || !S_ChangeCDMusic(cdtrack, cdid))
+			S_ChangeMusic(Music, musicorder);
+	}
+
+	TArray<vertex_t> vertexes;
+	TArray<sector_t> sectors;
+	TArray<line_t*> linebuffer;	// contains the line lists for the sectors.
+	TArray<subsector_t*> subsectorbuffer;	// contains the subsector lists for the sectors.
+	TArray<line_t> lines;
+	TArray<side_t> sides;
+	TArray<seg_t *> segbuffer;	// contains the seg links for the sidedefs.
+	TArray<seg_t> segs;
+	TArray<subsector_t> subsectors;
+	TArray<node_t> nodes;
+	TArray<subsector_t> gamesubsectors;
+	TArray<node_t> gamenodes;
+	node_t *headgamenode;
+	TArray<uint8_t> rejectmatrix;
+	TArray<zone_t>	Zones;
+	TArray<FPolyObj> Polyobjects;
+
+	TArray<FSectorPortal> sectorPortals;
+	TArray<FLinePortal> linePortals;
+
+	// Portal information.
+	FDisplacementTable Displacements;
+	FPortalBlockmap PortalBlockmap;
+	TArray<FLinePortal*> linkedPortals;	// only the linked portals, this is used to speed up looking for them in P_CollectConnectedGroups.
+	FSectionContainer sections;
+
+	// [ZZ] Destructible geometry information
+	TMap<int, FHealthGroup> healthGroups;
+
+	FBlockmap blockmap;
+	TArray<polyblock_t *> PolyBlockMap;
+	FUDMFKeyMap UDMFKeys[4];
+
+	// These are copies of the loaded map data that get used by the savegame code to skip unaltered fields
+	// Without such a mechanism the savegame format would become too slow and large because more than 80-90% are normally still unaltered.
+	TArray<sector_t>	loadsectors;
+	TArray<line_t>	loadlines;
+	TArray<side_t>	loadsides;
+
+	// Maintain single and multi player starting spots.
+	TArray<FPlayerStart> deathmatchstarts;
+	FPlayerStart		playerstarts[MAXPLAYERS];
+	TArray<FPlayerStart> AllPlayerStarts;
+
+	FBehaviorContainer Behaviors;
+	AActor *TIDHash[128];
+
+	TArray<FStrifeDialogueNode *> StrifeDialogues;
+	FDialogueIDMap DialogueRoots;
+	FDialogueMap ClassRoots;
+
+	int ii_compatflags = 0;
+	int ii_compatflags2 = 0;
+	int ib_compatflags = 0;
+	int i_compatflags = 0;
+	int i_compatflags2 = 0;
+
+	DSectorMarker *SectorMarker;
 
 	uint8_t		md5[16];			// for savegame validation. If the MD5 does not match the savegame won't be loaded.
 	int			time;			// time in the hub
-	int			maptime;		// time in the map
+	int			maptime;			// time in the map
 	int			totaltime;		// time in the game
 	int			starttime;
 	int			partime;
@@ -349,12 +480,14 @@ public:
 	FString		NextSecretMap;		// map to go to when used secret exit
 	FString		F1Pic;
 	EMapType	maptype;
+	FTagManager tagManager;
+	FInterpolator interpolator;
 
 	uint64_t	ShaderStartTime = 0;	// tell the shader system when we started the level (forces a timer restart)
 
 	static const int BODYQUESIZE = 32;
 	TObjPtr<AActor*> bodyque[BODYQUESIZE];
-	TObjPtr<DAutomapBase*> automap;
+	TObjPtr<DAutomapBase*> automap = nullptr;
 	int bodyqueslot;
 
 	uint32_t		flags;
@@ -377,6 +510,9 @@ public:
 	float		skyspeed1;				// Scrolling speed of sky textures, in pixels per ms
 	float		skyspeed2;
 
+	double		sky1pos, sky2pos;
+	bool		skystretch;
+
 	int			total_secrets;
 	int			found_secrets;
 
@@ -392,12 +528,22 @@ public:
 	int			airsupply;
 	int			DefaultEnvironment;		// Default sound environment.
 
+	int ActiveSequences;
+	DSeqNode *SequenceListHead;
+
+	// [RH] particle globals
+	uint32_t			ActiveParticles;
+	uint32_t			InactiveParticles;
+	TArray<particle_t>	Particles;
+	TArray<uint16_t>	ParticlesInSubsec;
+
 	TArray<DVector2>	Scrolls;		// NULL if no DScrollers in this level
 
 	int8_t		WallVertLight;			// Light diffs for vert/horiz walls
 	int8_t		WallHorizLight;
 
 	bool		FromSnapshot;			// The current map was restored from a snapshot
+	uint8_t		frozenstate;
 
 	double		teamdamage;
 
@@ -453,32 +599,33 @@ extern FLevelLocals *currentUILevel;	// level for which to display the user inte
 
 inline FSectorPortal *line_t::GetTransferredPortal()
 {
-	return portaltransferred >= level.sectorPortals.Size() ? (FSectorPortal*)nullptr : &level.sectorPortals[portaltransferred];
+	auto Level = GetLevel();
+	return portaltransferred >= Level->sectorPortals.Size() ? (FSectorPortal*)nullptr : &Level->sectorPortals[portaltransferred];
 }
 
 inline FSectorPortal *sector_t::GetPortal(int plane)
 {
-	return &level.sectorPortals[Portals[plane]];
+	return &Level->sectorPortals[Portals[plane]];
 }
 
 inline double sector_t::GetPortalPlaneZ(int plane)
 {
-	return level.sectorPortals[Portals[plane]].mPlaneZ;
+	return Level->sectorPortals[Portals[plane]].mPlaneZ;
 }
 
 inline DVector2 sector_t::GetPortalDisplacement(int plane)
 {
-	return level.sectorPortals[Portals[plane]].mDisplacement;
+	return Level->sectorPortals[Portals[plane]].mDisplacement;
 }
 
 inline int sector_t::GetPortalType(int plane)
 {
-	return level.sectorPortals[Portals[plane]].mType;
+	return Level->sectorPortals[Portals[plane]].mType;
 }
 
 inline int sector_t::GetOppositePortalGroup(int plane)
 {
-	return level.sectorPortals[Portals[plane]].mDestination->PortalGroup;
+	return Level->sectorPortals[Portals[plane]].mDestination->PortalGroup;
 }
 
 inline bool sector_t::PortalBlocksView(int plane)
@@ -509,7 +656,7 @@ inline bool sector_t::PortalIsLinked(int plane)
 
 inline FLevelLocals *line_t::GetLevel() const
 {
-	return &level;
+	return frontsector->Level;
 }
 inline FLinePortal *line_t::getPortal() const
 {
@@ -543,4 +690,11 @@ inline bool line_t::hitSkyWall(AActor* mo) const
 	return backsector &&
 		backsector->GetTexture(sector_t::ceiling) == skyflatnum &&
 		mo->Z() >= backsector->ceilingplane.ZatPoint(mo->PosRelative(this));
+}
+
+// This must later be extended to return an array with all levels.
+// It is meant for code that needs to iterate over all levels to make some global changes, e.g. configuation CCMDs.
+inline TArrayView<FLevelLocals *> AllLevels()
+{
+	return TArrayView<FLevelLocals *>(&currentUILevel, 1);
 }

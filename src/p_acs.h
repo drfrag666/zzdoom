@@ -349,7 +349,7 @@ class FBehavior
 public:
 	FBehavior ();
 	~FBehavior ();
-	bool Init(int lumpnum, FileReader * fr = NULL, int len = 0);
+	bool Init(FLevelLocals *l, int lumpnum, FileReader * fr = NULL, int len = 0);
 
 	bool IsGood ();
 	uint8_t *FindChunk (uint32_t id) const;
@@ -387,6 +387,7 @@ private:
 
 	ACSFormat Format;
 
+	FLevelLocals *Level;
 	int LumpNum;
 	uint8_t *Data;
 	int DataSize;
@@ -420,14 +421,15 @@ private:
 	void MarkMapVarStrings() const;
 	void LockMapVarStrings(int levelnum) const;
 
-	friend void ArrangeScriptProfiles(TArray<ProfileCollector> &profiles);
-	friend void ArrangeFunctionProfiles(TArray<ProfileCollector> &profiles);
 	friend struct FBehaviorContainer;
 };
 
 struct FBehaviorContainer
 {
+	FLevelLocals *Level;
 	TArray<FBehavior *> StaticModules;
+
+	FBehaviorContainer(FLevelLocals *l) : Level(l) {}
 
 	FBehavior *LoadModule(int lumpnum, FileReader *fr = nullptr, int len = 0);
 	void LoadDefaultModules();
@@ -443,6 +445,8 @@ struct FBehaviorContainer
 	const char *LookupString(uint32_t index);
 	void StartTypedScripts(uint16_t type, AActor *activator, bool always, int arg1 = 0, bool runNow = false);
 	void StopMyScripts(AActor *actor);
+	void ArrangeScriptProfiles(TArray<ProfileCollector> &profiles);
+	void ArrangeFunctionProfiles(TArray<ProfileCollector> &profiles);
 
 };
 
@@ -453,7 +457,8 @@ class DACSThinker : public DThinker
 	DECLARE_CLASS(DACSThinker, DThinker)
 	HAS_OBJECT_POINTERS
 public:
-	DACSThinker();
+	static const int DEFAULT_STAT = STAT_SCRIPTS;
+	void Construct() {}
 	~DACSThinker();
 
 	void Serialize(FSerializer &arc);
@@ -466,8 +471,8 @@ public:
 	void StopScriptsFor(AActor *actor);
 
 private:
-	DLevelScript *LastScript;
-	DLevelScript *Scripts;				// List of all running scripts
+	DLevelScript *LastScript = nullptr;
+	DLevelScript *Scripts = nullptr;				// List of all running scripts
 
 	friend class DLevelScript;
 	friend class FBehavior;

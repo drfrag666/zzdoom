@@ -129,7 +129,7 @@ FCajunMaster::~FCajunMaster()
 }
 
 //This function is called every tick (from g_game.c).
-void FCajunMaster::Main ()
+void FCajunMaster::Main(FLevelLocals *Level)
 {
 	BotThinkCycles.Reset();
 
@@ -137,7 +137,7 @@ void FCajunMaster::Main ()
 		return;
 
 	//Add new bots?
-	if (wanted_botnum > botnum && !freeze)
+	if (wanted_botnum > botnum && !Level->isFrozen())
 	{
 		if (t_join == ((wanted_botnum - botnum) * SPAWN_DELAY))
 		{
@@ -340,7 +340,7 @@ bool FCajunMaster::SpawnBot (const char *name, int color)
 	return true;
 }
 
-void FCajunMaster::TryAddBot (uint8_t **stream, int player)
+void FCajunMaster::TryAddBot (FLevelLocals *Level, uint8_t **stream, int player)
 {
 	int botshift = ReadByte (stream);
 	char *info = ReadString (stream);
@@ -363,7 +363,7 @@ void FCajunMaster::TryAddBot (uint8_t **stream, int player)
 		}
 	}
 
-	if (DoAddBot ((uint8_t *)info, skill))
+	if (DoAddBot (Level,(uint8_t *)info, skill))
 	{
 		//Increment this.
 		botnum++;
@@ -384,7 +384,7 @@ void FCajunMaster::TryAddBot (uint8_t **stream, int player)
 	delete[] info;
 }
 
-bool FCajunMaster::DoAddBot (uint8_t *info, botskill_t skill)
+bool FCajunMaster::DoAddBot (FLevelLocals *Level, uint8_t *info, botskill_t skill)
 {
 	int bnum;
 
@@ -405,7 +405,7 @@ bool FCajunMaster::DoAddBot (uint8_t *info, botskill_t skill)
 	D_ReadUserInfoStrings (bnum, &info, false);
 
 	multiplayer = true; //Prevents cheating and so on; emulates real netgame (almost).
-	players[bnum].Bot = Create<DBot>();
+	players[bnum].Bot = Level->CreateThinker<DBot>();
 	players[bnum].Bot->player = &players[bnum];
 	players[bnum].Bot->skill = skill;
 	playeringame[bnum] = true;
@@ -417,11 +417,11 @@ bool FCajunMaster::DoAddBot (uint8_t *info, botskill_t skill)
 	else
 		Printf ("%s joined the game\n", players[bnum].userinfo.GetName());
 
-	G_DoReborn (bnum, true);
+	Level->DoReborn (bnum, true);
 	return true;
 }
 
-void FCajunMaster::RemoveAllBots (bool fromlist)
+void FCajunMaster::RemoveAllBots (FLevelLocals *Level, bool fromlist)
 {
 	int i, j;
 
@@ -447,8 +447,7 @@ void FCajunMaster::RemoveAllBots (bool fromlist)
 			}
 			// [ZZ] run event hook
 			E_PlayerDisconnected(i);
-			//
-			level.Behaviors.StartTypedScripts (SCRIPT_Disconnect, players[i].mo, true, i, true);
+			Level->Behaviors.StartTypedScripts (SCRIPT_Disconnect, players[i].mo, true, i, true);
 			ClearPlayer (i, !fromlist);
 		}
 	}
@@ -653,12 +652,4 @@ ADD_STAT (bots)
 		BotThinkCycles.TimeMS(), BotSupportCycles.TimeMS(),
 		BotWTG);
 	return out;
-}
-
-DEFINE_ACTION_FUNCTION(FLevelLocals, RemoveAllBots)
-{
-	PARAM_PROLOGUE;
-	PARAM_BOOL(fromlist);
-	bglobal.RemoveAllBots(fromlist);
-	return 0;
 }

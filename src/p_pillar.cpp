@@ -114,10 +114,9 @@ void DPillar::Tick ()
 	}
 }
 
-DPillar::DPillar (sector_t *sector, EPillar type, double speed,
-				  double floordist, double ceilingdist, int crush, bool hexencrush)
-	: DMover (sector)
+void DPillar::Construct(sector_t *sector, EPillar type, double speed, double floordist, double ceilingdist, int crush, bool hexencrush)
 {
+	Super::Construct(sector);
 	double newheight;
 	vertex_t *spot;
 
@@ -234,7 +233,7 @@ bool FLevelLocals::EV_DoPillar (DPillar::EPillar type, line_t *line, int tag,
 			continue;
 
 		rtn = true;
-		Create<DPillar> (sec, type, speed, height, height2, crush, hexencrush);
+		CreateThinker<DPillar> (sec, type, speed, height, height2, crush, hexencrush);
 	}
 	return rtn;
 }

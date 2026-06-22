@@ -295,7 +295,7 @@ DEFINE_ACTION_FUNCTION(AActor, GetZAt)
 				double c = angle.Cos();
 				pos = mobj->Vec2Offset(pos.X * c + pos.Y * s, pos.X * s - pos.Y * c);
 			}
-			sector_t *sec = P_PointInSector(pos);
+			sector_t *sec = self->Level->PointInSector(pos);
 
 			if (sec)
 			{
@@ -969,13 +969,26 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnProjectile)
 
 				if ( (CMF_ABSOLUTEPITCH|CMF_OFFSETPITCH) & flags)
 				{
-					if (CMF_OFFSETPITCH & flags)
+					if (!(flags & CMF_BADPITCH))
 					{
-						Pitch += missile->Vel.Pitch();
+						if (CMF_OFFSETPITCH & flags)
+						{
+							Pitch += missile->Vel.Pitch();
+						}
+						missilespeed = fabs(Pitch.Cos() * missile->Speed);
+						missile->Vel.Z = -Pitch.Sin() * missile->Speed;
 					}
-					missilespeed = fabs(Pitch.Cos() * missile->Speed);
-					missile->Vel.Z = Pitch.Sin() * missile->Speed;
-					if (!(flags & CMF_BADPITCH)) missile->Vel.Z *= -1;
+					else
+					{
+						// Replicate the bogus calculation from A_CustomMissile in its entirety.
+						// This tried to do the right thing but in the process effectively inverted the base pitch.
+						if (CMF_OFFSETPITCH & flags)
+						{
+							Pitch -= missile->Vel.Pitch();
+						}
+						missilespeed = fabs(Pitch.Cos() * missile->Speed);
+						missile->Vel.Z = Pitch.Sin() * missile->Speed;
+					}
 				}
 				else
 				{
@@ -1656,7 +1669,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SpawnParticle)
 			acc.X = accelx * c + accely * s;
 			acc.Y = accelx * s - accely * c;
 		}
-		P_SpawnParticle(self->Vec3Offset(pos), vel, acc, color, startalpha, lifetime, size, fadestep, sizestep, flags);
+		P_SpawnParticle(self->Level, self->Vec3Offset(pos), vel, acc, color, startalpha, lifetime, size, fadestep, sizestep, flags);
 	}
 	return 0;
 }
@@ -1835,7 +1848,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetBlend)
 //	if (color2.a == 0)
 //		color2 = color;
 
-	Create<DFlashFader>(color.r/255.f, color.g/255.f, color.b/255.f, float(alpha),
+	self->Level->CreateThinker<DFlashFader>(color.r/255.f, color.g/255.f, color.b/255.f, float(alpha),
 					color2.r/255.f, color2.g/255.f, color2.b/255.f, float(alpha2),
 					float(tics)/TICRATE, self, true);
 	return 0;
@@ -2009,7 +2022,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Respawn)
 		}
 		if (self->CountsAsKill())
 		{
-			level.total_monsters++;
+			self->Level->total_monsters++;
 		}
 	}
 	else
@@ -2289,7 +2302,7 @@ DEFINE_ACTION_FUNCTION(AActor, CheckLOF)
 		range
 	*/
 
-	sector_t *sec = P_PointInSector(pos);
+	sector_t *sec = self->Level->PointInSector(pos);
 
 	if (range == 0)
 	{
@@ -2607,9 +2620,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_ChangeCountFlags)
 	PARAM_INT(item);
 	PARAM_INT(secret);
 
-	if (self->CountsAsKill() && self->health > 0) --level.total_monsters;
-	if (self->flags & MF_COUNTITEM) --level.total_items;
-	if (self->flags5 & MF5_COUNTSECRET) --level.total_secrets;
+	if (self->CountsAsKill() && self->health > 0) --self->Level->total_monsters;
+	if (self->flags & MF_COUNTITEM) --self->Level->total_items;
+	if (self->flags5 & MF5_COUNTSECRET) --self->Level->total_secrets;
 
 	if (kill != -1)
 	{
@@ -2628,9 +2641,9 @@ DEFINE_ACTION_FUNCTION(AActor, A_ChangeCountFlags)
 		if (secret == 0) self->flags5 &= ~MF5_COUNTSECRET;
 		else self->flags5 |= MF5_COUNTSECRET;
 	}
-	if (self->CountsAsKill() && self->health > 0) ++level.total_monsters;
-	if (self->flags & MF_COUNTITEM) ++level.total_items;
-	if (self->flags5 & MF5_COUNTSECRET) ++level.total_secrets;
+	if (self->CountsAsKill() && self->health > 0) ++self->Level->total_monsters;
+	if (self->flags & MF_COUNTITEM) ++self->Level->total_items;
+	if (self->flags5 & MF5_COUNTSECRET) ++self->Level->total_secrets;
 	return 0;
 }
 
@@ -2661,7 +2674,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseChildren)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(flags);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	while ((mo = it.Next()) != NULL)
@@ -2684,7 +2697,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RaiseSiblings)
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_INT(flags);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	if (self->master != NULL)
@@ -3036,7 +3049,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Teleport)
 		}
 	}
 
-	DSpotState *state = GetSpotState(&level, false);
+	DSpotState *state = GetSpotState(self->Level, false);
 	if (state == NULL)
 	{
 		return numret;
@@ -3165,7 +3178,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Quake)
 	PARAM_INT		(tremrad);
 	PARAM_SOUND	(sound);
 
-	P_StartQuake(self, 0, intensity, duration, damrad, tremrad, sound);
+	P_StartQuake(self->Level, self, 0, intensity, duration, damrad, tremrad, sound);
 	return 0;
 }
 
@@ -3195,7 +3208,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_QuakeEx)
 	PARAM_INT(highpoint);
 	PARAM_FLOAT(rollIntensity);
 	PARAM_FLOAT(rollWave);
-	P_StartQuakeXYZ(self, 0, intensityX, intensityY, intensityZ, duration, damrad, tremrad, sound, flags, mulWaveX, mulWaveY, mulWaveZ, falloff, highpoint, 
+	P_StartQuakeXYZ(self->Level, self, 0, intensityX, intensityY, intensityZ, duration, damrad, tremrad, sound, flags, mulWaveX, mulWaveY, mulWaveZ, falloff, highpoint, 
 		rollIntensity, rollWave);
 	return 0;
 }
@@ -3285,7 +3298,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_LineEffect)
 		if ((oldjunk.special = special))					// Linedef type
 		{
 			oldjunk.tag = tag;								// Sector tag for linedef
-			level.TranslateLineDef(&junk, &oldjunk);			// Turn into native type
+			self->Level->TranslateLineDef(&junk, &oldjunk);			// Turn into native type
 			res = !!P_ExecuteSpecial(junk.special, NULL, self, false, junk.args[0], 
 				junk.args[1], junk.args[2], junk.args[3], junk.args[4]); 
 			if (res && !(junk.flags & ML_REPEAT_SPECIAL))	// If only once,
@@ -3441,7 +3454,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_Warp)
 
 	if ((flags & WARPF_USETID))
 	{
-		reference = level.SingleActorFromTID(destination_selector, self);
+		reference = self->Level->SingleActorFromTID(destination_selector, self);
 	}
 	else
 	{
@@ -3689,7 +3702,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RadiusGive)
 	int given = 0;
 	if (flags & RGF_MISSILES)
 	{
-		TThinkerIterator<AActor> it;
+		auto it = self->Level->GetThinkerIterator<AActor>();
 		while ((thing = it.Next()) && ((unlimited) || (given < limit)))
 		{
 			given += DoRadiusGive(self, thing, item, amount, distance, flags, filter, species, mindist);
@@ -3699,7 +3712,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RadiusGive)
 	{
 		FPortalGroupArray check(FPortalGroupArray::PGA_Full3d);
 		double mid = self->Center();
-		FMultiBlockThingsIterator it(check, self->X(), self->Y(), mid-distance, mid+distance, distance, false, self->Sector);
+		FMultiBlockThingsIterator it(check, self->Level, self->X(), self->Y(), mid-distance, mid+distance, distance, false, self->Sector);
 		FMultiBlockThingsIterator::CheckResult cres;
 
 		while ((it.Next(&cres)) && ((unlimited) || (given < limit)))
@@ -3918,7 +3931,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_DamageChildren)
 	AActor *source = COPY_AAPTR(self, src);
 	AActor *inflictor = COPY_AAPTR(self, inflict);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	while ( (mo = it.Next()) )
@@ -3948,7 +3961,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_DamageSiblings)
 	AActor *source = COPY_AAPTR(self, src);
 	AActor *inflictor = COPY_AAPTR(self, inflict);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	if (self->master != NULL)
@@ -4099,7 +4112,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_KillChildren)
 	AActor *source = COPY_AAPTR(self, src);
 	AActor *inflictor = COPY_AAPTR(self, inflict);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	while ( (mo = it.Next()) )
@@ -4130,7 +4143,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_KillSiblings)
 	AActor *source = COPY_AAPTR(self, src);
 	AActor *inflictor = COPY_AAPTR(self, inflict);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	if (self->master != NULL)
@@ -4258,7 +4271,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RemoveChildren)
 	PARAM_CLASS(filter, AActor);
 	PARAM_NAME(species);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	while ((mo = it.Next()) != NULL)
@@ -4284,7 +4297,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_RemoveSiblings)
 	PARAM_CLASS(filter, AActor);
 	PARAM_NAME(species);
 
-	TThinkerIterator<AActor> it;
+	auto it = self->Level->GetThinkerIterator<AActor>();
 	AActor *mo;
 
 	if (self->master != NULL)
@@ -4825,7 +4838,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_CheckTerrain)
 		}
 		else if (sec->special == Scroll_StrifeCurrent)
 		{
-			int anglespeed = level.GetFirstSectorTag(sec) - 100;
+			int anglespeed = self->Level->GetFirstSectorTag(sec) - 100;
 			double speed = (anglespeed % 10) / 16.;
 			DAngle an = (anglespeed / 10) * (360 / 8.);
 			self->Thrust(an, speed);

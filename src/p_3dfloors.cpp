@@ -557,9 +557,9 @@ void P_Recalculate3DFloors(sector_t * sector)
 //
 //==========================================================================
 
-void P_ClearDynamic3DFloorData()
+void FLevelLocals::ClearDynamic3DFloorData()
 {
-	for (auto &sec : level.sectors)
+	for (auto &sec : sectors)
 	{
 		TArray<F3DFloor*> & ffloors = sec.e->XFloor.ffloors;
 
@@ -813,9 +813,8 @@ secplane_t P_FindFloorPlane(sector_t * sector, const DVector3 &pos)
 
 int	P_Find3DFloor(sector_t * sec, const DVector3 &pos, bool above, bool floor, double &cmpz)
 {
-	// If no sector given, find the one appropriate
-	if (sec == NULL)
-		sec = P_PointInSector(pos);
+	// sector must be given
+	if (sec == nullptr) return -1;
 
 	// Above normal ceiling
 	cmpz = sec->ceilingplane.ZatPoint(pos);
@@ -866,13 +865,15 @@ CCMD (dump3df)
 {
 	if (argv.argc() > 1) 
 	{
+		// Print 3D floor info for a single sector.
+		// This only checks the primary level.
 		int sec = (int)strtoll(argv[1], NULL, 10);
-		if ((unsigned)sec >= level.sectors.Size())
+		if ((unsigned)sec >= currentUILevel->sectors.Size())
 		{
 			Printf("Sector %d does not exist.\n", sec);
 			return;
 		}
-		sector_t *sector = &level.sectors[sec];
+		sector_t *sector = &currentUILevel->sectors[sec];
 		TArray<F3DFloor*> & ffloors=sector->e->XFloor.ffloors;
 
 		for (unsigned int i = 0; i < ffloors.Size(); i++)

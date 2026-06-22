@@ -282,16 +282,17 @@ void PolySkySetup::Update()
 {
 	FTextureID sky1tex, sky2tex;
 	double frontdpos = 0, backdpos = 0;
+	auto Level = PolyRenderer::Instance()->Level;
 
 	if ((level.flags & LEVEL_SWAPSKIES) && !(level.flags & LEVEL_DOUBLESKY))
 	{
-		sky1tex = sky2texture;
+		sky1tex = Level->skytexture2;
 	}
 	else
 	{
-		sky1tex = sky1texture;
+		sky1tex = Level->skytexture1;
 	}
-	sky2tex = sky2texture;
+	sky2tex = Level->skytexture2;
 	skymid = skytexturemid;
 	skyangle = 0;
 
@@ -306,8 +307,8 @@ void PolySkySetup::Update()
 		else
 			backskytex = nullptr;
 		skyflip = false;
-		frontdpos = sky1pos;
-		backdpos = sky2pos;
+		frontdpos = Level->sky1pos;
+		backdpos = Level->sky2pos;
 		frontcyl = sky1cyl;
 		backcyl = sky2cyl;
 	}
@@ -317,7 +318,7 @@ void PolySkySetup::Update()
 		backskytex = nullptr;
 		frontcyl = sky2cyl;
 		skyflip = false;
-		frontdpos = sky2pos;
+		frontdpos = Level->sky2pos;
 	}
 	else
 	{	// MBF's linedef-controlled skies

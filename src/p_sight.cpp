@@ -222,7 +222,7 @@ bool SightCheck::PTR_SightTraverse (intercept_t *in)
 //
 
 	// ignore self referencing sectors if COMPAT_TRACE is on
-	if ((i_compatflags & COMPATF_TRACE) && li->frontsector == li->backsector)
+	if ((Level->i_compatflags & COMPATF_TRACE) && li->frontsector == li->backsector)
 		return true;
 
 	double trX = Trace.x + Trace.dx * in->frac;
@@ -633,7 +633,7 @@ bool SightCheck::P_SightPathTraverse ()
 	y1 = sightstart.Y + Startfrac * Trace.dy;
 	x2 = sightend.X;
 	y2 = sightend.Y;
-	if (lastsector == NULL) lastsector = P_PointInSector(x1, y1);
+	if (lastsector == NULL) lastsector = Level->PointInSector(x1, y1);
 
 	// for FF_SEETHROUGH the following rule applies:
 	// If the viewer is in an area without FF_SEETHROUGH he can only see into areas without this flag
@@ -857,7 +857,7 @@ int P_CheckSight (AActor *t1, AActor *t2, int flags)
 	//
 	// check for trivial rejection
 	//
-	if (!level.CheckReject(s1, s2))
+	if (!t1->Level->CheckReject(s1, s2))
 	{
 sightcounts[0]++;
 		res = false;			// can't possibly be connected
@@ -914,7 +914,7 @@ sightcounts[0]++;
 		SightTask task = { 0, topslope, bottomslope, -1, sec->PortalGroup };
 
 
-		SightCheck s(&level);
+		SightCheck s(t1->Level);
 		s.init(t1, t2, sec, &task, flags);
 		res = s.P_SightPathTraverse ();
 		if (!res)

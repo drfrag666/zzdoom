@@ -150,7 +150,7 @@ namespace swrenderer
 			return false;
 
 		FTexture *tex = TexMan(curline->sidedef->GetTexture(side_t::mid), true);
-		if (i_compatflags & COMPATF_MASKEDMIDTEX)
+		if (curline->GetLevel()->i_compatflags & COMPATF_MASKEDMIDTEX)
 		{
 			tex = tex->GetRawTexture();
 		}
@@ -293,7 +293,7 @@ namespace swrenderer
 			  // this drawseg.
 				if ((curline->linedef->flags & ML_CLIP_MIDTEX) ||
 					(curline->sidedef->Flags & WALLF_CLIP_MIDTEX) ||
-					(ib_compatflags & BCOMPATF_CLIPMIDTEX))
+					(curline->GetLevel()->ib_compatflags & BCOMPATF_CLIPMIDTEX))
 				{
 					ClipMidtex(x1, x2);
 				}
@@ -355,7 +355,7 @@ namespace swrenderer
 			  // this drawseg.
 				if ((curline->linedef->flags & ML_CLIP_MIDTEX) ||
 					(curline->sidedef->Flags & WALLF_CLIP_MIDTEX) ||
-					(ib_compatflags & BCOMPATF_CLIPMIDTEX))
+					(curline->GetLevel()->ib_compatflags & BCOMPATF_CLIPMIDTEX))
 				{
 					ClipMidtex(x1, x2);
 				}

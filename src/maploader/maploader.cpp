@@ -109,7 +109,6 @@ void PO_Init();
 void BloodCrypt (void *data, int key, int len);
 void P_ClearUDMFKeys();
 
-extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
 
 EXTERN_CVAR(Bool, am_textured)
 
@@ -1097,6 +1096,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 	for (unsigned i = 0; i < numsectors; i++, ss++, ms++)
 	{
 		ss->e = &sectors[0].e[i];
+		ss->Level = Level;
 		if (!map->HasBehavior) ss->Flags |= SECF_FLOORDROP;
 		ss->SetPlaneTexZ(sector_t::floor, (double)LittleShort(ms->floorheight));
 		ss->floorplane.set(0, 0, 1., -ss->GetPlaneTexZ(sector_t::floor));
@@ -1445,7 +1445,7 @@ void MapLoader::SpawnThings (int position)
 
 	for (int i=0; i < numthings; i++)
 	{
-		AActor *actor = SpawnMapThing (i, &MapThingsConverted[i], position);
+		AActor *actor = Level->SpawnMapThing (i, &MapThingsConverted[i], position);
 		unsigned *udi = MapThingsUserDataIndex.CheckKey((unsigned)i);
 		if (udi != nullptr)
 		{
@@ -1513,7 +1513,7 @@ void MapLoader::SetLineID (int i, line_t *ld)
 			break;
 			
 		case Plane_Align:
-			if (!(ib_compatflags & BCOMPATF_NOSLOPEID)) setid = ld->args[2];
+			if (!(Level->ib_compatflags & BCOMPATF_NOSLOPEID)) setid = ld->args[2];
 			break;
 			
 		case Static_Init:
@@ -3013,7 +3013,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 		Level->maptype = MAPTYPE_UDMF;
 	}
 	FName checksum = CheckCompatibility(map);
-	if (ib_compatflags & BCOMPATF_REBUILDNODES)
+	if (Level->ib_compatflags & BCOMPATF_REBUILDNODES)
 	{
 		ForceNodeBuild = true;
 	}
@@ -3269,7 +3269,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 		node.len = (float)g_sqrt(fdx * fdx + fdy * fdy);
 	}
 
-	P_ClearDynamic3DFloorData();	// CreateVBO must be run on the plain 3D floor data.
+	Level->ClearDynamic3DFloorData();	// CreateVBO must be run on the plain 3D floor data.
 	Renderer->PreprocessLevel();	// This must be done BEFORE the PolyObj Spawn!!!
 
 	for (auto &sec : Level->sectors)
@@ -3277,7 +3277,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 		P_Recalculate3DFloors(&sec);
 	}
 
-	P_InitHealthGroups();
+	P_InitHealthGroups(Level);
 
 	if (reloop) LoopSidedefs(false);
 	PO_Init();				// Initialize the polyobjs

@@ -44,6 +44,7 @@ struct pspdef_s;
 struct FState;
 class DThinker;
 class FSerializer;
+struct FLevelLocals;
 
 class FThinkerIterator;
 
@@ -65,7 +66,7 @@ class DThinker : public DObject
 {
 	DECLARE_CLASS (DThinker, DObject)
 public:
-	DThinker (int statnum = STAT_DEFAULT) throw();
+	static const int DEFAULT_STAT = STAT_DEFAULT;
 	void OnDestroy () override;
 	virtual ~DThinker ();
 	virtual void Tick ();
@@ -73,6 +74,7 @@ public:
 	virtual void PostBeginPlay ();	// Called just before the first tick
 	virtual void CallPostBeginPlay(); // different in actor.
 	virtual void PostSerialize();
+	void Serialize(FSerializer &arc) override;
 	size_t PropagateMark();
 	
 	void ChangeStatNum (int statnum);
@@ -88,12 +90,6 @@ public:
 	static void SerializeThinkers(FSerializer &arc, bool keepPlayers);
 	static void MarkRoots();
 
-	static DThinker *FirstThinker (int statnum);
-	static bool bSerialOverride;
-
-	// only used internally but Create needs access.
-	enum no_link_type { NO_LINK };
-	DThinker(no_link_type) throw();
 private:
 	static void DestroyThinkersInList (FThinkerList &list);
 	static bool DoDestroyThinkersInList(FThinkerList &list);
@@ -110,7 +106,12 @@ private:
 	friend class DObject;
 	friend class FSerializer;
 
-	DThinker *NextThinker, *PrevThinker;
+	DThinker *NextThinker = nullptr, *PrevThinker = nullptr;
+
+public:
+	FLevelLocals *Level;
+
+	friend struct FLevelLocals;	// Needs access to FreshThinkers until the thinker storage gets refactored.
 };
 
 class FThinkerIterator

@@ -1035,7 +1035,7 @@ void FLevelLocals::CreateLinkedPortals()
 	if (linkedPortals.Size() > 0)
 	{
 		// We need to relink all actors that may touch a linked line portal
-		TThinkerIterator<AActor> it;
+		auto it = GetThinkerIterator<AActor>();
 		AActor *actor;
 		while ((actor = it.Next()))
 		{
@@ -1115,7 +1115,7 @@ bool FLevelLocals::CollectConnectedGroups(int startgroup, const DVector3 &positi
 	}
 	if (out.method != FPortalGroupArray::PGA_NoSectorPortals)
 	{
-		sector_t *sec = P_PointInSector(position);
+		sector_t *sec = PointInSector(position);
 		sector_t *wsec = sec;
 		while (!wsec->PortalBlocksMovement(sector_t::ceiling) && upperz > wsec->GetPortalPlaneZ(sector_t::ceiling))
 		{
@@ -1124,7 +1124,7 @@ bool FLevelLocals::CollectConnectedGroups(int startgroup, const DVector3 &positi
 			if (processMask.getBit(othergroup)) break;
 			processMask.setBit(othergroup);
 			out.Add(othergroup | FPortalGroupArray::UPPER);
-			wsec = P_PointInSector(pos);	// get upper sector at the exact spot we want to check and repeat
+			wsec = PointInSector(pos);	// get upper sector at the exact spot we want to check and repeat
 			retval = true;
 		}
 		wsec = sec;
@@ -1135,7 +1135,7 @@ bool FLevelLocals::CollectConnectedGroups(int startgroup, const DVector3 &positi
 			if (processMask.getBit(othergroup)) break;
 			processMask.setBit(othergroup);
 			out.Add(othergroup | FPortalGroupArray::LOWER);
-			wsec = P_PointInSector(pos);	// get lower sector at the exact spot we want to check and repeat
+			wsec = PointInSector(pos);	// get lower sector at the exact spot we want to check and repeat
 			retval = true;
 		}
 		if (out.method == FPortalGroupArray::PGA_Full3d && PortalBlockmap.hasLinkedSectorPortals)
@@ -1147,7 +1147,7 @@ bool FLevelLocals::CollectConnectedGroups(int startgroup, const DVector3 &positi
 			{
 				DVector2 disp = Displacements.getOffset(startgroup, thisgroup & ~FPortalGroupArray::FLAT);
 				FBoundingBox box(position.X + disp.X, position.Y + disp.Y, checkradius);
-				FBlockLinesIterator it(box);
+				FBlockLinesIterator it(this, box);
 				line_t *ld;
 				while ((ld = it.Next()))
 				{
@@ -1208,14 +1208,18 @@ bool FLevelLocals::CollectConnectedGroups(int startgroup, const DVector3 &positi
 
 CCMD(dumplinktable)
 {
-	for (int x = 1; x < level.Displacements.size; x++)
+	for (auto Level : AllLevels())
 	{
-		for (int y = 1; y < level.Displacements.size; y++)
+		Printf("Portal displacements for %s:\n", Level->MapName.GetChars());
+		for (int x = 1; x < Level->Displacements.size; x++)
 		{
-			FDisplacement &disp = level.Displacements(x, y);
-			Printf("%c%c(%6d, %6d)", TEXTCOLOR_ESCAPE, 'C' + disp.indirect, int(disp.pos.X), int(disp.pos.Y));
+			for (int y = 1; y < Level->Displacements.size; y++)
+			{
+				FDisplacement &disp = Level->Displacements(x, y);
+				Printf("%c%c(%6d, %6d)", TEXTCOLOR_ESCAPE, 'C' + disp.indirect, int(disp.pos.X), int(disp.pos.Y));
+			}
+			Printf("\n");
 		}
-		Printf("\n");
 	}
 }
 

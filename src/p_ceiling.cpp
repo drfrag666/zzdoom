@@ -205,14 +205,14 @@ void DCeiling::Tick ()
 //
 //============================================================================
 
-DCeiling::DCeiling (sector_t *sec)
-	: DMovingCeiling (sec)
+void DCeiling::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 }
 
-DCeiling::DCeiling (sector_t *sec, double speed1, double speed2, int silent)
-	: DMovingCeiling (sec)
+void DCeiling::Construct(sector_t *sec, double speed1, double speed2, int silent)
 {
+	Super::Construct(sec);
 	m_Crush = -1;
 	m_CrushMode = ECrushMode::crushDoom;
 	m_Speed = m_Speed1 = speed1;
@@ -245,7 +245,7 @@ bool FLevelLocals::CreateCeiling(sector_t *sec, DCeiling::ECeiling type, line_t 
 	}
 	
 	// new door thinker
-	DCeiling *ceiling = Create<DCeiling> (sec, speed, speed2, silent & ~4);
+	DCeiling *ceiling = CreateThinker<DCeiling> (sec, speed, speed2, silent & ~4);
 	vertex_t *spot = sec->Lines[0]->v1;
 
 	switch (type)

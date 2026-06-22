@@ -215,9 +215,9 @@ void DPlat::Stop()
 	m_Status = in_stasis;
 }
 
-DPlat::DPlat (sector_t *sector)
-	: DMovingFloor (sector)
+void DPlat::Construct (sector_t *sector)
 {
+	Super::Construct(sector);
 }
 
 //
@@ -266,7 +266,7 @@ bool FLevelLocals::EV_DoPlat (int tag, line_t *line, DPlat::EPlatType type, doub
 
 		// Find lowest & highest floors around sector
 		rtn = true;
-		plat = Create<DPlat> (sec);
+		plat = CreateThinker<DPlat> (sec);
 
 		plat->m_Type = type;
 		plat->m_Crush = -1;

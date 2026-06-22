@@ -87,8 +87,6 @@
 #include "am_map.h"
 #include "fragglescript/t_script.h"
 
-void P_ClearUDMFKeys();
-
 extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
 
 extern unsigned int R_OldBlend;
@@ -155,7 +153,7 @@ static void PrecacheLevel(FLevelLocals *Level)
 	memset(hitlist.Data(), 0, cnt);
 
 	AActor *actor;
-	TThinkerIterator<AActor> iterator;
+	auto iterator = Level->GetThinkerIterator<AActor>();
 
 	while ((actor = iterator.Next()))
 	{
@@ -187,20 +185,14 @@ static void PrecacheLevel(FLevelLocals *Level)
 		AddToList(hitlist.Data(), Level->sides[i].GetTexture(side_t::bottom), FTextureManager::HIT_Wall);
 	}
 
-	// Sky texture is always present.
-	// Note that F_SKY1 is the name used to
-	//	indicate a sky floor/ceiling as a flat,
-	//	while the sky texture is stored like
-	//	a wall texture, with an episode dependant
-	//	name.
 
-	if (sky1texture.isValid())
+	if (Level->skytexture1.isValid())
 	{
-		AddToList(hitlist.Data(), sky1texture, FTextureManager::HIT_Sky);
+		AddToList(hitlist.Data(), Level->skytexture1, FTextureManager::HIT_Sky);
 	}
-	if (sky2texture.isValid())
+	if (Level->skytexture2.isValid())
 	{
-		AddToList(hitlist.Data(), sky2texture, FTextureManager::HIT_Sky);
+		AddToList(hitlist.Data(), Level->skytexture2, FTextureManager::HIT_Sky);
 	}
 
 	for (auto n : gameinfo.PrecachedTextures)
@@ -255,7 +247,14 @@ void FLevelLocals::ClearLevelData()
 	total_monsters = total_items = total_secrets =
 		killed_monsters = found_items = found_secrets =
 		wminfo.maxfrags = 0;
+
+	for (int i = 0; i < 4; i++)
+	{
+		UDMFKeys[i].Clear();
+	}
 	
+	SN_StopAllSequences(this);
+
 	FStrifeDialogueNode *node;
 	
 	while (StrifeDialogues.Pop (node))
@@ -277,6 +276,7 @@ void FLevelLocals::ClearLevelData()
 	}
 	ClearPortals();
 
+	interpolator.ClearInterpolations();	// [RH] Nothing to interpolate on a fresh level.
 	tagManager.Clear();
 	ClearTIDHashes();
 	Behaviors.UnloadModules();
@@ -321,7 +321,7 @@ void FLevelLocals::ClearLevelData()
 	AllPlayerStarts.Clear();
 	memset(playerstarts, 0, sizeof(playerstarts));
 	Scrolls.Clear();
-
+	if (automap) automap->Destroy();
 }
 
 //==========================================================================
@@ -336,11 +336,8 @@ void P_FreeLevelData ()
 	E_Shutdown(true);
 	FCanvasTextureInfo::EmptyList();
 	R_FreePastViewers();
-	P_ClearUDMFKeys();
 
-	interpolator.ClearInterpolations();	// [RH] Nothing to interpolate on a fresh level.
 	Renderer->CleanLevelData();
-	SN_StopAllSequences ();
 	DThinker::DestroyAllThinkers ();
 
 	level.ClearLevelData();
@@ -434,7 +431,7 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 			if (playeringame[i])
 			{
 				players[i].mo = nullptr;
-				G_DeathMatchSpawnPlayer(i);
+				Level->DeathMatchSpawnPlayer(i);
 			}
 		}
 	}
@@ -446,8 +443,8 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 			if (playeringame[i])
 			{
 				players[i].mo = nullptr;
-				FPlayerStart *mthing = G_PickPlayerStart(i);
-				P_SpawnPlayer(mthing, i, (Level->flags2 & LEVEL2_PRERAISEWEAPON) ? SPF_WEAPONFULLYUP : 0);
+				FPlayerStart *mthing = Level->PickPlayerStart(i);
+				Level->SpawnPlayer(mthing, i, (Level->flags2 & LEVEL2_PRERAISEWEAPON) ? SPF_WEAPONFULLYUP : 0);
 			}
 		}
 	}
@@ -463,7 +460,7 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 				if (!(players[i].mo->flags & MF_FRIENDLY))
 				{
 					AActor * oldSpawn = players[i].mo;
-					G_DeathMatchSpawnPlayer(i);
+					Level->DeathMatchSpawnPlayer(i);
 					oldSpawn->Destroy();
 				}
 			}
@@ -474,7 +471,7 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 	// Don't count monsters in end-of-level sectors if option is on
 	if (dmflags2 & DF2_NOCOUNTENDMONST)
 	{
-		TThinkerIterator<AActor> it;
+		auto it = Level->GetThinkerIterator<AActor>();
 		AActor * mo;
 
 		while ((mo = it.Next()))
@@ -489,7 +486,7 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 		}
 	}
 
-	T_PreprocessScripts(&level);        // preprocess FraggleScript scripts
+	T_PreprocessScripts(Level);        // preprocess FraggleScript scripts
 
 	// build subsector connect matrix
 	//	UNUSED P_ConnectSubsectors ();
@@ -497,13 +494,13 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 	R_OldBlend = 0xffffffff;
 
 	// [RH] Remove all particles
-	P_ClearParticles();
+	P_ClearParticles(Level);
 
 	// preload graphics and sounds
 	if (precache)
 	{
-		PrecacheLevel(&level);
-		S_PrecacheLevel();
+		PrecacheLevel(Level);
+		S_PrecacheLevel(Level);
 	}
 
 	if (deathmatch)
@@ -540,6 +537,14 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 
 	Level->automap = AM_Create(Level);
 	Level->automap->LevelInit();
+	Level->SetCompatLineOnSide(true);
+
+	// [RH] Start lightning, if MAPINFO tells us to
+	if (Level->flags & LEVEL_STARTLIGHTNING)
+	{
+		Level->StartLightning();
+	}
+
 }
 
 //
@@ -576,9 +581,8 @@ static void P_Shutdown ()
 
 CUSTOM_CVAR(Bool, forcewater, false, CVAR_ARCHIVE | CVAR_SERVERINFO)
 {
-	if (gamestate == GS_LEVEL)
+	if (gamestate == GS_LEVEL) for (auto Level : AllLevels())
 	{
-		auto Level = &level;
 		for (auto &sec : Level->sectors)
 		{
 			sector_t *hsec = sec.GetHeightSec();

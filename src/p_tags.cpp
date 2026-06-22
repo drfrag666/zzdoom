@@ -316,7 +316,10 @@ void FTagManager::DumpTags()
 
 CCMD(dumptags)
 {
-	level.tagManager.DumpTags();
+	for (auto Level : AllLevels())
+	{
+		Level->tagManager.DumpTags();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -346,11 +349,11 @@ int FSectorTagIterator::Next()
 	else
 	{
 		// with the tag manager, searching for tag 0 has to be different, because it won't create entries for untagged sectors.
-		while (start < (int)level.sectors.Size() && tagManager.SectorHasTags(start))
+		while (start < (int)tagManager.Level->sectors.Size() && tagManager.SectorHasTags(start))
 		{
 			start++;
 		}
-		if (start == (int)level.sectors.Size()) return -1;
+		if (start == (int)tagManager.Level->sectors.Size()) return -1;
 		ret = start;
 		start++;
 	}
@@ -367,9 +370,9 @@ int FSectorTagIterator::NextCompat(bool compat, int start)
 {
 	if (!compat) return Next();
 
-	for (unsigned i = start + 1; i < level.sectors.Size(); i++)
+	for (unsigned i = start + 1; i < tagManager.Level->sectors.Size(); i++)
 	{
-		if (level.SectorHasTag(i, searchtag)) return i;
+		if (tagManager.Level->SectorHasTag(i, searchtag)) return i;
 	}
 	return -1;
 }

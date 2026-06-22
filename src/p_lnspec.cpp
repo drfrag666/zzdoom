@@ -1060,9 +1060,9 @@ FUNC(LS_Generic_Lift)
 FUNC(LS_Exit_Normal)
 // Exit_Normal (position)
 {
-	if (Level->CheckIfExitIsGood (it, FindLevelInfo(G_GetExitMap())))
+	if (Level->CheckIfExitIsGood (it, FindLevelInfo(Level->NextMap)))
 	{
-		G_ExitLevel (arg0, false);
+		Level->ExitLevel (arg0, false);
 		return true;
 	}
 	return false;
@@ -1071,9 +1071,9 @@ FUNC(LS_Exit_Normal)
 FUNC(LS_Exit_Secret)
 // Exit_Secret (position)
 {
-	if (Level->CheckIfExitIsGood (it, FindLevelInfo(G_GetSecretExitMap())))
+	if (Level->CheckIfExitIsGood (it, FindLevelInfo(Level->GetSecretExitMap())))
 	{
-		G_SecretExitLevel (arg0);
+		Level->SecretExitLevel (arg0);
 		return true;
 	}
 	return false;
@@ -1088,7 +1088,7 @@ FUNC(LS_Teleport_NewMap)
 
 		if (info && Level->CheckIfExitIsGood (it, info))
 		{
-			G_ChangeLevel(info->MapName, arg1, arg2 ? CHANGELEVEL_KEEPFACING : 0);
+			Level->ChangeLevel(info->MapName, arg1, arg2 ? CHANGELEVEL_KEEPFACING : 0);
 			return true;
 		}
 	}
@@ -1103,7 +1103,7 @@ FUNC(LS_Teleport)
 	{
 		flags |= TELF_SOURCEFOG;
 	}
-	return EV_Teleport (arg0, arg1, ln, backSide, it, flags);
+	return Level->EV_Teleport (arg0, arg1, ln, backSide, it, flags);
 }
 
 FUNC( LS_Teleport_NoStop )
@@ -1114,7 +1114,7 @@ FUNC( LS_Teleport_NoStop )
 	{
 		flags |= TELF_SOURCEFOG;
 	}
-	return EV_Teleport( arg0, arg1, ln, backSide, it, flags);
+	return Level->EV_Teleport( arg0, arg1, ln, backSide, it, flags);
 }
 
 FUNC(LS_Teleport_NoFog)
@@ -1144,7 +1144,7 @@ FUNC(LS_Teleport_NoFog)
 	{
 		flags |= TELF_KEEPHEIGHT;
 	}
-	return EV_Teleport (arg0, arg2, ln, backSide, it, flags);
+	return Level->EV_Teleport (arg0, arg2, ln, backSide, it, flags);
 }
 
 FUNC(LS_Teleport_ZombieChanger)
@@ -1153,7 +1153,7 @@ FUNC(LS_Teleport_ZombieChanger)
 	// This is practically useless outside of Strife, but oh well.
 	if (it != NULL)
 	{
-		EV_Teleport (arg0, arg1, ln, backSide, it, 0);
+		Level->EV_Teleport (arg0, arg1, ln, backSide, it, 0);
 		if (it->health >= 0) it->SetState (it->FindState(NAME_Pain));
 		return true;
 	}
@@ -1163,19 +1163,19 @@ FUNC(LS_Teleport_ZombieChanger)
 FUNC(LS_TeleportOther)
 // TeleportOther (other_tid, dest_tid, fog?)
 {
-	return EV_TeleportOther (arg0, arg1, arg2?true:false);
+	return Level->EV_TeleportOther (arg0, arg1, arg2?true:false);
 }
 
 FUNC(LS_TeleportGroup)
 // TeleportGroup (group_tid, source_tid, dest_tid, move_source?, fog?)
 {
-	return EV_TeleportGroup (arg0, it, arg1, arg2, arg3?true:false, arg4?true:false);
+	return Level->EV_TeleportGroup (arg0, it, arg1, arg2, arg3?true:false, arg4?true:false);
 }
 
 FUNC(LS_TeleportInSector)
 // TeleportInSector (tag, source_tid, dest_tid, bFog, group_tid)
 {
-	return EV_TeleportSector (arg0, arg1, arg2, arg3?true:false, arg4);
+	return Level->EV_TeleportSector (arg0, arg1, arg2, arg3?true:false, arg4);
 }
 
 FUNC(LS_Teleport_EndGame)
@@ -1183,7 +1183,7 @@ FUNC(LS_Teleport_EndGame)
 {
 	if (!backSide && Level->CheckIfExitIsGood (it, NULL))
 	{
-		G_ChangeLevel(NULL, 0, 0);
+		Level->ChangeLevel(NULL, 0, 0);
 		return true;
 	}
 	return false;
@@ -1192,7 +1192,7 @@ FUNC(LS_Teleport_EndGame)
 FUNC(LS_Teleport_Line)
 // Teleport_Line (thisid, destid, reversed)
 {
-	return EV_SilentLineTeleport (ln, backSide, it, arg1, arg2);
+	return Level->EV_SilentLineTeleport (ln, backSide, it, arg1, arg2);
 }
 
 static void ThrustThingHelper(AActor *it, DAngle angle, double force, INTBOOL nolimit)
@@ -1510,11 +1510,11 @@ FUNC(LS_Thing_Destroy)
 
 	if (arg0 == 0 && arg2 == 0)
 	{
-		P_Massacre ();
+		Level->Massacre ();
 	}
 	else if (arg0 == 0)
 	{
-		TThinkerIterator<AActor> iterator;
+		auto iterator = Level->GetThinkerIterator<AActor>();
 		
 		actor = iterator.Next ();
 		while (actor)
@@ -1544,21 +1544,21 @@ FUNC(LS_Thing_Destroy)
 FUNC(LS_Thing_Damage)
 // Thing_Damage (tid, amount, MOD)
 {
-	P_Thing_Damage (arg0, it, arg1, MODtoDamageType (arg2));
+	Level->EV_Thing_Damage (arg0, it, arg1, MODtoDamageType (arg2));
 	return true;
 }
 
 FUNC(LS_Thing_Projectile)
 // Thing_Projectile (tid, type, angle, speed, vspeed)
 {
-	return P_Thing_Projectile (arg0, it, arg1, NULL, BYTEANGLE(arg2), SPEED(arg3),
+	return Level->EV_Thing_Projectile (arg0, it, arg1, NULL, BYTEANGLE(arg2), SPEED(arg3),
 		SPEED(arg4), 0, NULL, 0, 0, false);
 }
 
 FUNC(LS_Thing_ProjectileGravity)
 // Thing_ProjectileGravity (tid, type, angle, speed, vspeed)
 {
-	return P_Thing_Projectile (arg0, it, arg1, NULL, BYTEANGLE(arg2), SPEED(arg3),
+	return Level->EV_Thing_Projectile (arg0, it, arg1, NULL, BYTEANGLE(arg2), SPEED(arg3),
 		SPEED(arg4), 0, NULL, 1, 0, false);
 }
 
@@ -1728,32 +1728,32 @@ FUNC(LS_Thing_Hate)
 FUNC(LS_Thing_ProjectileAimed)
 // Thing_ProjectileAimed (tid, type, speed, target, newtid)
 {
-	return P_Thing_Projectile (arg0, it, arg1, NULL, 0., SPEED(arg2), 0, arg3, it, 0, arg4, false);
+	return Level->EV_Thing_Projectile (arg0, it, arg1, NULL, 0., SPEED(arg2), 0, arg3, it, 0, arg4, false);
 }
 
 FUNC(LS_Thing_ProjectileIntercept)
 // Thing_ProjectileIntercept (tid, type, speed, target, newtid)
 {
-	return P_Thing_Projectile (arg0, it, arg1, NULL, 0., SPEED(arg2), 0, arg3, it, 0, arg4, true);
+	return Level->EV_Thing_Projectile (arg0, it, arg1, NULL, 0., SPEED(arg2), 0, arg3, it, 0, arg4, true);
 }
 
 // [BC] added newtid for next two
 FUNC(LS_Thing_Spawn)
 // Thing_Spawn (tid, type, angle, newtid)
 {
-	return P_Thing_Spawn (arg0, it, arg1, BYTEANGLE(arg2), true, arg3);
+	return Level->EV_Thing_Spawn (arg0, it, arg1, BYTEANGLE(arg2), true, arg3);
 }
 
 FUNC(LS_Thing_SpawnNoFog)
 // Thing_SpawnNoFog (tid, type, angle, newtid)
 {
-	return P_Thing_Spawn (arg0, it, arg1, BYTEANGLE(arg2), false, arg3);
+	return Level->EV_Thing_Spawn (arg0, it, arg1, BYTEANGLE(arg2), false, arg3);
 }
 
 FUNC(LS_Thing_SpawnFacing)
 // Thing_SpawnFacing (tid, type, nofog, newtid)
 {
-	return P_Thing_Spawn (arg0, it, arg1, 1000000., arg2 ? false : true, arg3);
+	return Level->EV_Thing_Spawn (arg0, it, arg1, 1000000., arg2 ? false : true, arg3);
 }
 
 FUNC(LS_Thing_Raise)
@@ -1850,7 +1850,7 @@ FUNC(LS_Thing_SetGoal)
 FUNC(LS_Thing_Move)		// [BC]
 // Thing_Move (tid, mapspot, nofog)
 {
-	return P_Thing_Move (arg0, it, arg1, arg2 ? false : true);
+	return Level->EV_Thing_Move (arg0, it, arg1, arg2 ? false : true);
 }
 
 enum
@@ -1923,7 +1923,7 @@ FUNC(LS_ACS_Execute)
 	{
 		return false;
 	}
-	return P_StartScript(it, ln, arg0, mapname, args, 3, flags);
+	return P_StartScript(Level, it, ln, arg0, mapname, args, 3, flags);
 }
 
 FUNC(LS_ACS_ExecuteAlways)
@@ -1946,7 +1946,7 @@ FUNC(LS_ACS_ExecuteAlways)
 	{
 		return false;
 	}
-	return P_StartScript(it, ln, arg0, mapname, args, 3, flags);
+	return P_StartScript(Level, it, ln, arg0, mapname, args, 3, flags);
 }
 
 FUNC(LS_ACS_LockedExecute)
@@ -1976,7 +1976,7 @@ FUNC(LS_ACS_ExecuteWithResult)
 	int args[4] = { arg1, arg2, arg3, arg4 };
 	int flags = (backSide ? ACS_BACKSIDE : 0) | ACS_ALWAYS | ACS_WANTRESULT;
 
-	return P_StartScript (it, ln, arg0, Level->MapName, args, 4, flags);
+	return P_StartScript (Level, it, ln, arg0, Level->MapName, args, 4, flags);
 }
 
 FUNC(LS_ACS_Suspend)
@@ -1985,9 +1985,9 @@ FUNC(LS_ACS_Suspend)
 	level_info_t *info;
 
 	if (arg1 == 0)
-		P_SuspendScript (arg0, Level->MapName);
+		P_SuspendScript (Level, arg0, Level->MapName);
 	else if ((info = FindLevelByNum (arg1)) )
-		P_SuspendScript (arg0, info->MapName);
+		P_SuspendScript (Level, arg0, info->MapName);
 
 	return true;
 }
@@ -1998,9 +1998,9 @@ FUNC(LS_ACS_Terminate)
 	level_info_t *info;
 
 	if (arg1 == 0)
-		P_TerminateScript (arg0, Level->MapName);
+		P_TerminateScript (Level, arg0, Level->MapName);
 	else if ((info = FindLevelByNum (arg1)) )
-		P_TerminateScript (arg0, info->MapName);
+		P_TerminateScript (Level, arg0, info->MapName);
 
 	return true;
 }
@@ -2016,7 +2016,7 @@ FUNC(LS_FS_Execute)
 {
 	if (arg1 && ln && backSide) return false;
 	if (arg2!=0 && !P_CheckKeys(it, arg2, !!arg3)) return false;
-	return T_RunScript(&level, arg0, it);
+	return T_RunScript(Level, arg0, it);
 }
 
 
@@ -2069,91 +2069,91 @@ FUNC(LS_Elevator_LowerToNearest)
 FUNC(LS_Light_ForceLightning)
 // Light_ForceLightning (mode)
 {
-	P_ForceLightning (arg0);
+	Level->ForceLightning (arg0);
 	return true;
 }
 
 FUNC(LS_Light_RaiseByValue)
 // Light_RaiseByValue (tag, value)
 {
-	EV_LightChange (arg0, arg1);
+	Level->EV_LightChange (arg0, arg1);
 	return true;
 }
 
 FUNC(LS_Light_LowerByValue)
 // Light_LowerByValue (tag, value)
 {
-	EV_LightChange (arg0, -arg1);
+	Level->EV_LightChange (arg0, -arg1);
 	return true;
 }
 
 FUNC(LS_Light_ChangeToValue)
 // Light_ChangeToValue (tag, value)
 {
-	EV_LightTurnOn (arg0, arg1);
+	Level->EV_LightTurnOn (arg0, arg1);
 	return true;
 }
 
 FUNC(LS_Light_Fade)
 // Light_Fade (tag, value, tics);
 {
-	EV_StartLightFading (arg0, arg1, TICS(arg2));
+	Level->EV_StartLightFading (arg0, arg1, TICS(arg2));
 	return true;
 }
 
 FUNC(LS_Light_Glow)
 // Light_Glow (tag, upper, lower, tics)
 {
-	EV_StartLightGlowing (arg0, arg1, arg2, TICS(arg3));
+	Level->EV_StartLightGlowing (arg0, arg1, arg2, TICS(arg3));
 	return true;
 }
 
 FUNC(LS_Light_Flicker)
 // Light_Flicker (tag, upper, lower)
 {
-	EV_StartLightFlickering (arg0, arg1, arg2);
+	Level->EV_StartLightFlickering (arg0, arg1, arg2);
 	return true;
 }
 
 FUNC(LS_Light_Strobe)
 // Light_Strobe (tag, upper, lower, u-tics, l-tics)
 {
-	EV_StartLightStrobing (arg0, arg1, arg2, TICS(arg3), TICS(arg4));
+	Level->EV_StartLightStrobing (arg0, arg1, arg2, TICS(arg3), TICS(arg4));
 	return true;
 }
 
 FUNC(LS_Light_StrobeDoom)
 // Light_StrobeDoom (tag, u-tics, l-tics)
 {
-	EV_StartLightStrobing (arg0, TICS(arg1), TICS(arg2));
+	Level->EV_StartLightStrobing (arg0, TICS(arg1), TICS(arg2));
 	return true;
 }
 
 FUNC(LS_Light_MinNeighbor)
 // Light_MinNeighbor (tag)
 {
-	EV_TurnTagLightsOff (arg0);
+	Level->EV_TurnTagLightsOff (arg0);
 	return true;
 }
 
 FUNC(LS_Light_MaxNeighbor)
 // Light_MaxNeighbor (tag)
 {
-	EV_LightTurnOn (arg0, -1);
+	Level->EV_LightTurnOn (arg0, -1);
 	return true;
 }
 
 FUNC(LS_Light_Stop)
 // Light_Stop (tag)
 {
-	EV_StopLightEffect (arg0);
+	Level->EV_StopLightEffect (arg0);
 	return true;
 }
 
 FUNC(LS_Radius_Quake)
 // Radius_Quake (intensity, duration, damrad, tremrad, tid)
 {
-	return P_StartQuake (it, arg4, arg0, arg1, arg2*64, arg3*64, "world/quake");
+	return P_StartQuake (Level, it, arg4, arg0, arg1, arg2*64, arg3*64, "world/quake");
 }
 
 FUNC(LS_UsePuzzleItem)
@@ -2227,7 +2227,6 @@ FUNC(LS_Sector_ChangeFlags)
 
 
 
-void AdjustPusher(int tag, int magnitude, int angle, bool wind);
 
 FUNC(LS_Sector_SetWind)
 // Sector_SetWind (tag, amount, angle)
@@ -2235,7 +2234,7 @@ FUNC(LS_Sector_SetWind)
 	if (arg3)
 		return false;
 
-	AdjustPusher (arg0, arg1, arg2, true);
+	Level->AdjustPusher (arg0, arg1, arg2, true);
 	return true;
 }
 
@@ -2245,14 +2244,14 @@ FUNC(LS_Sector_SetCurrent)
 	if (arg3)
 		return false;
 
-	AdjustPusher (arg0, arg1, arg2, false);
+	Level->AdjustPusher (arg0, arg1, arg2, false);
 	return true;
 }
 
 FUNC(LS_Sector_SetFriction)
 // Sector_SetFriction (tag, amount)
 {
-	P_SetSectorFriction (&level, arg0, arg1, true);
+	P_SetSectorFriction (Level, arg0, arg1, true);
 	return true;
 }
 
@@ -2311,7 +2310,7 @@ FUNC(LS_Scroll_Texture_Both)
 		sidechoice = 0;
 	}
 
-	SetWallScroller (&level, arg0, sidechoice, dx, dy, scw_all);
+	SetWallScroller (Level, arg0, sidechoice, dx, dy, scw_all);
 
 	return true;
 }
@@ -2322,7 +2321,7 @@ FUNC(LS_Scroll_Wall)
 	if (arg0 == 0)
 		return false;
 
-	SetWallScroller (&level, arg0, !!arg3, arg1 / 65536., arg2 / 65536., EScrollPos(arg4));
+	SetWallScroller (Level, arg0, !!arg3, arg1 / 65536., arg2 / 65536., EScrollPos(arg4));
 	return true;
 }
 
@@ -2338,19 +2337,19 @@ FUNC(LS_Scroll_Floor)
 
 	if (arg3 == 0 || arg3 == 2)
 	{
-		SetScroller (&level, arg0, EScroll::sc_floor, -dx, dy);
+		SetScroller (Level, arg0, EScroll::sc_floor, -dx, dy);
 	}
 	else
 	{
-		SetScroller (&level, arg0, EScroll::sc_floor, 0, 0);
+		SetScroller (Level, arg0, EScroll::sc_floor, 0, 0);
 	}
 	if (arg3 > 0)
 	{
-		SetScroller (&level, arg0, EScroll::sc_carry, dx, dy);
+		SetScroller (Level, arg0, EScroll::sc_carry, dx, dy);
 	}
 	else
 	{
-		SetScroller (&level, arg0, EScroll::sc_carry, 0, 0);
+		SetScroller (Level, arg0, EScroll::sc_carry, 0, 0);
 	}
 	return true;
 }
@@ -2361,7 +2360,7 @@ FUNC(LS_Scroll_Ceiling)
 	double dx = arg1 / 32.;
 	double dy = arg2 / 32.;
 
-	SetScroller (&level, arg0, EScroll::sc_ceiling, -dx, dy);
+	SetScroller (Level, arg0, EScroll::sc_ceiling, -dx, dy);
 	return true;
 }
 
@@ -2598,7 +2597,7 @@ FUNC(LS_Line_AlignCeiling)
 	int line;
 	while ((line = itr.Next()) >= 0)
 	{
-		ret |= P_AlignFlat (line, !!arg1, 1);
+		ret |= Level->AlignFlat (line, !!arg1, 1);
 	}
 	return ret;
 }
@@ -2612,7 +2611,7 @@ FUNC(LS_Line_AlignFloor)
 	int line;
 	while ((line = itr.Next()) >= 0)
 	{
-		ret |= P_AlignFlat (line, !!arg1, 0);
+		ret |= Level->AlignFlat (line, !!arg1, 0);
 	}
 	return ret;
 }
@@ -3066,7 +3065,7 @@ FUNC(LS_SetPlayerProperty)
 	{
 		int i;
 
-		if ((ib_compatflags & BCOMPATF_LINKFROZENPROPS) && (mask & (CF_FROZEN | CF_TOTALLYFROZEN)))
+		if ((Level->ib_compatflags & BCOMPATF_LINKFROZENPROPS) && (mask & (CF_FROZEN | CF_TOTALLYFROZEN)))
 		{ // Clearing one of these properties clears both of them (if the compat flag is set.)
 			mask = CF_FROZEN | CF_TOTALLYFROZEN;
 		}
@@ -3492,7 +3491,7 @@ FUNC(LS_Line_SetHealth)
 		line_t* line = &Level->lines[l];
 		line->health = arg1;
 		if (line->healthgroup)
-			P_SetHealthGroupHealth(line->healthgroup, arg1);
+			P_SetHealthGroupHealth(Level, line->healthgroup, arg1);
 	}
 	return true;
 }
@@ -3513,19 +3512,19 @@ FUNC(LS_Sector_SetHealth)
 		{
 			sector->healthceiling = arg2;
 			if (sector->healthceilinggroup)
-				P_SetHealthGroupHealth(sector->healthceilinggroup, arg2);
+				P_SetHealthGroupHealth(Level, sector->healthceilinggroup, arg2);
 		}
 		else if (arg1 == SECPART_Floor)
 		{
 			sector->healthfloor = arg2;
 			if (sector->healthfloorgroup)
-				P_SetHealthGroupHealth(sector->healthfloorgroup, arg2);
+				P_SetHealthGroupHealth(Level, sector->healthfloorgroup, arg2);
 		}
 		else if (arg1 == SECPART_3D)
 		{
 			sector->health3d = arg2;
 			if (sector->health3dgroup)
-				P_SetHealthGroupHealth(sector->health3dgroup, arg2);
+				P_SetHealthGroupHealth(Level, sector->health3dgroup, arg2);
 		}
 	}
 	return true;

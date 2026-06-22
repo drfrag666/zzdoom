@@ -125,25 +125,8 @@ class DLighting : public DSectorEffect
 {
 	DECLARE_CLASS(DLighting, DSectorEffect)
 public:
-	DLighting(sector_t *sector);
-protected:
-	DLighting() = default;
+	static const int DEFAULT_STAT = STAT_LIGHT;
 };
-
-void	EV_StartLightFlickering (int tag, int upper, int lower);
-void	EV_StartLightStrobing (int tag, int upper, int lower, int utics, int ltics);
-void	EV_StartLightStrobing (int tag, int utics, int ltics);
-void	EV_TurnTagLightsOff (int tag);
-void	EV_LightTurnOn (int tag, int bright);
-void	EV_LightTurnOnPartway (int tag, double frac);	// killough 10/98
-void	EV_LightChange (int tag, int value);
-void	EV_StopLightEffect (int tag);
-
-void	P_SpawnGlowingLight (sector_t *sector);
-
-void	EV_StartLightGlowing (int tag, int upper, int lower, int tics);
-void	EV_StartLightFading (int tag, int value, int tics);
-
 
 //
 // P_SWITCH
@@ -190,7 +173,7 @@ public:
 	void Tick ();
 
 	bool IsLift() const { return m_Type == platDownWaitUpStay || m_Type == platDownWaitUpStayStone; }
-	DPlat(sector_t *sector);
+	void Construct(sector_t *sector);
 
 protected:
 
@@ -208,9 +191,6 @@ protected:
 	void PlayPlatSound (const char *sound);
 	void Reactivate ();
 	void Stop ();
-
-private:
-	DPlat() = default;
 
 	friend struct FLevelLocals;
 };
@@ -232,8 +212,7 @@ public:
 
 	};
 
-	DPillar (sector_t *sector, EPillar type, double speed, double height,
-			 double height2, int crush, bool hexencrush);
+	void Construct (sector_t *sector, EPillar type, double speed, double height, double height2, int crush, bool hexencrush);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -249,9 +228,6 @@ protected:
 	bool		m_Hexencrush;
 	TObjPtr<DInterpolation*> m_Interp_Ceiling;
 	TObjPtr<DInterpolation*> m_Interp_Floor;
-
-private:
-	DPillar() = default;
 };
 
 
@@ -272,8 +248,8 @@ public:
 		doorWaitClose,
 	};
 
-	DDoor (sector_t *sector);
-	DDoor (sector_t *sec, EVlDoor type, double speed, int delay, int lightTag, int topcountdown);
+	void Construct(sector_t *sector);
+	void Construct(sector_t *sec, EVlDoor type, double speed, int delay, int lightTag, int topcountdown);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -299,8 +275,6 @@ protected:
 
 private:
 	friend struct FLevelLocals;
-	DDoor() = default;
-
 };
 
 class DAnimatedDoor : public DMovingCeiling
@@ -314,8 +288,8 @@ public:
 		adClose
 	};
 
-	DAnimatedDoor (sector_t *sector);
-	DAnimatedDoor (sector_t *sec, line_t *line, int speed, int delay, FDoorAnimation *anim, EADType type);
+	void Construct(sector_t *sector);
+	void Construct(sector_t *sec, line_t *line, int speed, int delay, FDoorAnimation *anim, EADType type);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -341,8 +315,6 @@ protected:
 	bool m_SetBlocking1, m_SetBlocking2;
 
 	friend struct FLevelLocals;
-private:
-	DAnimatedDoor() = default;
 };
 
 //
@@ -393,8 +365,8 @@ public:
 	};
 
 
-	DCeiling (sector_t *sec);
-	DCeiling (sector_t *sec, double speed1, double speed2, int silent);
+	void Construct(sector_t *sec);
+	void Construct(sector_t *sec, double speed1, double speed2, int silent);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -421,10 +393,7 @@ protected:
 
 	void PlayCeilingSound ();
 
-private:
-	DCeiling() = default;
 	friend struct FLevelLocals;
-
 };
 
 //
@@ -488,7 +457,7 @@ public:
 		stairCrush = 4,
 	};
 
-	DFloor (sector_t *sec);
+	void Construct(sector_t *sec);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -515,9 +484,6 @@ public:
 	void StartFloorSound ();
 	void SetFloorChangeType (sector_t *sec, int change);
 	friend struct FLevelLocals;
-
-private:
-	DFloor() = default;
 };
 
 class DElevator : public DMover
@@ -535,7 +501,7 @@ public:
 		elevateLower
 	};
 
-	DElevator (sector_t *sec);
+	void Construct(sector_t *sec);
 
 	void OnDestroy() override;
 	void Serialize(FSerializer &arc);
@@ -552,8 +518,6 @@ protected:
 
 	void StartFloorSound ();
 	friend struct FLevelLocals;
-private:
-	DElevator() = default;
 };
 
 
@@ -562,7 +526,7 @@ class DWaggleBase : public DMover
 	DECLARE_CLASS (DWaggleBase, DMover)
 	HAS_OBJECT_POINTERS
 public:
-	DWaggleBase (sector_t *sec);
+	void Construct(sector_t *sec);
 
 	void Serialize(FSerializer &arc);
 
@@ -578,27 +542,22 @@ protected:
 
 	friend struct FLevelLocals;
 	void DoWaggle (bool ceiling);
-	DWaggleBase() = default;
 };
 
 class DFloorWaggle : public DWaggleBase
 {
 	DECLARE_CLASS (DFloorWaggle, DWaggleBase)
 public:
-	DFloorWaggle (sector_t *sec);
+	void Construct(sector_t *sec);
 	void Tick ();
-private:
-	DFloorWaggle() = default;
 };
 
 class DCeilingWaggle : public DWaggleBase
 {
 	DECLARE_CLASS (DCeilingWaggle, DWaggleBase)
 public:
-	DCeilingWaggle (sector_t *sec);
+	void Construct(sector_t *sec);
 	void Tick ();
-private:
-	DCeilingWaggle() = default;
 };
 
 //jff 3/15/98 pure texture/type change for better generalized support
@@ -624,13 +583,7 @@ enum
 
 //Spawns teleport fog. Pass the actor to pluck TeleFogFromType and TeleFogToType. 'from' determines if this is the fog to spawn at the old position (true) or new (false).
 void P_SpawnTeleportFog(AActor *mobj, const DVector3 &pos, bool beforeTele = true, bool setTarget = false);
-
 bool P_Teleport(AActor *thing, DVector3 pos, DAngle angle, int flags);
-bool EV_Teleport (int tid, int tag, line_t *line, int side, AActor *thing, int flags);
-bool EV_SilentLineTeleport (line_t *line, int side, AActor *thing, int id, INTBOOL reverse);
-bool EV_TeleportOther (int other_tid, int dest_tid, bool fog);
-bool EV_TeleportGroup (int group_tid, AActor *victim, int source_tid, int dest_tid, bool moveSource, bool fog);
-bool EV_TeleportSector (int tag, int source_tid, int dest_tid, bool fog, int group_tid);
 
 
 //
@@ -642,15 +595,14 @@ bool EV_TeleportSector (int tag, int source_tid, int dest_tid, bool fog, int gro
 #define ACS_WANTRESULT		4
 #define ACS_NET				8
 
-int  P_StartScript (AActor *who, line_t *where, int script, const char *map, const int *args, int argcount, int flags);
-void P_SuspendScript (int script, const char *map);
-void P_TerminateScript (int script, const char *map);
-void P_DoDeferedScripts (void);
+int  P_StartScript (FLevelLocals *Level, AActor *who, line_t *where, int script, const char *map, const int *args, int argcount, int flags);
+void P_SuspendScript (FLevelLocals *Level, int script, const char *map);
+void P_TerminateScript (FLevelLocals *Level, int script, const char *map);
 
 //
 // [RH] p_quake.c
 //
-bool P_StartQuakeXYZ(AActor *activator, int tid, int intensityX, int intensityY, int intensityZ, int duration, int damrad, int tremrad, FSoundID quakesfx, int flags, double waveSpeedX, double waveSpeedY, double waveSpeedZ, int falloff, int highpoint, double rollIntensity, double rollWave);
-bool P_StartQuake(AActor *activator, int tid, int intensity, int duration, int damrad, int tremrad, FSoundID quakesfx);
+bool P_StartQuakeXYZ(FLevelLocals *Level, AActor *activator, int tid, int intensityX, int intensityY, int intensityZ, int duration, int damrad, int tremrad, FSoundID quakesfx, int flags, double waveSpeedX, double waveSpeedY, double waveSpeedZ, int falloff, int highpoint, double rollIntensity, double rollWave);
+bool P_StartQuake(FLevelLocals *Level, AActor *activator, int tid, int intensity, int duration, int damrad, int tremrad, FSoundID quakesfx);
 
 #endif

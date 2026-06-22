@@ -492,9 +492,10 @@ namespace swrenderer
 			PvsSubsectors.push_back(sub->Index());
 		}
 
+		auto Level = sub->sector->Level;
 #ifdef RANGECHECK
-		if (outersubsector && (unsigned)sub->Index() >= level.subsectors.Size())
-			I_Error("RenderSubsector: ss %i with numss = %u", sub->Index(), level.subsectors.Size());
+		if (outersubsector && (unsigned)sub->Index() >= Level->subsectors.Size())
+			I_Error("RenderSubsector: ss %i with numss = %u", sub->Index(), Level->subsectors.Size());
 #endif
 
 		if (sub->polys)
@@ -608,15 +609,16 @@ namespace swrenderer
 		// lightlevels on floor & ceiling lightlevels in the surrounding area.
 		// [RH] Handle sprite lighting like Duke 3D: If the ceiling is a sky, sprites are lit by
 		// it, otherwise they are lit by the floor.
-		AddSprites(sub->sector, frontsector->GetTexture(sector_t::ceiling) == skyflatnum ? ceilinglightlevel : floorlightlevel, FakeSide, foggy, GetColorTable(frontsector->Colormap, frontsector->SpecialColors[sector_t::sprites], true));
+		auto nc = !!(frontsector->Level->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING);
+		AddSprites(sub->sector, frontsector->GetTexture(sector_t::ceiling) == skyflatnum ? ceilinglightlevel : floorlightlevel, FakeSide, foggy, GetSpriteColorTable(frontsector->Colormap, frontsector->SpecialColors[sector_t::sprites], nc));
 
 		// [RH] Add particles
-		if ((unsigned int)(sub->Index()) < level.subsectors.Size())
+		if ((unsigned int)(sub->Index()) < Level->subsectors.Size())
 		{ // Only do it for the main BSP.
 			int lightlevel = (floorlightlevel + ceilinglightlevel) / 2;
-			for (int i = ParticlesInSubsec[sub->Index()]; i != NO_PARTICLE; i = Particles[i].snext)
+			for (int i = frontsector->Level->ParticlesInSubsec[sub->Index()]; i != NO_PARTICLE; i = frontsector->Level->Particles[i].snext)
 			{
-				RenderParticle::Project(Thread, &Particles[i], sub->sector, lightlevel, FakeSide, foggy);
+				RenderParticle::Project(Thread, &frontsector->Level->Particles[i], sub->sector, lightlevel, FakeSide, foggy);
 			}
 		}
 
@@ -948,8 +950,8 @@ namespace swrenderer
 					if (sec->sectornum != thing->Sector->sectornum)	// compare sectornums to account for R_FakeFlat copies.
 					{
 						thinglightlevel = thing->Sector->GetTexture(sector_t::ceiling) == skyflatnum ? thing->Sector->GetCeilingLight() : thing->Sector->GetFloorLight();
-						thingColormap = GetColorTable(thing->Sector->Colormap, thing->Sector->SpecialColors[sector_t::sprites], true);
-					}
+						auto nc = !!(thing->Level->flags3 & LEVEL3_NOCOLOREDSPRITELIGHTING);
+						thingColormap = GetSpriteColorTable(thing->Sector->Colormap, thing->Sector->SpecialColors[sector_t::sprites], nc);					}
 
 					if ((sprite.renderflags & RF_SPRITETYPEMASK) == RF_WALLSPRITE)
 					{

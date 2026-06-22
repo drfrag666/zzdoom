@@ -34,13 +34,11 @@ struct event_t;
 
 
 class AActor;
+struct FLevelLocals;
 
 //
 // GAME
 //
-void G_DeathMatchSpawnPlayer (int playernum);
-
-struct FPlayerStart *G_PickPlayerStart (int playernum, int flags = 0);
 enum
 {
 	PPS_FORCERANDOM			= 1,
@@ -67,13 +65,11 @@ void G_PlayDemo (char* name);
 void G_TimeDemo (const char* name);
 bool G_CheckDemoStatus (void);
 
-void G_WorldDone (void);
-
 void G_Ticker (void);
 bool G_Responder (event_t*	ev);
 
 void G_ScreenShot (char *filename);
-void G_StartSlideshow(FName whichone);
+void G_StartSlideshow(FLevelLocals *Level, FName whichone);
 
 FString G_BuildSaveName (const char *prefix, int slot);
 
@@ -89,7 +85,6 @@ enum EFinishLevelType
 
 void G_PlayerFinishLevel (int player, EFinishLevelType mode, int flags);
 
-void G_DoReborn (int playernum, bool freshbot);
 void G_DoPlayerPop(int playernum);
 
 // Adds pitch to consoleplayer's viewpitch and clamps it

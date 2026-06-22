@@ -188,19 +188,19 @@ void DFloor::Tick ()
 				sector_t *sec = m_Sector;
 				sec->stairlock = -1;				// thinker done, promote lock to -1
 
-				while (sec->prevsec != -1 && level.sectors[sec->prevsec].stairlock != -2)
-					sec = &level.sectors[sec->prevsec];	// search for a non-done thinker
+				while (sec->prevsec != -1 && Level->sectors[sec->prevsec].stairlock != -2)
+					sec = &Level->sectors[sec->prevsec];	// search for a non-done thinker
 				if (sec->prevsec == -1)				// if all thinkers previous are done
 				{
 					sec = m_Sector;			// search forward
-					while (sec->nextsec != -1 && level.sectors[sec->nextsec].stairlock != -2)
-						sec = &level.sectors[sec->nextsec];
+					while (sec->nextsec != -1 && Level->sectors[sec->nextsec].stairlock != -2)
+						sec = &Level->sectors[sec->nextsec];
 					if (sec->nextsec == -1)			// if all thinkers ahead are done too
 					{
 						while (sec->prevsec != -1)	// clear all locks
 						{
 							sec->stairlock = 0;
-							sec = &level.sectors[sec->prevsec];
+							sec = &Level->sectors[sec->prevsec];
 						}
 						sec->stairlock = 0;
 					}
@@ -255,9 +255,9 @@ void DFloor::StartFloorSound ()
 //
 //==========================================================================
 
-DFloor::DFloor (sector_t *sec)
-	: DMovingFloor (sec)
+void DFloor::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 }
 
 //==========================================================================
@@ -283,7 +283,7 @@ bool FLevelLocals::CreateFloor(sector_t *sec, DFloor::EFloor floortype, line_t *
 
 	// new floor thinker
 	rtn = true;
-	floor = Create<DFloor>(sec);
+	floor = CreateThinker<DFloor>(sec);
 	floor->m_Type = floortype;
 	floor->m_Crush = crush;
 	floor->m_Hexencrush = hexencrush;
@@ -461,7 +461,7 @@ bool FLevelLocals::CreateFloor(sector_t *sec, DFloor::EFloor floortype, line_t *
 		// [Graf Zahl]
 		// Don't make sounds for instant movement hacks but make an exception for
 		// switches that activate their own back side. 
-		if (!(i_compatflags & COMPATF_SILENT_INSTANT_FLOORS))
+		if (!(sec->Level->i_compatflags & COMPATF_SILENT_INSTANT_FLOORS))
 		{
 			if (!line || !(line->activation & (SPAC_Use | SPAC_Push)) || line->backsector != sec)
 				silent = true;
@@ -631,7 +631,7 @@ bool FLevelLocals::EV_BuildStairs (int tag, DFloor::EStair type, line_t *line, d
 		
 		// new floor thinker
 		rtn = true;
-		floor = Create<DFloor> (sec);
+		floor = CreateThinker<DFloor> (sec);
 		floor->m_Direction = (type == DFloor::buildUp) ? 1 : -1;
 		stairstep = stairsize * floor->m_Direction;
 		floor->m_Type = DFloor::buildStair;	//jff 3/31/98 do not leave uninited
@@ -734,7 +734,7 @@ bool FLevelLocals::EV_BuildStairs (int tag, DFloor::EStair type, line_t *line, d
 				secnum = newsecnum;
 
 				// create and initialize a thinker for the next step
-				floor = Create<DFloor> (sec);
+				floor = CreateThinker<DFloor> (sec);
 				floor->StartFloorSound ();
 				floor->m_Direction = (type == DFloor::buildUp) ? 1 : -1;
 				floor->m_FloorDestDist = sec->floorplane.PointToDist (DVector2(0, 0), height);
@@ -813,7 +813,7 @@ bool FLevelLocals::EV_DoDonut (int tag, line_t *line, double pillarspeed, double
 			s3 = ln->backsector;
 			
 			//	Spawn rising slime
-			floor = Create<DFloor> (s2);
+			floor = CreateThinker<DFloor> (s2);
 			floor->m_Type = DFloor::donutRaise;
 			floor->m_Crush = -1;
 			floor->m_Hexencrush = false;
@@ -828,7 +828,7 @@ bool FLevelLocals::EV_DoDonut (int tag, line_t *line, double pillarspeed, double
 			floor->StartFloorSound ();
 			
 			//	Spawn lowering donut-hole
-			floor = Create<DFloor> (s1);
+			floor = CreateThinker<DFloor> (s1);
 			floor->m_Type = DFloor::floorLowerToNearest;
 			floor->m_Crush = -1;
 			floor->m_Hexencrush = false;
@@ -858,9 +858,9 @@ IMPLEMENT_POINTERS_START(DElevator)
 	IMPLEMENT_POINTER(m_Interp_Ceiling)
 IMPLEMENT_POINTERS_END
 
-DElevator::DElevator (sector_t *sec)
-	: Super (sec)
+void DElevator::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 	sec->floordata = this;
 	sec->ceilingdata = this;
 	m_Interp_Floor = sec->SetInterpolation(sector_t::FloorMove, true);
@@ -1013,7 +1013,7 @@ bool FLevelLocals::EV_DoElevator (line_t *line, DElevator::EElevator elevtype,
 
 		// create and initialize new elevator thinker
 		rtn = true;
-		elevator = Create<DElevator> (sec);
+		elevator = CreateThinker<DElevator> (sec);
 		elevator->m_Type = elevtype;
 		elevator->m_Speed = speed;
 		elevator->StartFloorSound ();
@@ -1164,9 +1164,9 @@ void DWaggleBase::Serialize(FSerializer &arc)
 #define WGLSTATE_STABLE 2
 #define WGLSTATE_REDUCE 3
 
-DWaggleBase::DWaggleBase (sector_t *sec)
-	: Super (sec)
+void DWaggleBase::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 }
 
 //==========================================================================
@@ -1252,9 +1252,9 @@ void DWaggleBase::DoWaggle (bool ceiling)
 //
 //==========================================================================
 
-DFloorWaggle::DFloorWaggle (sector_t *sec)
-	: Super (sec)
+void DFloorWaggle::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 	sec->floordata = this;
 	interpolation = sec->SetInterpolation(sector_t::FloorMove, true);
 }
@@ -1270,9 +1270,9 @@ void DFloorWaggle::Tick ()
 //
 //==========================================================================
 
-DCeilingWaggle::DCeilingWaggle (sector_t *sec)
-	: Super (sec)
+void DCeilingWaggle::Construct(sector_t *sec)
 {
+	Super::Construct(sec);
 	sec->ceilingdata = this;
 	interpolation = sec->SetInterpolation(sector_t::CeilingMove, true);
 }
@@ -1310,12 +1310,12 @@ bool FLevelLocals::EV_StartWaggle (int tag, line_t *line, int height, int speed,
 		retCode = true;
 		if (ceiling)
 		{
-			waggle = Create<DCeilingWaggle> (sector);
+			waggle = CreateThinker<DCeilingWaggle> (sector);
 			waggle->m_OriginalDist = sector->ceilingplane.fD();
 		}
 		else
 		{
-			waggle = Create<DFloorWaggle> (sector);
+			waggle = CreateThinker<DFloorWaggle> (sector);
 			waggle->m_OriginalDist = sector->floorplane.fD();
 		}
 		waggle->m_Accumulator = offset;

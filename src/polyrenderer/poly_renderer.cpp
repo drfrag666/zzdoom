@@ -34,6 +34,7 @@
 #include "st_stuff.h"
 #include "g_levellocals.h"
 #include "p_effect.h"
+#include "actorinlines.h"
 #include "polyrenderer/scene/poly_light.h"
 #include "swrenderer/scene/r_scene.h"
 #include "swrenderer/drawers/r_draw_rgba.h"
@@ -127,10 +128,9 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 	NetUpdate();
 	
 	DontMapLines = dontmaplines;
-	
+
 	R_SetupFrame(Viewpoint, Viewwindow, actor);
-	P_FindParticleSubsectors();
-	PO_LinkToSubsectors(&level);
+	Level = Viewpoint.ViewLevel;
 
 	static bool firstcall = true;
 	if (firstcall)
@@ -182,7 +182,6 @@ void PolyRenderer::RenderActorView(AActor *actor, bool dontmaplines)
 
 	if (Viewpoint.camera)
 		Viewpoint.camera->renderflags = savedflags;
-	interpolator.RestoreInterpolations ();
 	
 	NetUpdate();
 }

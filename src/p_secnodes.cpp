@@ -237,7 +237,7 @@ msecnode_t *P_CreateSecNodeList(AActor *thing, double radius, msecnode_t *sector
 	}
 
 	FBoundingBox box(thing->X(), thing->Y(), radius);
-	FBlockLinesIterator it(box);
+	FBlockLinesIterator it(thing->Level, box);
 	line_t *ld;
 
 	while ((ld = it.Next()))
@@ -386,16 +386,16 @@ void AActor::UpdateRenderSectorList()
 	{
 		// Only check if the map contains line portals
 		ClearRenderLineList();
-		if (level.PortalBlockmap.containsLines && Pos().XY() != OldRenderPos.XY())
+		if (Level->PortalBlockmap.containsLines && Pos().XY() != OldRenderPos.XY())
 		{
-			int bx = level.blockmap.GetBlockX(X());
-			int by = level.blockmap.GetBlockY(Y());
+			int bx = Level->blockmap.GetBlockX(X());
+			int by = Level->blockmap.GetBlockY(Y());
 			FBoundingBox bb(X(), Y(), MIN(radius*1.5, 128.));	// Don't go further than 128 map units, even for large actors
 			// Are there any portals near the actor's position?
-			if (level.blockmap.isValidBlock(bx, by) && level.PortalBlockmap(bx, by).neighborContainsLines)
+			if (Level->blockmap.isValidBlock(bx, by) && Level->PortalBlockmap(bx, by).neighborContainsLines)
 			{
 				// Go through the entire list. In most cases this is faster than setting up a blockmap iterator
-				for (auto &p : level.linePortals)
+				for (auto &p : Level->linePortals)
 				{
 					if (p.mType == PORTT_VISUAL) continue;
 					if (bb.inRange(p.mOrigin) && bb.BoxOnLineSide(p.mOrigin))
@@ -415,7 +415,7 @@ void AActor::UpdateRenderSectorList()
 			if (Top() + SPRITE_SPACE < planeh) break;
 			lasth = planeh;
 			DVector2 newpos = Pos() + sec->GetPortalDisplacement(sector_t::ceiling);
-			sec = P_PointInSector(newpos);
+			sec = sec->Level->PointInSector(newpos);
 			touching_sectorportallist = P_AddSecnode(sec, this, touching_sectorportallist, sec->sectorportal_thinglist);
 		}
 		sec = Sector;
@@ -427,7 +427,7 @@ void AActor::UpdateRenderSectorList()
 			if (Z() - SPRITE_SPACE > planeh) break;
 			lasth = planeh;
 			DVector2 newpos = Pos() + sec->GetPortalDisplacement(sector_t::floor);
-			sec = P_PointInSector(newpos);
+			sec = sec->Level->PointInSector(newpos);
 			touching_sectorportallist = P_AddSecnode(sec, this, touching_sectorportallist, sec->sectorportal_thinglist);
 		}
 	}
@@ -466,7 +466,7 @@ FBlockNode *FBlockNode::Create(AActor *who, int x, int y, int group)
 	{
 		block = (FBlockNode *)secnodearena.Alloc(sizeof(FBlockNode));
 	}
-	block->BlockIndex = x + y * level.blockmap.bmapwidth;
+	block->BlockIndex = x + y * who->Level->blockmap.bmapwidth;
 	block->Me = who;
 	block->NextActor = nullptr;
 	block->PrevActor = nullptr;

@@ -56,8 +56,7 @@ class DActiveButton : public DThinker
 {
 	DECLARE_CLASS (DActiveButton, DThinker)
 public:
-	DActiveButton ();
-	DActiveButton (side_t *, int, FSwitchDef *, const DVector2 &pos, bool flippable);
+	void Construct(side_t *, int, FSwitchDef *, const DVector2 &pos, bool flippable);
 
 	void Serialize(FSerializer &arc);
 	void Tick ();
@@ -86,7 +85,7 @@ protected:
 static bool P_StartButton (side_t *side, int Where, FSwitchDef *Switch, const DVector2 &pos, bool useagain)
 {
 	DActiveButton *button;
-	TThinkerIterator<DActiveButton> iterator;
+	auto iterator = side->GetLevel()->GetThinkerIterator<DActiveButton>();
 	
 	// See if button is already pressed
 	while ( (button = iterator.Next ()) )
@@ -98,7 +97,7 @@ static bool P_StartButton (side_t *side, int Where, FSwitchDef *Switch, const DV
 		}
 	}
 
-	Create<DActiveButton> (side, Where, Switch, pos, useagain);
+	side->GetLevel()->CreateThinker<DActiveButton> (side, Where, Switch, pos, useagain);
 	return true;
 }
 
@@ -154,7 +153,7 @@ bool P_CheckSwitchRange(AActor *user, line_t *line, int sideno, const DVector3 *
 		// if the polyobject lies directly on a sector boundary
 		check.X = dll.x + dll.dx * (inter + 0.01);
 		check.Y = dll.y + dll.dy * (inter + 0.01);
-		front = P_PointInSector(check);
+		front = line->GetLevel()->PointInSector(check);
 	}
 	else
 	{
@@ -303,7 +302,7 @@ bool P_ChangeSwitchTexture (side_t *side, int useAgain, uint8_t special, bool *q
 	}
 	if (playsound)
 	{
-		S_Sound (DVector3(pt, 0), CHAN_VOICE|CHAN_LISTENERZ, sound, 1, ATTN_STATIC);
+		S_Sound (side->GetLevel(), DVector3(pt, 0), CHAN_VOICE|CHAN_LISTENERZ, sound, 1, ATTN_STATIC);
 	}
 	if (quest != NULL)
 	{
@@ -320,20 +319,7 @@ bool P_ChangeSwitchTexture (side_t *side, int useAgain, uint8_t special, bool *q
 
 IMPLEMENT_CLASS(DActiveButton, false, false)
 
-DActiveButton::DActiveButton ()
-{
-	m_Side = NULL;
-	m_Part = -1;
-	m_SwitchDef = 0;
-	m_Timer = 0;
-	m_Pos = { 0,0 };
-	bFlippable = false;
-	bReturning = false;
-	m_Frame = 0;
-}
-
-DActiveButton::DActiveButton (side_t *side, int Where, FSwitchDef *Switch,
-							  const DVector2 &pos, bool useagain)
+void DActiveButton::Construct (side_t *side, int Where, FSwitchDef *Switch, const DVector2 &pos, bool useagain)
 {
 	m_Side = side;
 	m_Part = int8_t(Where);
@@ -412,7 +398,7 @@ void DActiveButton::Tick ()
 			if (def != NULL)
 			{
 				m_Frame = -1;
-				S_Sound (DVector3(m_Pos, 0), CHAN_VOICE|CHAN_LISTENERZ,
+				S_Sound (Level, DVector3(m_Pos, 0), CHAN_VOICE|CHAN_LISTENERZ,
 					def->Sound != 0 ? FSoundID(def->Sound) : FSoundID("switches/normbutn"),
 					1, ATTN_STATIC);
 				bFlippable = false;

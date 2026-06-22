@@ -110,7 +110,7 @@ void DPusher::Serialize(FSerializer &arc)
 //
 // Add a push thinker to the thinker list
 
-DPusher::DPusher (DPusher::EPusher type, line_t *l, int magnitude, int angle,
+void DPusher::Construct (DPusher::EPusher type, line_t *l, int magnitude, int angle,
 				  AActor *source, int affectee)
 {
 	m_Source = source;
@@ -133,7 +133,7 @@ DPusher::DPusher (DPusher::EPusher type, line_t *l, int magnitude, int angle,
 
 int DPusher::CheckForSectorMatch (EPusher type, int tag)
 {
-	if (m_Type == type && level.SectorHasTag(m_Affectee, tag))
+	if (m_Type == type && Level->SectorHasTag(m_Affectee, tag))
 		return m_Affectee;
 	else
 		return -1;
@@ -155,7 +155,7 @@ void DPusher::Tick ()
 	if (!var_pushers)
 		return;
 
-	sec = &level.sectors[m_Affectee];
+	sec = &Level->sectors[m_Affectee];
 
 	// Be sure the special sector type is still turned on. If so, proceed.
 	// Else, bail out; the sector type has been changed on us.
@@ -199,7 +199,7 @@ void DPusher::Tick ()
 			bool pusharound = ((thing->flags2 & MF2_WINDTHRUST) && !(thing->flags & MF_NOCLIP));
 					
 			// MBF allows any sentient or shootable thing to be affected, but players with a fly cheat aren't.
-			if (compatflags & COMPATF_MBFMONSTERMOVE)
+			if (Level->i_compatflags & COMPATF_MBFMONSTERMOVE)
 			{
 				pusharound = ((pusharound || (thing->IsSentient()) || (thing->flags & MF_SHOOTABLE)) // Add categories here
 					&& (!(thing->player && (thing->flags & (MF_NOGRAVITY))))); // Exclude flying players here
@@ -293,14 +293,14 @@ void DPusher::Tick ()
 }
 
 
-void AdjustPusher(int tag, int magnitude, int angle, bool wind)
+void FLevelLocals::AdjustPusher(int tag, int magnitude, int angle, bool wind)
 {
 	DPusher::EPusher type = wind ? DPusher::p_wind : DPusher::p_current;
 
 	// Find pushers already attached to the sector, and change their parameters.
 	TArray<FThinkerCollection> Collection;
 	{
-		TThinkerIterator<DPusher> iterator;
+		auto iterator = GetThinkerIterator<DPusher>();
 		FThinkerCollection collect;
 
 		while ((collect.Obj = iterator.Next()))
@@ -317,7 +317,7 @@ void AdjustPusher(int tag, int magnitude, int angle, bool wind)
 	int secnum;
 
 	// Now create pushers for any sectors that don't already have them.
-	auto itr = level.GetSectorTagIterator(tag);
+	auto itr = GetSectorTagIterator(tag);
 	while ((secnum = itr.Next()) >= 0)
 	{
 		unsigned int i;
@@ -328,7 +328,7 @@ void AdjustPusher(int tag, int magnitude, int angle, bool wind)
 		}
 		if (i == numcollected)
 		{
-			Create<DPusher>(type, nullptr, magnitude, angle, nullptr, secnum);
+			CreateThinker<DPusher>(type, nullptr, magnitude, angle, nullptr, secnum);
 		}
 	}
 }

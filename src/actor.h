@@ -91,8 +91,7 @@ struct FLevelLocals;
 //
 // Every actor is linked into a single sector
 // based on its origin coordinates.
-// The subsector_t is found with R_PointInSubsector(x,y),
-// and the sector_t can be found with subsector->sector.
+// The subsector_t is found with PointInSector(x,y).
 // The sector links are only used by the rendering code,
 // the play simulation does not care about them at all.
 //
@@ -1424,8 +1423,7 @@ public:
 	int ApplyDamageFactor(FName damagetype, int damage) const;
 	int GetModifiedDamage(FName damagetype, int damage, bool passive);
 	void DeleteAttachedLights();
-	static void DeleteAllAttachedLights();
-	static void RecreateAllAttachedLights();
+	bool isFrozen();
 
 	bool				hasmodel;
 };

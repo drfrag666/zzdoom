@@ -560,7 +560,7 @@ void FParser::SF_Include(void)
 		else
 			mysnprintf(tempstr, countof(tempstr), "%i", (int)t_argv[0].value.i);
 		
-		Script->ParseInclude(tempstr);
+		Script->ParseInclude(Level, tempstr);
 	}
 }
 
@@ -608,7 +608,7 @@ void FParser::SF_Clock(void)
 
 void FParser::SF_ExitLevel(void)
 {
-	G_ExitLevel(0, false);
+	Level->ExitLevel(0, false);
 }
 
 //==========================================================================
@@ -839,7 +839,7 @@ void FParser::SF_Spawn(void)
 			// [Graf Zahl] added option of spawning with a relative z coordinate
 			if(t_argc > 5)
 			{
-				if (intvalue(t_argv[5])) pos.Z += P_PointInSector(pos)->floorplane.ZatPoint(pos);
+				if (intvalue(t_argv[5])) pos.Z += Level->PointInSector(pos)->floorplane.ZatPoint(pos);
 			}
 		}
 		else
@@ -1040,7 +1040,7 @@ void FParser::SF_Teleport(void)
 		}
 		
 		if(mo)
-			EV_Teleport(0, tag, NULL, 0, mo, TELF_DESTFOG | TELF_SOURCEFOG);
+			Level->EV_Teleport(0, tag, NULL, 0, mo, TELF_DESTFOG | TELF_SOURCEFOG);
 	}
 }
 
@@ -1069,7 +1069,7 @@ void FParser::SF_SilentTeleport(void)
 		}
 		
 		if(mo)
-			EV_Teleport(0, tag, NULL, 0, mo, TELF_KEEPORIENTATION);
+			Level->EV_Teleport(0, tag, NULL, 0, mo, TELF_KEEPORIENTATION);
 	}
 }
 
@@ -1741,11 +1741,9 @@ class DLightLevel : public DLighting
 	unsigned char destlevel;
 	unsigned char speed;
 
-	DLightLevel() = default;
-
 public:
 
-	DLightLevel(sector_t * s,int destlevel,int speed);
+	void Construct(sector_t * s,int destlevel,int speed);
 	void	Serialize(FSerializer &arc);
 	void		Tick ();
 	void		OnDestroy() { Super::OnDestroy(); m_Sector->lightingdata = nullptr; }
@@ -1806,8 +1804,9 @@ void DLightLevel::Tick()
 //==========================================================================
 //
 //==========================================================================
-DLightLevel::DLightLevel(sector_t * s,int _destlevel,int _speed) : DLighting(s)
+void DLightLevel::Construct(sector_t * s,int _destlevel,int _speed)
 {
+	Super::Construct(s);
 	destlevel=_destlevel;
 	speed=_speed;
 	s->lightingdata=this;
@@ -1835,7 +1834,7 @@ void FParser::SF_FadeLight(void)
 		auto it = Level->GetSectorTagIterator(sectag);
 		while ((i = it.Next()) >= 0)
 		{
-			if (!Level->sectors[i].lightingdata) Create<DLightLevel>(&Level->sectors[i],destlevel,speed);
+			if (!Level->sectors[i].lightingdata) Level->CreateThinker<DLightLevel>(&Level->sectors[i],destlevel,speed);
 		}
 	}
 }
@@ -2826,7 +2825,7 @@ void FParser::SF_AmbientSound(void)
 
 void FParser::SF_ExitSecret(void)
 {
-	G_SecretExitLevel(0);
+	Level->SecretExitLevel(0);
 }
 
 
@@ -2901,7 +2900,7 @@ void FParser::SF_SpawnExplosion()
 		if(t_argc > 3)
 			pos.Z = floatvalue(t_argv[3]);
 		else
-			pos.Z = P_PointInSector(pos)->floorplane.ZatPoint(pos);
+			pos.Z = Level->PointInSector(pos)->floorplane.ZatPoint(pos);
 		
 		spawn = Spawn (pclass, pos, ALLOW_REPLACE);
 		t_return.type = svt_int;

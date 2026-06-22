@@ -160,12 +160,6 @@ namespace swrenderer
 
 		this->dontmaplines = dontmaplines;
 
-		// [RH] Setup particles for this frame
-		P_FindParticleSubsectors();
-
-		// Link the polyobjects right before drawing the scene to reduce the amounts of calls to this function
-		PO_LinkToSubsectors(&level);
-
 		R_UpdateFuzzPosFrameStart();
 
 		if (r_modelscene)
@@ -190,7 +184,6 @@ namespace swrenderer
 		RenderPSprites();
 
 		MainThread()->Viewport->viewpoint.camera->renderflags = savedflags;
-		interpolator.RestoreInterpolations();
 
 		// If we don't want shadered colormaps, NULL it now so that the
 		// copy to the screen does not use a special colormap shader.
