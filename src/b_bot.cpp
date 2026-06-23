@@ -40,7 +40,7 @@
 #include "c_cvars.h"
 #include "c_dispatch.h"
 #include "b_bot.h"
-#include "doomstat.h"
+#include "g_game.h"
 #include "p_local.h"
 #include "cmdlib.h"
 #include "teaminfo.h"
@@ -144,9 +144,9 @@ void DBot::Tick ()
 	}
 
 	BotThinkCycles.Clock();
-	bglobal.m_Thinking = true;
+	Level->BotInfo.m_Thinking = true;
 	Think ();
-	bglobal.m_Thinking = false;
+	Level->BotInfo.m_Thinking = false;
 	BotThinkCycles.Unclock();
 }
 
@@ -174,9 +174,9 @@ CCMD (addbot)
 	}
 
 	if (argv.argc() > 1)
-		bglobal.SpawnBot (argv[1]);
+		currentUILevel->BotInfo.SpawnBot (argv[1]);
 	else
-		bglobal.SpawnBot (nullptr);
+		currentUILevel->BotInfo.SpawnBot (nullptr);
 }
 
 void FCajunMaster::ClearPlayer (int i, bool keepTeam)
@@ -233,7 +233,7 @@ CCMD (freeze)
 
 CCMD (listbots)
 {
-	botinfo_t *thebot = bglobal.botinfo;
+	botinfo_t *thebot = currentUILevel->BotInfo.botinfo;
 	int count = 0;
 
 	while (thebot)

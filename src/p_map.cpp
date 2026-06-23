@@ -2333,7 +2333,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 		if (thing->player && thing->player->Bot != NULL && thing->flags & MF_SHOOTABLE)
 		{
 			if (tm.sector != thing->Sector
-				&& bglobal.IsDangerous(tm.sector))
+				&& thing->Level->BotInfo.IsDangerous(tm.sector))
 			{
 				thing->player->Bot->prev = thing->player->Bot->dest;
 				thing->player->Bot->dest = nullptr;
@@ -6274,7 +6274,7 @@ int P_PushUp(AActor *thing, FChangePosition *cpos)
 		if (cpos->instant)
 		{
 			intersect->Prev.Z += intersect->Z() - oldz;
-			if (intersect->CheckLocalView(consoleplayer)) R_ResetViewInterpolation();
+			if (intersect->CheckLocalView()) R_ResetViewInterpolation();
 		}
 
 		intersect->UpdateRenderSectorList();
@@ -6371,7 +6371,7 @@ void PIT_FloorDrop(AActor *thing, FChangePosition *cpos)
 			if (cpos->instant)
 			{
 				thing->Prev.Z += thing->floorz - oldz;
-				if (thing->CheckLocalView(consoleplayer)) R_ResetViewInterpolation();
+				if (thing->CheckLocalView()) R_ResetViewInterpolation();
 			}
 			thing->SetZ(thing->floorz);
 			P_CheckFakeFloorTriggers(thing, oldz);
@@ -6385,7 +6385,7 @@ void PIT_FloorDrop(AActor *thing, FChangePosition *cpos)
 			if (cpos->instant)
 			{
 				thing->Prev.Z += -oldfloorz + thing->floorz;
-				if (thing->CheckLocalView(consoleplayer)) R_ResetViewInterpolation();
+				if (thing->CheckLocalView()) R_ResetViewInterpolation();
 			}
 			thing->AddZ(-oldfloorz + thing->floorz);
 			P_CheckFakeFloorTriggers(thing, oldz);
@@ -6425,7 +6425,7 @@ void PIT_FloorRaise(AActor *thing, FChangePosition *cpos)
 		if (cpos->instant)
 		{
 			thing->Prev.Z += thing->floorz - thing->Z();
-			if (thing->CheckLocalView(consoleplayer)) R_ResetViewInterpolation();
+			if (thing->CheckLocalView()) R_ResetViewInterpolation();
 		}
 
 		thing->SetZ(thing->floorz);
@@ -6439,7 +6439,7 @@ void PIT_FloorRaise(AActor *thing, FChangePosition *cpos)
 			if (cpos->instant)
 			{
 				thing->Prev.Z += -oldfloorz + thing->floorz;
-				if (thing->CheckLocalView(consoleplayer)) R_ResetViewInterpolation();
+				if (thing->CheckLocalView()) R_ResetViewInterpolation();
 			}
 		}
 		else return;

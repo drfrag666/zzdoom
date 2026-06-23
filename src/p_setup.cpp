@@ -85,6 +85,7 @@
 #include "maploader/maploader.h"
 #include "p_acs.h"
 #include "am_map.h"
+#include "i_system.h"
 #include "fragglescript/t_script.h"
 
 extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
@@ -242,6 +243,7 @@ void FLevelLocals::ClearPortals()
 
 void FLevelLocals::ClearLevelData()
 {
+	Thinkers.DestroyAllThinkers();
 	ClearAllSubsectorLinks(); // can't be done as part of the polyobj deletion process.
 
 	total_monsters = total_items = total_secrets =
@@ -322,6 +324,7 @@ void FLevelLocals::ClearLevelData()
 	memset(playerstarts, 0, sizeof(playerstarts));
 	Scrolls.Clear();
 	if (automap) automap->Destroy();
+	Behaviors.UnloadModules();
 }
 
 //==========================================================================
@@ -338,7 +341,6 @@ void P_FreeLevelData ()
 	R_FreePastViewers();
 
 	Renderer->CleanLevelData();
-	DThinker::DestroyAllThinkers ();
 
 	level.ClearLevelData();
 }
@@ -367,13 +369,13 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 		Level->SetMusicVolume(Level->MusicVolume);
 		for (i = 0; i < MAXPLAYERS; ++i)
 		{
-			players[i].killcount = players[i].secretcount
-				= players[i].itemcount = 0;
+			Level->Players[i]->killcount = Level->Players[i]->secretcount
+				= Level->Players[i]->itemcount = 0;
 		}
 	}
 	for (i = 0; i < MAXPLAYERS; ++i)
 	{
-		players[i].mo = nullptr;
+		Level->Players[i]->mo = nullptr;
 	}
 	// [RH] Clear any scripted translation colors the previous level may have set.
 	for (i = 0; i < int(translationtables[TRANSLATION_LevelScripted].Size()); ++i)
@@ -428,9 +430,9 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 	{
 		for (i = 0; i < MAXPLAYERS; i++)
 		{
-			if (playeringame[i])
+			if (Level->PlayerInGame(i))
 			{
-				players[i].mo = nullptr;
+				Level->Players[i]->mo = nullptr;
 				Level->DeathMatchSpawnPlayer(i);
 			}
 		}
@@ -440,9 +442,9 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 	{
 		for (i = 0; i < MAXPLAYERS; ++i)
 		{
-			if (playeringame[i])
+			if (Level->PlayerInGame(i))
 			{
-				players[i].mo = nullptr;
+				Level->Players[i]->mo = nullptr;
 				FPlayerStart *mthing = Level->PickPlayerStart(i);
 				Level->SpawnPlayer(mthing, i, (Level->flags2 & LEVEL2_PRERAISEWEAPON) ? SPF_WEAPONFULLYUP : 0);
 			}
@@ -455,11 +457,12 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 	{
 		for (i = 0; i < MAXPLAYERS; ++i)
 		{
-			if (playeringame[i] && players[i].mo != nullptr)
+			auto p = Level->Players[i];
+			if (Level->PlayerInGame(i) && p->mo != nullptr)
 			{
-				if (!(players[i].mo->flags & MF_FRIENDLY))
+				if (!(p->mo->flags & MF_FRIENDLY))
 				{
-					AActor * oldSpawn = players[i].mo;
+					AActor * oldSpawn = p->mo;
 					Level->DeathMatchSpawnPlayer(i);
 					oldSpawn->Destroy();
 				}
@@ -561,8 +564,8 @@ void P_Init ()
 }
 
 static void P_Shutdown ()
-{	
-	DThinker::DestroyThinkersInList(STAT_STATIC);	
+{
+	level.Thinkers.DestroyThinkersInList(STAT_STATIC);
 	P_FreeLevelData ();
 	// [ZZ] delete global event handlers
 	E_Shutdown(false);

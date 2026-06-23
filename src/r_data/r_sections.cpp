@@ -23,7 +23,7 @@
 
 
 #include <future>
-#include "i_system.h"
+
 #include "p_local.h"
 #include "c_dispatch.h"
 #include "r_defs.h"
@@ -874,13 +874,4 @@ void CreateSections(FLevelLocals *Level)
 	creat.ConstructOutput(Level->sections);
 	creat.FixMissingReferences();
 }
-
-CCMD(printsections)
-{
-	for (auto Level : AllLevels())
-	{
-		PrintSections(Level);
-	}
-}
-
 

@@ -43,6 +43,7 @@
 #include <stdio.h>
 
 #include "i_system.h"
+#include "c_cvars.h"
 #include "x86.h"
 #include "i_video.h"
 #include "r_state.h"
@@ -70,6 +71,7 @@
 #include "v_palette.h"
 #include "r_utility.h"
 #include "r_renderer.h"
+#include "g_game.h"
 #include "menu/menu.h"
 #include "vm.h"
 #include "r_videoscale.h"

@@ -67,11 +67,12 @@
 #include "i_input.h"
 #include "w_wad.h"
 #include "cmdlib.h"
-#include "doomstat.h"
+#include "g_game.h"
 #include "r_utility.h"
 #include "g_levellocals.h"
 #include "s_sound.h"
 #include "vm.h"
+#include "i_system.h"
 
 #include "stats.h"
 #include "st_start.h"

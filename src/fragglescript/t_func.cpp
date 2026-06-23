@@ -50,6 +50,7 @@
 #include "actorinlines.h"
 #include "scriptutil.h"
 #include "vm.h"
+#include "a_lights.h"
 
 static FRandom pr_script("FScript");
 
@@ -278,7 +279,7 @@ int FParser::T_GetPlayerNum(const svalue_t &arg)
 	{
 		return -1;
 	}
-	if(!playeringame[playernum]) // no error, just return -1
+	if(!Level->PlayerInGame(playernum)) // no error, just return -1
 	{
 		return -1;
 	}
@@ -288,7 +289,7 @@ int FParser::T_GetPlayerNum(const svalue_t &arg)
 AActor *FParser::T_GetPlayerActor(const svalue_t &arg)
 {
 	int num = T_GetPlayerNum(arg);
-	return num == -1 ? nullptr : players[num].mo;
+	return num == -1 ? nullptr : Level->Players[num]->mo;
 }
 
 PClassActor *T_ClassType(const svalue_t &arg)
@@ -620,7 +621,7 @@ void FParser::SF_ExitLevel(void)
 void FParser::SF_Tip(void)
 {
 	if (t_argc>0 && Script->trigger &&
-		Script->trigger->CheckLocalView(consoleplayer)) 
+		Script->trigger->CheckLocalView()) 
 	{
 		C_MidPrint(SmallFont, GetFormatString(0).GetChars());
 	}
@@ -659,7 +660,7 @@ void FParser::SF_PlayerTip(void)
 	if (CheckArgs(1))
 	{
 		int plnum = T_GetPlayerNum(t_argv[0]);
-		if (plnum!=-1 && players[plnum].mo->CheckLocalView(consoleplayer)) 
+		if (plnum!=-1 && Level->Players[plnum]->mo->CheckLocalView())
 		{
 			C_MidPrint(SmallFont, GetFormatString(1).GetChars());
 		}
@@ -675,7 +676,7 @@ void FParser::SF_PlayerTip(void)
 void FParser::SF_Message(void)
 {
 	if (t_argc>0 && Script->trigger &&
-		Script->trigger->CheckLocalView(consoleplayer))
+		Script->trigger->CheckLocalView())
 	{
 		Printf(PRINT_HIGH, "%s\n", GetFormatString(0).GetChars());
 	}
@@ -692,7 +693,7 @@ void FParser::SF_PlayerMsg(void)
 	if (CheckArgs(1))
 	{
 		int plnum = T_GetPlayerNum(t_argv[0]);
-		if (plnum!=-1 && players[plnum].mo->CheckLocalView(consoleplayer)) 
+		if (plnum!=-1 && Level->Players[plnum]->mo->CheckLocalView())
 		{
 			Printf(PRINT_HIGH, "%s\n", GetFormatString(1).GetChars());
 		}
@@ -714,7 +715,7 @@ void FParser::SF_PlayerInGame(void)
 		if (plnum!=-1)
 		{
 			t_return.type = svt_int;
-			t_return.value.i = playeringame[plnum];
+			t_return.value.i = Level->PlayerInGame(plnum);
 		}
 	}
 }
@@ -742,7 +743,7 @@ void FParser::SF_PlayerName(void)
 	if(plnum !=-1)
 	{
 		t_return.type = svt_string;
-		t_return.string = players[plnum].userinfo.GetName();
+		t_return.string = Level->Players[plnum]->userinfo.GetName();
 	}
 	else
 	{
@@ -773,7 +774,7 @@ void FParser::SF_PlayerObj(void)
 	if(plnum !=-1)
 	{
 		t_return.type = svt_mobj;
-		t_return.value.mobj = players[plnum].mo;
+		t_return.value.mobj = Level->Players[plnum]->mo;
 	}
 	else
 	{
@@ -1402,8 +1403,8 @@ void FParser::SF_SetCamera(void)
 	
 	if (CheckArgs(1))
 	{
-		player=Script->trigger->player;
-		if (!player) player=&players[0];
+		player = Script->trigger->player;
+		if (!player) player = Level->Players[0];
 		
 		newcamera = actorvalue(t_argv[0]);
 		if(!newcamera)
@@ -1435,8 +1436,8 @@ void FParser::SF_SetCamera(void)
 void FParser::SF_ClearCamera(void)
 {
 	player_t * player;
-	player=Script->trigger->player;
-	if (!player) player=&players[0];
+	player = Script->trigger->player;
+	if (!player) player = Level->Players[0];
 
 	AActor * cam=player->camera;
 	if (cam)
@@ -2419,13 +2420,13 @@ void FParser::SF_PlayerKeys(void)
 		if(t_argc == 2)
 		{
 			t_return.type = svt_int;
-			t_return.value.i = CheckInventory(players[playernum].mo, keyname);
+			t_return.value.i = CheckInventory(Level->Players[playernum]->mo, keyname);
 			return;
 		}
 		else
 		{
 			givetake = intvalue(t_argv[2]);
-			ScriptUtil::Exec(givetake?NAME_GiveInventory : NAME_TakeInventory, players[playernum].mo, keyname.GetIndex(), 1);
+			ScriptUtil::Exec(givetake?NAME_GiveInventory : NAME_TakeInventory, ScriptUtil::Pointer, Level->Players[playernum]->mo, ScriptUtil::Int, keyname.GetIndex(), ScriptUtil::Int, 1, ScriptUtil::End);
 			t_return.type = svt_int;
 			t_return.value.i = 0;
 		}
@@ -2504,14 +2505,14 @@ void FParser::SF_PlayerWeapon()
 		
 		if (t_argc == 2)
 		{
-			AActor * wp = players[playernum].mo->FindInventory(ti);
+			AActor * wp = Level->Players[playernum]->mo->FindInventory(ti);
 			t_return.type = svt_int;
 			t_return.value.i = wp!=NULL;
 			return;
 		}
 		else
 		{
-			AActor * wp = players[playernum].mo->FindInventory(ti);
+			AActor * wp = Level->Players[playernum]->mo->FindInventory(ti);
 
 			newweapon = !!intvalue(t_argv[2]);
 			if (!newweapon)
@@ -2520,14 +2521,14 @@ void FParser::SF_PlayerWeapon()
 				{
 					wp->Destroy();
 					// If the weapon is active pick a replacement. Legacy didn't do this!
-					if (players[playernum].PendingWeapon==wp) players[playernum].PendingWeapon=WP_NOCHANGE;
-					if (players[playernum].ReadyWeapon==wp) 
+					if (Level->Players[playernum]->PendingWeapon==wp) Level->Players[playernum]->PendingWeapon=WP_NOCHANGE;
+					if (Level->Players[playernum]->ReadyWeapon==wp)
 					{
-						players[playernum].ReadyWeapon=nullptr;
+						Level->Players[playernum]->ReadyWeapon=nullptr;
 						
 						IFVM(PlayerPawn, PickNewWeapon)
 						{
-							VMValue param[] = { players[playernum].mo, (void*)nullptr };
+							VMValue param[] = { Level->Players[playernum]->mo, (void*)nullptr };
 							VMCall(func, param, 2, nullptr, 0);
 						}
 					}
@@ -2537,9 +2538,9 @@ void FParser::SF_PlayerWeapon()
 			{
 				if (!wp) 
 				{
-					auto pw=players[playernum].PendingWeapon;
-					players[playernum].mo->GiveInventoryType(ti);
-					players[playernum].PendingWeapon=pw;
+					auto pw=Level->Players[playernum]->PendingWeapon;
+					Level->Players[playernum]->mo->GiveInventoryType(ti);
+					Level->Players[playernum]->PendingWeapon=pw;
 				}
 			}
 			
@@ -2588,13 +2589,13 @@ void FParser::SF_PlayerSelectedWeapon()
 				return;
 			}
 
-			players[playernum].PendingWeapon = players[playernum].mo->FindInventory(ti);
+			Level->Players[playernum]->PendingWeapon = Level->Players[playernum]->mo->FindInventory(ti);
 
 		} 
 		t_return.type = svt_int;
 		for(int i=0;i<9;i++)
 		{
-			if (players[playernum].ReadyWeapon->GetClass ()->TypeName == FName(WeaponNames[i]))
+			if (Level->Players[playernum]->ReadyWeapon->GetClass ()->TypeName == FName(WeaponNames[i]))
 			{
 				t_return.value.i=i;
 				break;
@@ -2620,7 +2621,7 @@ void FParser::SF_GiveInventory(void)
 
 		if(t_argc == 2) count=1;
 		else count=intvalue(t_argv[2]);
-		ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, players[playernum].mo, FName(stringvalue(t_argv[1])).GetIndex(), count);
+		ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, Level->Players[playernum]->mo, ScriptUtil::Int, FName(stringvalue(t_argv[1])).GetIndex(), ScriptUtil::Int, count, ScriptUtil::End);
 		t_return.type = svt_int;
 		t_return.value.i = 0;
 	}
@@ -2643,7 +2644,7 @@ void FParser::SF_TakeInventory(void)
 
 		if(t_argc == 2) count=32767;
 		else count=intvalue(t_argv[2]);
-		ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, players[playernum].mo, FName(stringvalue(t_argv[1])).GetIndex(), count);
+		ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, Level->Players[playernum]->mo, ScriptUtil::Int, FName(stringvalue(t_argv[1])).GetIndex(), ScriptUtil::Int, count, ScriptUtil::End);
 		t_return.type = svt_int;
 		t_return.value.i = 0;
 	}
@@ -2668,7 +2669,7 @@ void FParser::SF_CheckInventory(void)
 			return;
 		}
 		t_return.type = svt_int;
-		t_return.value.i = CheckInventory(players[playernum].mo, stringvalue(t_argv[1]));
+		t_return.value.i = CheckInventory(Level->Players[playernum]->mo, stringvalue(t_argv[1]));
 	}
 }
 
@@ -3221,10 +3222,10 @@ void FParser::SF_PlayerAddFrag()
 		{
 			playernum1 = T_GetPlayerNum(t_argv[0]);
 
-			players[playernum1].fragcount++;
+			Level->Players[playernum1]->fragcount++;
 
 			t_return.type = svt_int;
-			t_return.value.f = players[playernum1].fragcount;
+			t_return.value.f = Level->Players[playernum1]->fragcount;
 		}
 
 		else
@@ -3232,10 +3233,10 @@ void FParser::SF_PlayerAddFrag()
 			playernum1 = T_GetPlayerNum(t_argv[0]);
 			playernum2 = T_GetPlayerNum(t_argv[1]);
 
-			players[playernum1].frags[playernum2]++;
+			Level->Players[playernum1]->frags[playernum2]++;
 
 			t_return.type = svt_int;
-			t_return.value.f = players[playernum1].frags[playernum2];
+			t_return.value.f = Level->Players[playernum1]->frags[playernum2];
 		}
 	}
 }

@@ -62,7 +62,8 @@
 #include "vm.h"
 #include "i_time.h"
 #include "actorinlines.h"
-
+#include "g_game.h"
+#include "i_system.h"
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 

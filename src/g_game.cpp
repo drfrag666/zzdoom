@@ -73,6 +73,7 @@
 #include "dobjgc.h"
 #include "gi.h"
 #include "a_dynlight.h"
+#include "i_system.h"
 
 #include "g_hub.h"
 #include "g_levellocals.h"
@@ -218,6 +219,8 @@ FString BackupSaveName;
 bool SendLand;
 const AActor *SendItemUse, *SendItemDrop;
 int SendItemDropAmount;
+
+extern uint8_t globalfreeze;
 
 EXTERN_CVAR (Int, team)
 
@@ -1111,7 +1114,7 @@ void G_Ticker ()
 	uint32_t rngsum = FRandom::StaticSumSeeds ();
 
 	//Added by MC: For some of that bot stuff. The main bot function.
-	bglobal.Main (&level);
+	level.BotInfo.Main (&level);
 
 	for (i = 0; i < MAXPLAYERS; i++)
 	{
@@ -1894,7 +1897,7 @@ void G_DoLoadGame ()
 	// Read intermission data for hubs
 	G_SerializeHub(arc);
 
-	bglobal.RemoveAllBots(&level, true);
+	level.BotInfo.RemoveAllBots(&level, true);
 
 	FString cvar;
 	arc("importantcvars", cvar);
@@ -1907,7 +1910,8 @@ void G_DoLoadGame ()
 	uint32_t time[2] = { 1,0 };
 
 	arc("ticrate", time[0])
-		("leveltime", time[1]);
+		("leveltime", time[1])
+		("globalfreeze", globalfreeze);
 	// dearchive all the modifications
 	level.time = Scale(time[1], TICRATE, time[0]);
 
@@ -2887,7 +2891,7 @@ DEFINE_GLOBAL(multiplayer)
 DEFINE_GLOBAL(gameaction)
 DEFINE_GLOBAL(gamestate)
 DEFINE_GLOBAL(skyflatnum)
-DEFINE_GLOBAL_NAMED(bglobal.freeze, globalfreeze)
+DEFINE_GLOBAL(globalfreeze)
 DEFINE_GLOBAL(gametic)
 DEFINE_GLOBAL(demoplayback)
 DEFINE_GLOBAL(automapactive);

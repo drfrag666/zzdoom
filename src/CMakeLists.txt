@@ -839,7 +839,9 @@ set (PCH_SOURCES
 	f_wipe.cpp
 	files.cpp
 	files_decompress.cpp
+	g_cvars.cpp
 	g_doomedmap.cpp
+	g_dumpinfo.cpp
 	g_game.cpp
 	g_hub.cpp
 	g_level.cpp
@@ -875,27 +877,19 @@ set (PCH_SOURCES
 	p_3dmidtex.cpp
 	p_acs.cpp
 	p_actionfunctions.cpp
-	p_ceiling.cpp
 	p_conversation.cpp
 	p_destructible.cpp
-	p_doors.cpp
 	p_effect.cpp
 	p_enemy.cpp
-	p_floor.cpp
 	p_interaction.cpp
-	p_lights.cpp
 	p_linkedsectors.cpp
 	p_lnspec.cpp
 	p_map.cpp
 	p_maputl.cpp
 	p_mobj.cpp
 	p_openmap.cpp
-	p_pillar.cpp
-	p_plats.cpp
 	p_pspr.cpp
-	p_pusher.cpp
 	p_saveg.cpp
-	p_scroll.cpp
 	p_secnodes.cpp
 	p_sectors.cpp
 	p_setup.cpp
@@ -948,14 +942,23 @@ set (PCH_SOURCES
 	g_inventory/a_weapons.cpp
 	g_shared/a_action.cpp
 	g_shared/a_decals.cpp
+	g_shared/a_doors.cpp
 	g_shared/a_dynlight.cpp
 	g_shared/a_flashfader.cpp
 	g_shared/a_lightning.cpp
 	g_shared/a_morph.cpp
 	g_shared/a_quake.cpp
 	g_shared/a_specialspot.cpp
-	g_shared/hudmessages.cpp
-	g_shared/shared_hud.cpp
+	g_shared/a_ceiling.cpp
+	g_shared/a_floor.cpp
+	g_shared/a_lights.cpp
+	g_shared/a_lighttransfer.cpp
+	g_shared/a_pillar.cpp
+	g_shared/a_plats.cpp
+	g_shared/a_pusher.cpp
+	g_shared/a_scroll.cpp
+	g_statusbar/hudmessages.cpp
+	g_statusbar/shared_hud.cpp
 	g_statusbar/sbarinfo.cpp
 	g_statusbar/sbar_mugshot.cpp
 	g_statusbar/shared_sbar.cpp

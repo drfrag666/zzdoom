@@ -47,7 +47,9 @@
 #include "p_tags.h"
 #include "p_spec.h"
 #include "actor.h"
+#include "b_bot.h"
 #include "p_effect.h"
+#include "d_player.h"
 #include "p_destructible.h"
 #include "r_data/r_sections.h"
 #include "r_data/r_interpolate.h"
@@ -101,7 +103,15 @@ struct FLevelLocals
 {
 	void *level;
 	void *Level;	// bug catchers.
-	FLevelLocals() : Behaviors(this), tagManager(this) {}
+	FLevelLocals() : Behaviors(this), tagManager(this)
+	{
+		// Make sure that these point to the right data all the time.
+		// This will be needed for as long as it takes to completely separate global UI state from per-level play state.
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			Players[i] = &players[i];
+		}
+	}
 
 	friend class MapLoader;
 
@@ -258,12 +268,12 @@ public:
 	}
 	template<class T> TThinkerIterator<T> GetThinkerIterator(FName subtype = NAME_None, int statnum = MAX_STATNUM+1)
 	{
-		if (subtype == NAME_None) return TThinkerIterator<T>(statnum);
-		else return TThinkerIterator<T>(subtype, statnum);
+		if (subtype == NAME_None) return TThinkerIterator<T>(this, statnum);
+		else return TThinkerIterator<T>(this, subtype, statnum);
 	}
 	template<class T> TThinkerIterator<T> GetThinkerIterator(FName subtype, int statnum, AActor *prev)
 	{
-		return TThinkerIterator<T>(subtype, statnum, prev);
+		return TThinkerIterator<T>(this, subtype, statnum, prev);
 	}
 	FActorIterator GetActorIterator(int tid)
 	{
@@ -382,7 +392,7 @@ public:
 		DThinker *thinker = static_cast<DThinker*>(cls->CreateNew());
 		assert(thinker->IsKindOf(RUNTIME_CLASS(DThinker)));
 		thinker->ObjectFlags |= OF_JustSpawned;
-		DThinker::FreshThinkers[statnum].AddTail(thinker);
+		Thinkers.Link(thinker, statnum);
 		thinker->Level = this;
 		return thinker;
 	}
@@ -451,6 +461,7 @@ public:
 	TArray<FStrifeDialogueNode *> StrifeDialogues;
 	FDialogueIDMap DialogueRoots;
 	FDialogueMap ClassRoots;
+	FCajunMaster BotInfo;
 
 	int ii_compatflags = 0;
 	int ii_compatflags2 = 0;
@@ -489,6 +500,42 @@ public:
 	TObjPtr<AActor*> bodyque[BODYQUESIZE];
 	TObjPtr<DAutomapBase*> automap = nullptr;
 	int bodyqueslot;
+	
+	// For now this merely points to the global player array, but with this in place, access to this array can be moved over to the level.
+	// As things progress each level needs to be able to point to different players,
+	// but even then the level will not own the player - the player merely links to the level.
+	// This should also be made a real object eventually.
+	player_t *Players[MAXPLAYERS];
+	
+	// This is to allow refactoring without refactoring the data right away.
+	bool PlayerInGame(int pnum)
+	{
+		return playeringame[pnum];
+	}
+	
+	// This needs to be done better, but for now it should be good enough.
+	bool PlayerInGame(player_t *player)
+	{
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (player == Players[i]) return PlayerInGame(i);
+		}
+		return false;
+	}
+
+	int PlayerNum(player_t *player)
+	{
+		for (int i = 0; i < MAXPLAYERS; i++)
+		{
+			if (player == Players[i]) return i;
+		}
+		return -1;
+	}
+	
+	bool isPrimaryLevel() const
+	{
+		return true;
+	}
 
 	uint32_t		flags;
 	uint32_t		flags2;
@@ -536,6 +583,7 @@ public:
 	uint32_t			InactiveParticles;
 	TArray<particle_t>	Particles;
 	TArray<uint16_t>	ParticlesInSubsec;
+	FThinkerCollection Thinkers;
 
 	TArray<DVector2>	Scrolls;		// NULL if no DScrollers in this level
 

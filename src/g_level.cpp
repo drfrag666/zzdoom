@@ -46,7 +46,7 @@
 #include "w_wad.h"
 #include "am_map.h"
 #include "c_dispatch.h"
-#include "i_system.h"
+
 #include "p_setup.h"
 #include "p_local.h"
 #include "r_sky.h"
@@ -318,7 +318,7 @@ void G_NewInit ()
 	int i;
 
 	// Destory all old player refrences that may still exist
-	TThinkerIterator<AActor> it(NAME_PlayerPawn, STAT_TRAVELLING);
+	TThinkerIterator<AActor> it(&level, NAME_PlayerPawn, STAT_TRAVELLING);
 	AActor *pawn, *next;
 
 	next = it.Next();
@@ -431,7 +431,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	UnlatchCVars ();
 	G_VerifySkill();
 	UnlatchCVars ();
-	DThinker::DestroyThinkersInList(STAT_STATIC);
+	level.Thinkers.DestroyThinkersInList(STAT_STATIC);
 
 	if (paused)
 	{
@@ -498,7 +498,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	//Added by MC: Initialize bots.
 	if (!deathmatch)
 	{
-		bglobal.Init ();
+		level.BotInfo.Init ();
 	}
 
 	if (bTitleLevel)
@@ -616,7 +616,7 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int flags, i
 	}
 	changeflags = flags;
 
-	bglobal.End();	//Added by MC:
+	BotInfo.End();	//Added by MC:
 
 	// [RH] Give scripts a chance to do something
 	unloading = true;
@@ -798,12 +798,12 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 
 	for (i=0 ; i<MAXPLAYERS ; i++)
 	{
-		wminfo.plyr[i].skills = players[i].killcount;
-		wminfo.plyr[i].sitems = players[i].itemcount;
-		wminfo.plyr[i].ssecret = players[i].secretcount;
+		wminfo.plyr[i].skills = Players[i]->killcount;
+		wminfo.plyr[i].sitems = Players[i]->itemcount;
+		wminfo.plyr[i].ssecret = Players[i]->secretcount;
 		wminfo.plyr[i].stime = time;
-		memcpy (wminfo.plyr[i].frags, players[i].frags, sizeof(wminfo.plyr[i].frags));
-		wminfo.plyr[i].fragcount = players[i].fragcount;
+		memcpy (wminfo.plyr[i].frags, Players[i]->frags, sizeof(wminfo.plyr[i].frags));
+		wminfo.plyr[i].fragcount = Players[i]->fragcount;
 	}
 
 	// [RH] If we're in a hub and staying within that hub, take a snapshot.
@@ -998,11 +998,11 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 	for (i = 0; i < MAXPLAYERS; i++)
 	{ 
-		if (playeringame[i] && (deathmatch || players[i].playerstate == PST_DEAD))
-			players[i].playerstate = PST_ENTER;	// [BC]
-		memset (players[i].frags,0,sizeof(players[i].frags));
+		if (PlayerInGame(i) && (deathmatch || Players[i]->playerstate == PST_DEAD))
+			Players[i]->playerstate = PST_ENTER;	// [BC]
+		memset (Players[i]->frags,0,sizeof(Players[i]->frags));
 		if (!(dmflags2 & DF2_YES_KEEPFRAGS) && (alwaysapplydmflags || deathmatch))
-			players[i].fragcount = 0;
+			Players[i]->fragcount = 0;
 	}
 
 	if (changeflags & CHANGELEVEL_NOMONSTERS)
@@ -1033,7 +1033,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	//Added by MC: Initialize bots.
 	if (deathmatch)
 	{
-		bglobal.Init ();
+		BotInfo.Init ();
 	}
 
 	if (timingdemo)
@@ -1056,19 +1056,19 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	{
 		for (int i = 0; i<MAXPLAYERS; i++)
 		{
-			if (playeringame[i] && players[i].mo != NULL)
-				P_PlayerStartStomp(players[i].mo);
+			if (PlayerInGame(i) && Players[i]->mo != nullptr)
+				P_PlayerStartStomp(Players[i]->mo);
 		}
 	}
 
 	// For each player, if they are viewing through a player, make sure it is themselves.
 	for (int ii = 0; ii < MAXPLAYERS; ++ii)
 	{
-		if (playeringame[ii])
+		if (PlayerInGame(ii))
 		{
-			if (players[ii].camera == NULL || players[ii].camera->player != NULL)
+			if (Players[ii]->camera == nullptr || Players[ii]->camera->player != nullptr)
 			{
-				players[ii].camera = players[ii].mo;
+				Players[ii]->camera = Players[ii]->mo;
 			}
 
 			if (savegamerestore)
@@ -1082,7 +1082,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 			if (fromSnapshot)
 			{
 				// ENTER scripts are being handled when the player gets spawned, this cannot be changed due to its effect on voodoo dolls.
-				Behaviors.StartTypedScripts(SCRIPT_Return, players[ii].mo, true);
+				Behaviors.StartTypedScripts(SCRIPT_Return, Players[ii]->mo, true);
 			}
 		}
 	}
@@ -1130,7 +1130,7 @@ void FLevelLocals::WorldDone (void)
 	//Added by mc
 	if (deathmatch)
 	{
-		bglobal.RemoveAllBots(this, consoleplayer != Net_Arbitrator);
+		BotInfo.RemoveAllBots(this, consoleplayer != Net_Arbitrator);
 	}
 
 	if (flags & LEVEL_CHANGEMAPCHEAT)
@@ -1144,8 +1144,8 @@ void FLevelLocals::WorldDone (void)
 		// Strife needs a special case here to choose between good and sad ending. Bad is handled elsewhere.
 		if (endsequence == NAME_Inter_Strife)
 		{
-			if (players[0].mo->FindInventory (NAME_QuestItem25) ||
-				players[0].mo->FindInventory (NAME_QuestItem28))
+			if (Players[0]->mo->FindInventory (NAME_QuestItem25) ||
+				Players[0]->mo->FindInventory (NAME_QuestItem28))
 			{
 				endsequence = NAME_Inter_Strife_Good;
 			}
@@ -1280,12 +1280,12 @@ void FLevelLocals::StartTravel ()
 	{
 		if (playeringame[i])
 		{
-			AActor *pawn = players[i].mo;
+			AActor *pawn = Players[i]->mo;
 			AActor *inv;
-			players[i].camera = nullptr;
+			Players[i]->camera = nullptr;
 
 			// Only living players travel. Dead ones get a new body on the new level.
-			if (players[i].health > 0)
+			if (Players[i]->health > 0)
 			{
 				pawn->UnlinkFromWorld (nullptr);
 				int tid = pawn->tid;	// Save TID
@@ -1304,7 +1304,7 @@ void FLevelLocals::StartTravel ()
 		}
 	}
 
-	bglobal.StartTravel ();
+	BotInfo.StartTravel ();
 }
 
 //==========================================================================
@@ -1424,12 +1424,12 @@ int FLevelLocals::FinishTravel ()
 		pawns[pawnsnum++] = pawn;
 	}
 
-	bglobal.FinishTravel ();
+	BotInfo.FinishTravel ();
 
 	// make sure that, after travelling has completed, no travelling thinkers are left.
 	// Since this list is excluded from regular thinker cleaning, anything that may survive through here
 	// will endlessly multiply and severely break the following savegames or just simply crash on broken pointers.
-	DThinker::DestroyThinkersInList(STAT_TRAVELLING);
+	Thinkers.DestroyThinkersInList(STAT_TRAVELLING);
 	return failnum;
 }
  
@@ -1683,14 +1683,14 @@ void FLevelLocals::UnSnapshotLevel (bool hubLoad)
 		while ((pawn = next) != 0)
 		{
 			next = it.Next();
-			if (pawn->player == NULL || pawn->player->mo == NULL || !playeringame[pawn->player - players])
+			if (pawn->player == nullptr || pawn->player->mo == nullptr || !PlayerInGame(pawn->player))
 			{
 				int i;
 
 				// If this isn't the unmorphed original copy of a player, destroy it, because it's extra.
 				for (i = 0; i < MAXPLAYERS; ++i)
 				{
-					if (playeringame[i] && players[i].morphTics && players[i].mo->alternative == pawn)
+					if (PlayerInGame(i) && Players[i]->morphTics && Players[i]->mo->alternative == pawn)
 					{
 						break;
 					}
@@ -2076,6 +2076,10 @@ void FLevelLocals::Mark()
 	GC::Mark(automap);
 	GC::Mark(interpolator.Head);
 	GC::Mark(SequenceListHead);
+	GC::Mark(BotInfo.firstthing);
+	GC::Mark(BotInfo.body1);
+	GC::Mark(BotInfo.body2);
+	Thinkers.MarkRoots();
 	for (auto &c : CorpseQueue)
 	{
 		GC::Mark(c);

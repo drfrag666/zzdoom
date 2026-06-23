@@ -53,6 +53,7 @@
 #include "v_video.h"
 #include "version.h"
 #include "videomodes.h"
+#include "doomerrors.h"
 
 
 @implementation NSWindow(ExitAppOnClose)

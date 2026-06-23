@@ -36,7 +36,7 @@
 
 #include "doomtype.h"
 #include "doomstat.h"
-#include "i_system.h"
+
 #include "actor.h"
 #include "m_argv.h"
 #include "p_effect.h"
@@ -48,6 +48,7 @@
 #include "g_levellocals.h"
 #include "vm.h"
 #include "actorinlines.h"
+#include "g_game.h"
 
 CVAR (Int, cl_rockettrails, 1, CVAR_ARCHIVE);
 CVAR (Bool, r_rail_smartspiral, 0, CVAR_ARCHIVE);
@@ -324,10 +325,6 @@ void P_SpawnParticle(FLevelLocals *Level, const DVector3 &pos, const DVector3 &v
 //
 void P_RunEffects (FLevelLocals *Level)
 {
-	if (players[consoleplayer].camera == NULL) return;
-
-	int	pnum = players[consoleplayer].camera->Sector->Index() * Level->sectors.Size();
-
 	AActor *actor;
 	auto iterator = Level->GetThinkerIterator<AActor>();
 

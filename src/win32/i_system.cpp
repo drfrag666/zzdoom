@@ -81,6 +81,7 @@
 #include "g_level.h"
 #include "doomstat.h"
 #include "v_palette.h"
+#include "i_system.h"
 #include "textures/bitmap.h"
 #include "textures/textures.h"
 

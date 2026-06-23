@@ -82,6 +82,7 @@
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "g_game.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -1420,7 +1421,7 @@ void S_PlaySound(AActor *a, int chan, FSoundID sid, float vol, float atten, bool
 	}
 	else
 	{
-		if (a->CheckLocalView(consoleplayer))
+		if (a->CheckLocalView())
 		{
 			S_Sound(chan, sid, vol, ATTN_NONE);
 		}

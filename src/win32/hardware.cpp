@@ -46,6 +46,8 @@
 #include "doomstat.h"
 #include "m_argv.h"
 #include "version.h"
+#include "doomerrors.h"
+#include "i_system.h"
 #include "swrenderer/r_swrenderer.h"
 
 EXTERN_CVAR (Bool, ticker)

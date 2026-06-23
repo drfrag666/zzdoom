@@ -59,58 +59,29 @@
 
 
 #include <math.h>
-
-#include "templates.h"
-#include "d_player.h"
-#include "m_argv.h"
-#include "g_game.h"
-#include "w_wad.h"
-#include "p_local.h"
-#include "p_effect.h"
-#include "p_terrain.h"
-#include "nodebuild.h"
-#include "p_lnspec.h"
-#include "c_console.h"
-#include "p_acs.h"
-#include "announcer.h"
-#include "wi_stuff.h"
-#include "doomerrors.h"
-#include "gi.h"
-#include "p_conversation.h"
-#include "a_keys.h"
-#include "s_sndseq.h"
-#include "sbar.h"
-#include "p_setup.h"
-#include "r_data/r_interpolate.h"
-#include "r_sky.h"
-#include "cmdlib.h"
-#include "md5.h"
-#include "po_man.h"
-#include "r_renderer.h"
-#include "p_blockmap.h"
-#include "r_utility.h"
-#include "p_spec.h"
-#include "g_levellocals.h"
-#include "c_dispatch.h"
-#include "a_dynlight.h"
-#include "events.h"
-#include "p_destructible.h"
-#include "types.h"
-#include "i_time.h"
-#include "scripting/vm/vm.h"
-#include "fragglescript/t_fs.h"
 #include "maploader.h"
+#include "c_cvars.h"
+#include "actor.h"
+#include "g_levellocals.h"
+#include "p_lnspec.h"
 
+#include "v_text.h"
+#include "p_setup.h"
+#include "gi.h"
+#include "doomerrors.h"
+#include "types.h"
+#include "w_wad.h"
+#include "p_conversation.h"
+#include "v_video.h"
+#include "i_time.h"
+#include "m_argv.h"
+#include "fragglescript/t_fs.h"
+#include "swrenderer/r_swrenderer.h"
 
-void PO_Init();
-
-#define MISSING_TEXTURE_WARN_LIMIT		20
-
-void BloodCrypt (void *data, int key, int len);
-void P_ClearUDMFKeys();
-
-
-EXTERN_CVAR(Bool, am_textured)
+enum
+{
+	MISSING_TEXTURE_WARN_LIMIT = 20
+};
 
 CVAR (Bool, genblockmap, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
 CVAR (Bool, gennodes, false, CVAR_SERVERINFO|CVAR_GLOBALCONFIG);
@@ -201,7 +172,7 @@ void MapLoader::SetTexture (side_t *side, int position, const char *name, FMissi
 				{
 					if (Level->lines[i].sidedef[j] == side)
 					{
-						Printf(TEXTCOLOR_RED"Unknown %s texture '"
+						Printf(TEXTCOLOR_RED "Unknown %s texture '"
 							TEXTCOLOR_ORANGE "%s" TEXTCOLOR_RED
 							"' on %s side of linedef %d\n",
 							positionnames[position], name, sidenames[j], i);
@@ -2979,7 +2950,6 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	ForceNodeBuild = gennodes;
 
 	// [RH] Load in the BEHAVIOR lump
-	Level->Behaviors.UnloadModules();
 	if (map->HasBehavior)
 	{
 		LoadBehavior(map);
@@ -3242,8 +3212,8 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 
 	for (int i = 0; i < MAXPLAYERS; ++i)
 	{
-		if (playeringame[i] && players[i].mo != nullptr)
-			players[i].health = players[i].mo->health;
+		if (Level->PlayerInGame(i) && Level->Players[i]->mo != nullptr)
+			Level->Players[i]->health = Level->Players[i]->mo->health;
 	}
 	if (!map->HasBehavior && !map->isText)
 		TranslateTeleportThings();	// [RH] Assign teleport destination TIDs

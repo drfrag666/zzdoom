@@ -37,8 +37,10 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "actorinlines.h"
+#include "g_game.h"
 
 extern gamestate_t wipegamestate;
+extern uint8_t globalfreeze, globalchangefreeze;
 
 //==========================================================================
 //
@@ -99,14 +101,14 @@ void P_Ticker (void)
 	// This may not be perfect but it is not really relevant for sublevels that tracer homing behavior is preserved.
 	if ((currentUILevel->maptime & 3) == 0)
 	{
-		if (bglobal.changefreeze)
+		if (globalchangefreeze)
 		{
+			globalfreeze ^= 1;
+			globalchangefreeze = 0;
 			for (auto Level : AllLevels())
 			{
-				Level->frozenstate ^= 2;
+				Level->frozenstate = (Level->frozenstate & ~2) | (2 * globalfreeze);
 			}
-			bglobal.freeze ^= 1;
-			bglobal.changefreeze = 0;
 		}
 	}
 
@@ -150,7 +152,7 @@ void P_Ticker (void)
 	E_WorldTick();
 	StatusBar->CallTick ();		// [RH] moved this here
 	level.Tick ();			// [RH] let the level tick
-	DThinker::RunThinkers ();
+	level.Thinkers.RunThinkers(&level);
 
 	//if added by MC: Freeze mode.
 	if (!level.isFrozen())

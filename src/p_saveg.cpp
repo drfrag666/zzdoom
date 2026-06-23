@@ -33,7 +33,7 @@
 **
 */
 
-#include "i_system.h"
+
 #include "p_local.h"
 #include "p_spec.h"
 
@@ -573,7 +573,7 @@ void P_SerializePlayers(FLevelLocals *Level, FSerializer &arc, bool skipload)
 	// Count the number of players present right now.
 	for (numPlayersNow = 0, i = 0; i < MAXPLAYERS; ++i)
 	{
-		if (playeringame[i])
+		if (Level->PlayerInGame(i))
 		{
 			++numPlayersNow;
 		}
@@ -822,7 +822,7 @@ void CopyPlayer(player_t *dst, player_t *src, const char *name)
 
 	if (dst->Bot != nullptr)
 	{
-		botinfo_t *thebot = bglobal.botinfo;
+		botinfo_t *thebot = level.BotInfo.botinfo;
 		while (thebot && stricmp(name, thebot->name))
 		{
 			thebot = thebot->next;
@@ -831,7 +831,7 @@ void CopyPlayer(player_t *dst, player_t *src, const char *name)
 		{
 			thebot->inuse = BOTINUSE_Yes;
 		}
-		bglobal.botnum++;
+		level.BotInfo.botnum++;
 		dst->userinfo.TransferFrom(uibackup2);
 	}
 	else
@@ -879,16 +879,16 @@ void FLevelLocals::SpawnExtraPlayers()
 	// be sure to spawn the extra players.
 	int i;
 
-	if (deathmatch)
+	if (deathmatch || !isPrimaryLevel())
 	{
 		return;
 	}
 
 	for (i = 0; i < MAXPLAYERS; ++i)
 	{
-		if (playeringame[i] && players[i].mo == NULL)
+		if (PlayerInGame(i) && Players[i]->mo == NULL)
 		{
-			players[i].playerstate = PST_ENTER;
+			Players[i]->playerstate = PST_ENTER;
 			SpawnPlayer(&playerstarts[i], i, (flags2 & LEVEL2_PRERAISEWEAPON) ? SPF_WEAPONFULLYUP : 0);
 		}
 	}
@@ -929,7 +929,7 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	Renderer->StartSerialize(arc);
 	if (arc.isReading())
 	{
-		DThinker::DestroyAllThinkers();
+		Thinkers.DestroyAllThinkers();
 		interpolator.ClearInterpolations();
 		arc.ReadObjects(hubload);
 		ActiveSequences = 0;
@@ -980,7 +980,6 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	{
 		InitSkyMap(this);
 		AirControlChanged();
-		bglobal.freeze = !!(frozenstate & 2);
 	}
 
 	Behaviors.SerializeModuleStates(arc);
@@ -1002,7 +1001,7 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	P_SerializeHealthGroups(this, arc);
 	// [ZZ] serialize events
 	E_SerializeEvents(arc);
-	DThinker::SerializeThinkers(arc, hubload);
+	Thinkers.SerializeThinkers(arc, hubload);
 	arc("polyobjs", Polyobjects);
 	SerializeSubsectors(arc, "subsectors");
 	StatusBar->SerializeMessages(arc);
@@ -1015,14 +1014,14 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	if (arc.isReading())
 	{
 		for (auto &sec : sectors)
-		{
+	{
 			P_Recalculate3DFloors(&sec);
 		}
 		for (int i = 0; i < MAXPLAYERS; ++i)
 		{
-			if (playeringame[i] && players[i].mo != nullptr)
+			if (PlayerInGame(i) && Players[i]->mo != nullptr)
 			{
-				FWeaponSlots::SetupWeaponSlots(players[i].mo);
+				FWeaponSlots::SetupWeaponSlots(Players[i]->mo);
 			}
 		}
 		RecreateAllAttachedLights();
