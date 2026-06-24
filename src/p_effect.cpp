@@ -55,6 +55,7 @@ CVAR (Bool, r_rail_smartspiral, 0, CVAR_ARCHIVE);
 CVAR (Int, r_rail_spiralsparsity, 1, CVAR_ARCHIVE);
 CVAR (Int, r_rail_trailsparsity, 1, CVAR_ARCHIVE);
 CVAR (Bool, r_particles, true, 0);
+EXTERN_CVAR(Int, r_maxparticles);
 
 FRandom pr_railtrail("RailTrail");
 
@@ -115,26 +116,6 @@ inline particle_t *NewParticle (FLevelLocals *Level)
 // [RH] Particle functions
 //
 void P_InitParticles (FLevelLocals *);
-
-// [BC] Allow the maximum number of particles to be specified by a cvar (so people
-// with lots of nice hardware can have lots of particles!).
-CUSTOM_CVAR( Int, r_maxparticles, 4000, CVAR_ARCHIVE )
-{
-	if ( self == 0 )
-		self = 4000;
-	else if (self > 65535)
-		self = 65535;
-	else if (self < 100)
-		self = 100;
-
-	if ( gamestate != GS_STARTUP )
-	{
-		for (auto Level : AllLevels())
-		{
-			P_InitParticles(Level);
-		}
-	}
-}
 
 void P_InitParticles (FLevelLocals *Level)
 {
@@ -650,14 +631,23 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 		seg.extend = (tempvec - (seg.dir | tempvec) * seg.dir) * 3;
 		length += seg.length;
 
-		// Only consider sound in 2D (for now, anyway)
-		// [BB] You have to divide by lengthsquared here, not multiply with it.
-		AActor *mo = players[consoleplayer].camera;
-
-		double r = ((seg.start.Y - mo->Y()) * (-seg.dir.Y) - (seg.start.X - mo->X()) * (seg.dir.X)) / (seg.length * seg.length);
-		r = clamp<double>(r, 0., 1.);
-		seg.soundpos = seg.start + r * seg.dir;
-		seg.sounddist = (seg.soundpos - mo->Pos()).LengthSquared();
+		auto player = source->Level->GetConsolePlayer();
+		if (player)
+		{
+			// Only consider sound in 2D (for now, anyway)
+			// [BB] You have to divide by lengthsquared here, not multiply with it.
+			AActor *mo = player->camera;
+			double r = ((seg.start.Y - mo->Y()) * (-seg.dir.Y) - (seg.start.X - mo->X()) * (seg.dir.X)) / (seg.length * seg.length);
+			r = clamp<double>(r, 0., 1.);
+			seg.soundpos = seg.start + r * seg.dir;
+			seg.sounddist = (seg.soundpos - mo->Pos()).LengthSquared();
+		}
+		else
+		{
+			// Set to invalid for secondary levels.
+			seg.soundpos = {0,0};
+			seg.sounddist = -1;
+		}
 		trail.Push(seg);
 	}
 
@@ -668,30 +658,34 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 	{
 		if (!(flags & RAF_SILENT))
 		{
-			FSoundID sound;
-			
-			// Allow other sounds than 'weapons/railgf'!
-			if (!source->player) sound = source->AttackSound;
-			else if (source->player->ReadyWeapon) sound = source->player->ReadyWeapon->AttackSound;
-			else sound = 0;
-			if (!sound) sound = "weapons/railgf";
-
-			// The railgun's sound is special. It gets played from the
-			// point on the slug's trail that is closest to the hearing player.
-			AActor *mo = players[consoleplayer].camera;
-
-			if (fabs(mo->X() - trail[0].start.X) < 20 && fabs(mo->Y() - trail[0].start.Y) < 20)
-			{ // This player (probably) fired the railgun
-				S_Sound (mo, CHAN_WEAPON, sound, 1, ATTN_NORM);
-			}
-			else
+			auto player = source->Level->GetConsolePlayer();
+			if (player)
 			{
-				TrailSegment *shortest = NULL;
-				for (auto &seg : trail)
-				{
-					if (shortest == NULL || shortest->sounddist > seg.sounddist) shortest = &seg;
+				FSoundID sound;
+				
+				// Allow other sounds than 'weapons/railgf'!
+				if (!source->player) sound = source->AttackSound;
+				else if (source->player->ReadyWeapon) sound = source->player->ReadyWeapon->AttackSound;
+				else sound = 0;
+				if (!sound) sound = "weapons/railgf";
+				
+				// The railgun's sound is special. It gets played from the
+				// point on the slug's trail that is closest to the hearing player.
+				AActor *mo = player->camera;
+				
+				if (fabs(mo->X() - trail[0].start.X) < 20 && fabs(mo->Y() - trail[0].start.Y) < 20)
+				{ // This player (probably) fired the railgun
+					S_Sound (mo, CHAN_WEAPON, sound, 1, ATTN_NORM);
 				}
-				S_Sound (source->Level, DVector3(shortest->soundpos, r_viewpoint.Pos.Z), CHAN_WEAPON, sound, 1, ATTN_NORM);
+				else
+				{
+					TrailSegment *shortest = NULL;
+					for (auto &seg : trail)
+					{
+						if (shortest == NULL || shortest->sounddist > seg.sounddist) shortest = &seg;
+					}
+					S_Sound (source->Level, DVector3(shortest->soundpos, r_viewpoint.Pos.Z), CHAN_WEAPON, sound, 1, ATTN_NORM);
+				}
 			}
 		}
 	}
@@ -869,7 +863,7 @@ void P_DrawRailTrail(AActor *source, TArray<SPortalHit> &portalhits, int color1,
 				if (rnd & 4)
 					diff.Z = clamp<double>(diff.Z + ((rnd & 32) ? 1 : -1), -maxdiff, maxdiff);
 			}			
-			AActor *thing = Spawn (spawnclass, pos + diff, ALLOW_REPLACE);
+			AActor *thing = Spawn (source->Level, spawnclass, pos + diff, ALLOW_REPLACE);
 			if (thing)
 			{
 				if (source)	thing->target = source;

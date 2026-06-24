@@ -283,8 +283,8 @@ static void MarkRoot()
 	M_MarkMenus();
 	Mark(DIntermissionController::CurrentIntermission);
 	FCanvasTextureInfo::Mark();
-	Mark(E_FirstEventHandler);
-	Mark(E_LastEventHandler);
+	Mark(staticEventManager.FirstEventHandler);
+	Mark(staticEventManager.LastEventHandler);
 	for (auto Level : AllLevels())
 		Level->Mark();
 

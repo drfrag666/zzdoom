@@ -94,6 +94,8 @@ struct FStrifeDialogueNode;
 class DAutomapBase;
 struct wbstartstruct_t;
 class DSectorMarker;
+struct FTranslator;
+struct EventManager;
 
 typedef TMap<int, int> FDialogueIDMap;				// maps dialogue IDs to dialogue array index (for ACS)
 typedef TMap<FName, int> FDialogueMap;				// maps actor class names to dialogue array index
@@ -103,15 +105,8 @@ struct FLevelLocals
 {
 	void *level;
 	void *Level;	// bug catchers.
-	FLevelLocals() : Behaviors(this), tagManager(this)
-	{
-		// Make sure that these point to the right data all the time.
-		// This will be needed for as long as it takes to completely separate global UI state from per-level play state.
-		for (int i = 0; i < MAXPLAYERS; i++)
-		{
-			Players[i] = &players[i];
-		}
-	}
+	FLevelLocals();
+	~FLevelLocals();
 
 	friend class MapLoader;
 
@@ -126,6 +121,7 @@ struct FLevelLocals
 	void FormatMapName(FString &mapname, const char *mapnamecolor);
 	void ClearAllSubsectorLinks();
 	void TranslateLineDef (line_t *ld, maplinedef_t *mld, int lineindexforid = -1);
+	int TranslateSectorSpecial(int special);
 	bool IsTIDUsed(int tid);
 	int FindUniqueTID(int start_tid, int limit);
 	int GetConversation(int conv_id);
@@ -436,6 +432,7 @@ public:
 	FPortalBlockmap PortalBlockmap;
 	TArray<FLinePortal*> linkedPortals;	// only the linked portals, this is used to speed up looking for them in P_CollectConnectedGroups.
 	FSectionContainer sections;
+	EventManager *localEventManager = nullptr;
 
 	// [ZZ] Destructible geometry information
 	TMap<int, FHealthGroup> healthGroups;
@@ -490,6 +487,7 @@ public:
 	FString		NextMap;			// go here when using the regular exit
 	FString		NextSecretMap;		// map to go to when used secret exit
 	FString		F1Pic;
+	FTranslator *Translator;
 	EMapType	maptype;
 	FTagManager tagManager;
 	FInterpolator interpolator;
@@ -502,8 +500,8 @@ public:
 	int bodyqueslot;
 	
 	// For now this merely points to the global player array, but with this in place, access to this array can be moved over to the level.
-	// As things progress each level needs to be able to point to different players,
-	// but even then the level will not own the player - the player merely links to the level.
+	// As things progress each level needs to be able to point to different players, even if they are just null if the second level is merely a skybox or camera target.
+	// But even if it got a real player, the level will not own it - the player merely links to the level.
 	// This should also be made a real object eventually.
 	player_t *Players[MAXPLAYERS];
 	
@@ -535,6 +533,26 @@ public:
 	bool isPrimaryLevel() const
 	{
 		return true;
+	}
+	
+	// Gets the console player without having the calling code be aware of the level's state.
+	player_t *GetConsolePlayer() const
+	{
+		return isPrimaryLevel()? Players[consoleplayer] : nullptr;
+	}
+	
+	bool isConsolePlayer(AActor *mo) const
+	{
+		auto p = GetConsolePlayer();
+		if (!p) return false;
+		return p->mo == mo;
+	}
+
+	bool isCamera(AActor *mo) const
+	{
+		auto p = GetConsolePlayer();
+		if (!p) return false;
+		return p->camera == mo;
 	}
 
 	uint32_t		flags;
@@ -643,7 +661,8 @@ public:
 
 
 extern FLevelLocals level;
-extern FLevelLocals *currentUILevel;	// level for which to display the user interface. This will always be the one the current consoleplayer is in.
+extern FLevelLocals *primaryLevel;	// level for which to display the user interface. This will always be the one the current consoleplayer is in.
+extern FLevelLocals *currentVMLevel;
 
 inline FSectorPortal *line_t::GetTransferredPortal()
 {
@@ -744,5 +763,5 @@ inline bool line_t::hitSkyWall(AActor* mo) const
 // It is meant for code that needs to iterate over all levels to make some global changes, e.g. configuation CCMDs.
 inline TArrayView<FLevelLocals *> AllLevels()
 {
-	return TArrayView<FLevelLocals *>(&currentUILevel, 1);
+	return TArrayView<FLevelLocals *>(&primaryLevel, 1);
 }

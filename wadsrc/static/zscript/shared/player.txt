@@ -334,13 +334,6 @@ class PlayerPawn : Actor
 	{
 		let player = self.player;
 		
-		// [SO] 9/2/02: People were able to do an awful lot of damage
-		// when they were observers...
-		if (player.Bot == null && bot_observer)
-		{
-			return;
-		}
-
 		let weapn = player.ReadyWeapon;
 		if (weapn == null || !weapn.CheckAmmo (Weapon.PrimaryFire, true))
 		{
@@ -369,13 +362,6 @@ class PlayerPawn : Actor
 
 	virtual void FireWeaponAlt (State stat)
 	{
-		// [SO] 9/2/02: People were able to do an awful lot of damage
-		// when they were observers...
-		if (player.Bot == null && bot_observer)
-		{
-			return;
-		}
-
 		let weapn = player.ReadyWeapon;
 		if (weapn == null || weapn.FindState('AltFire') == null || !weapn.CheckAmmo (Weapon.AltFire, true))
 		{
@@ -1635,10 +1621,11 @@ class PlayerPawn : Actor
 		if (!(player.cheats & CF_PREDICTING))
 		{
 			CheckEnvironment();
-			CheckUse();
-			CheckUndoMorph();
+			// Note that after this point the PlayerPawn may have changed due to getting unmorphed or getting its skull popped so 'self' is no longer safe to use.
+			// This also must not read mo into a local variable because several functions in this block can change the attached PlayerPawn.
+			player.mo.CheckUse();
+			player.mo.CheckUndoMorph();
 			// Cycle psprites.
-			// Note that after this point the PlayerPawn may have changed due to getting unmorphed so 'self' is no longer safe to use.
 			player.mo.TickPSprites();
 			// Other Counters
 			if (player.damagecount)	player.damagecount--;
@@ -2042,7 +2029,7 @@ class PlayerPawn : Actor
 				if (item.bINVBAR && item.Amount > item.InterHubAmount)
 				{
 					item.Amount = item.InterHubAmount;
-					if (level.REMOVEITEMS && !item.bUNDROPPABLE)
+					if (level.REMOVEITEMS && !item.bUNDROPPABLE && !item.bUNCLEARABLE)
 					{
 						todelete.Push(item);
 					}

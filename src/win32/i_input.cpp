@@ -91,6 +91,7 @@
 #include "events.h"
 #include "doomerrors.h"
 #include "i_system.h"
+#include "g_levellocals.h"
 
 // Prototypes and declarations.
 #include "rawinput.h"
@@ -150,6 +151,9 @@ extern bool AppActive;
 int SessionState = 0;
 int BlockMouseMove; 
 
+static bool EventHandlerResultForNativeMouse;
+
+
 CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, k_allowfullscreentoggle, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
@@ -174,7 +178,7 @@ static void I_CheckGUICapture ()
 	}
 
 	// [ZZ] check active event handlers that want the UI processing
-	if (!wantCapt && E_CheckUiProcessors())
+	if (!wantCapt && primaryLevel->localEventManager->CheckUiProcessors())
 		wantCapt = true;
 
 	if (wantCapt != GUICapture)
@@ -461,11 +465,11 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	case WM_KILLFOCUS:
-		I_CheckNativeMouse (true);	// Make sure mouse gets released right away
+		I_CheckNativeMouse (true, false);	// Make sure mouse gets released right away
 		break;
 
 	case WM_SETFOCUS:
-		I_CheckNativeMouse (false);
+		I_CheckNativeMouse (false, EventHandlerResultForNativeMouse);	// This cannot call the event handler. Doing it from here is unsafe.
 		break;
 
 	case WM_SETCURSOR:
@@ -798,7 +802,8 @@ void I_StartTic ()
 	BlockMouseMove--;
 	ResetButtonTriggers ();
 	I_CheckGUICapture ();
-	I_CheckNativeMouse (false);
+	EventHandlerResultForNativeMouse = primaryLevel->localEventManager->CheckRequireMouse();
+	I_CheckNativeMouse (false, EventHandlerResultForNativeMouse);
 	I_GetEvent ();
 }
 

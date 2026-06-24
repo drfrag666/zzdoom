@@ -55,6 +55,7 @@
 #include "menu/menu.h"
 #include "g_levellocals.h"
 #include "vm.h"
+#include "v_video.h"
 #include "actorinlines.h"
 
 // The conversations as they exist inside a SCRIPTxx lump.
@@ -96,7 +97,6 @@ struct TeaserSpeech
 
 static FRandom pr_randomspeech("RandomSpeech");
 
-FClassMap StrifeTypes;
 static int ConversationMenuY;
 
 // These two should be moved to player_t...
@@ -119,16 +119,6 @@ static void TerminalResponse (const char *str);
 // Given an item type number, returns the corresponding PClass.
 //
 //============================================================================
-
-void SetStrifeType(int convid, PClassActor *Class)
-{
-	StrifeTypes[convid] = Class;
-}
-
-void ClearStrifeTypes()
-{
-	StrifeTypes.Clear();
-}
 
 void FLevelLocals::SetConversation(int convid, PClassActor *Class, int dlgindex)
 {
@@ -738,17 +728,17 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 	int i;
 
 	// Make sure this is actually a player.
-	if (pc == nullptr || pc->player == nullptr || npc == nullptr || pc->Level != currentUILevel) return;
+	if (pc == nullptr || pc->player == nullptr || npc == nullptr || !pc->Level->isPrimaryLevel()) return;
 	auto Level = pc->Level;
 
 	// [CW] If an NPC is talking to a PC already, then don't let
 	// anyone else talk to the NPC.
 	for (i = 0; i < MAXPLAYERS; i++)
 	{
-		if (!playeringame[i] || pc->player == &players[i])
+		if (!Level->PlayerInGame(i) || pc->player == Level->Players[i])
 			continue;
 
-		if (npc == players[i].ConversationNPC)
+		if (npc == Level->Players[i]->ConversationNPC)
 			return;
 	}
 
@@ -762,7 +752,7 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 
 	FStrifeDialogueNode *CurNode = npc->Conversation;
 
-	if (pc->player == &players[consoleplayer])
+	if (pc->player == Level->GetConsolePlayer())
 	{
 		S_Sound (CHAN_VOICE | CHAN_UI, gameinfo.chatSound, 1, ATTN_NONE);
 	}
@@ -810,7 +800,7 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 	}
 
 	// The rest is only done when the conversation is actually displayed.
-	if (pc->player == &players[consoleplayer])
+	if (pc->player == Level->GetConsolePlayer())
 	{
 		if (CurNode->SpeakerVoice != 0)
 		{
@@ -944,7 +934,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 	
 			if (takestuff)
 			{
-				auto item = Spawn(reply->GiveType);
+				auto item = Spawn(player->mo->Level, reply->GiveType);
 				// Items given here should not count as items!
 				item->ClearCounters();
 				if (item->GetClass()->TypeName == NAME_FlameThrower)
@@ -976,7 +966,7 @@ static void HandleReply(player_t *player, bool isconsole, int nodenum, int reply
 
 	if (reply->ActionSpecial != 0)
 	{
-		takestuff |= !!P_ExecuteSpecial(reply->ActionSpecial, NULL, player->mo, false,
+		takestuff |= !!P_ExecuteSpecial(player->mo->Level, reply->ActionSpecial, NULL, player->mo, false,
 			reply->Args[0], reply->Args[1], reply->Args[2], reply->Args[3], reply->Args[4]);
 	}
 

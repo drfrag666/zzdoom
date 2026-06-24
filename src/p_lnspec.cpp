@@ -2951,7 +2951,7 @@ FUNC(LS_SetPlayerProperty)
 						item->ColorVar(NAME_BlendColor) = MakeSpecialColormap(INVERSECOLORMAP);
 					}
 				}
-				else if (it->player - players == consoleplayer)
+				else if (it->player && it->player == Level->GetConsolePlayer())
 				{
 					Level->flags2 |= LEVEL2_ALLMAP;
 				}
@@ -2966,7 +2966,7 @@ FUNC(LS_SetPlayerProperty)
 						item->Destroy ();
 					}
 				}
-				else if (it->player - players == consoleplayer)
+				else if (it->player && it->player == Level->GetConsolePlayer())
 				{
 					Level->flags2 &= ~LEVEL2_ALLMAP;
 				}
@@ -2992,7 +2992,7 @@ FUNC(LS_SetPlayerProperty)
 							item->ColorVar(NAME_BlendColor) = MakeSpecialColormap(INVERSECOLORMAP);
 						}
 					}
-					else if (i == consoleplayer)
+					else if (p == Level->GetConsolePlayer())
 					{
 						Level->flags2 |= LEVEL2_ALLMAP;
 					}
@@ -3007,7 +3007,7 @@ FUNC(LS_SetPlayerProperty)
 							item->Destroy ();
 						}
 					}
-					else if (i == consoleplayer)
+					else if (p == Level->GetConsolePlayer())
 					{
 						Level->flags2 &= ~LEVEL2_ALLMAP;
 					}
@@ -3287,13 +3287,13 @@ FUNC(LS_GlassBreak)
 				{
 					if (type != nullptr)
 					{
-						glass = Spawn(*type, DVector3(linemid, ONFLOORZ), ALLOW_REPLACE);
+						glass = Spawn(Level, *type, DVector3(linemid, ONFLOORZ), ALLOW_REPLACE);
 						glass->AddZ(24.);
 					}
 				}
 				else
 				{
-					glass = Spawn("GlassJunk", DVector3(linemid, ONFLOORZ), ALLOW_REPLACE);
+					glass = Spawn(Level, "GlassJunk", DVector3(linemid, ONFLOORZ), ALLOW_REPLACE);
 					glass->AddZ(24.);
 					glass->SetState(glass->SpawnState + (pr_glass() % glass->health));
 				}
@@ -3927,7 +3927,7 @@ int P_FindLineSpecial (const char *string, int *min_args, int *max_args)
 //
 //==========================================================================
 
-int P_ExecuteSpecial(int			num,
+int P_ExecuteSpecial(FLevelLocals *Level, int			num,
 					 struct line_t	*line,
 					 class AActor	*activator,
 					 bool			backSide,
@@ -3939,7 +3939,7 @@ int P_ExecuteSpecial(int			num,
 {
 	if (num >= 0 && num < (int)countof(LineSpecials))
 	{
-		return LineSpecials[num](&level, line, activator, backSide, arg1, arg2, arg3, arg4, arg5);
+		return LineSpecials[num](Level, line, activator, backSide, arg1, arg2, arg3, arg4, arg5);
 	}
 	return 0;
 }
@@ -3962,6 +3962,6 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, ExecuteSpecial)
 	PARAM_INT(arg4);
 	PARAM_INT(arg5);
 
-	ACTION_RETURN_INT(P_ExecuteSpecial(special, linedef, activator, lineside, arg1, arg2, arg3, arg4, arg5));
+	ACTION_RETURN_INT(P_ExecuteSpecial(self, special, linedef, activator, lineside, arg1, arg2, arg3, arg4, arg5));
 }
 

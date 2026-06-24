@@ -67,6 +67,7 @@
 #include "r_utility.h"
 #include "c_functions.h"
 #include "g_levellocals.h"
+#include "v_video.h"
 
 extern FILE *Logfile;
 extern bool insave;
@@ -365,7 +366,7 @@ CCMD (changemap)
 	if (argv.argc() > 1)
 	{
 		const char *mapname = argv[1];
-		if (!strcmp(mapname, "*")) mapname = currentUILevel->MapName.GetChars();
+		if (!strcmp(mapname, "*")) mapname = primaryLevel->MapName.GetChars();
 
 		try
 		{
@@ -945,7 +946,7 @@ static void PrintFilteredActorList(const ActorTypeChecker IsActorType, const cha
 		}
 	}
 	// This only works on the primary level.
-	auto it = currentUILevel->GetThinkerIterator<AActor>();
+	auto it = primaryLevel->GetThinkerIterator<AActor>();
 
 	while ( (mo = it.Next()) )
 	{
@@ -1062,14 +1063,14 @@ CCMD(changesky)
 		FTextureID newsky = TexMan.GetTexture(sky1name, ETextureType::Wall, FTextureManager::TEXMAN_Overridable | FTextureManager::TEXMAN_ReturnFirst);
 		if (newsky.Exists())
 		{
-			currentUILevel->skytexture1 = newsky;
+			primaryLevel->skytexture1 = newsky;
 		}
 		else
 		{
 			Printf("changesky: Texture '%s' not found\n", sky1name);
 		}
 	}
-	InitSkyMap (currentUILevel);
+	InitSkyMap (primaryLevel);
 }
 
 //-----------------------------------------------------------------------------
@@ -1100,9 +1101,9 @@ CCMD(nextmap)
 		return;
 	}
 	
-	if (currentUILevel->NextMap.Len() > 0 && currentUILevel->NextMap.Compare("enDSeQ", 6))
+	if (primaryLevel->NextMap.Len() > 0 && primaryLevel->NextMap.Compare("enDSeQ", 6))
 	{
-		G_DeferedInitNew(currentUILevel->NextMap);
+		G_DeferedInitNew(primaryLevel->NextMap);
 	}
 	else
 	{
@@ -1124,9 +1125,9 @@ CCMD(nextsecret)
 		return;
 	}
 
-	if (currentUILevel->NextSecretMap.Len() > 0 && currentUILevel->NextSecretMap.Compare("enDSeQ", 6))
+	if (primaryLevel->NextSecretMap.Len() > 0 && primaryLevel->NextSecretMap.Compare("enDSeQ", 6))
 	{
-		G_DeferedInitNew(currentUILevel->NextSecretMap);
+		G_DeferedInitNew(primaryLevel->NextSecretMap);
 	}
 	else
 	{
@@ -1171,10 +1172,10 @@ static void PrintSecretString(const char *string, bool thislevel)
 			{
 				auto secnum = (unsigned)strtoull(string+2, (char**)&string, 10);
 				if (*string == ';') string++;
-				if (thislevel && secnum < currentUILevel->sectors.Size())
+				if (thislevel && secnum < primaryLevel->sectors.Size())
 				{
-					if (currentUILevel->sectors[secnum].isSecret()) colstr = TEXTCOLOR_RED;
-					else if (currentUILevel->sectors[secnum].wasSecret()) colstr = TEXTCOLOR_GREEN;
+					if (primaryLevel->sectors[secnum].isSecret()) colstr = TEXTCOLOR_RED;
+					else if (primaryLevel->sectors[secnum].wasSecret()) colstr = TEXTCOLOR_GREEN;
 					else colstr = TEXTCOLOR_ORANGE;
 				}
 			}
@@ -1182,7 +1183,7 @@ static void PrintSecretString(const char *string, bool thislevel)
 			{
 				long tid = (long)strtoll(string+2, (char**)&string, 10);
 				if (*string == ';') string++;
-				auto it = currentUILevel->GetActorIterator(tid);
+				auto it = primaryLevel->GetActorIterator(tid);
 				AActor *actor;
 				bool foundone = false;
 				if (thislevel)
@@ -1215,8 +1216,8 @@ static void PrintSecretString(const char *string, bool thislevel)
 
 CCMD(secret)
 {
-	const char *mapname = argv.argc() < 2? currentUILevel->MapName.GetChars() : argv[1];
-	bool thislevel = !stricmp(mapname, currentUILevel->MapName);
+	const char *mapname = argv.argc() < 2? primaryLevel->MapName.GetChars() : argv[1];
+	bool thislevel = !stricmp(mapname, primaryLevel->MapName);
 	bool foundsome = false;
 
 	int lumpno=Wads.CheckNumForName("SECRETS");

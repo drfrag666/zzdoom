@@ -47,6 +47,7 @@
 #include "d_player.h"
 #include "p_blockmap.h"
 #include "g_game.h"
+#include "v_video.h"
 
 #include "m_cheat.h"
 #include "c_dispatch.h"
@@ -128,8 +129,8 @@ CVAR(Int, am_showsubsector, -1, 0);
 
 CUSTOM_CVAR(Int, am_showalllines, -1, CVAR_NOINITCALL)	// This is a cheat so don't save it.
 {
-	if (currentUILevel && currentUILevel->automap)
-		currentUILevel->automap->UpdateShowAllLines();
+	if (primaryLevel && primaryLevel->automap)
+		primaryLevel->automap->UpdateShowAllLines();
 }
 
 EXTERN_CVAR(Bool, sv_cheats)
@@ -157,6 +158,7 @@ CVAR(Int, am_drawmapback, 1, CVAR_ARCHIVE);
 CVAR(Bool, am_showkeys, true, CVAR_ARCHIVE);
 CVAR(Int, am_showtriggerlines, 0, CVAR_ARCHIVE);
 CVAR(Int, am_showthingsprites, 0, CVAR_ARCHIVE);
+CVAR (Bool, am_showkeys_always, false, CVAR_ARCHIVE);
 
 CUSTOM_CVAR(Int, am_emptyspacemargin, 0, CVAR_ARCHIVE)
 {
@@ -169,9 +171,9 @@ CUSTOM_CVAR(Int, am_emptyspacemargin, 0, CVAR_ARCHIVE)
 		self = 90;
 	}
 
-	if (nullptr != StatusBar && currentUILevel && currentUILevel->automap)
+	if (nullptr != StatusBar && primaryLevel && primaryLevel->automap)
 	{
-		currentUILevel->automap->NewResolution();
+		primaryLevel->automap->NewResolution();
 	}
 }
 
@@ -189,8 +191,8 @@ CVAR(Float, am_zoomdir, 0, CVAR_ARCHIVE)
 CCMD(am_togglefollow)
 {
 	am_followplayer = !am_followplayer;
-	if (currentUILevel && currentUILevel->automap)
-		currentUILevel->automap->ResetFollowLocation();
+	if (primaryLevel && primaryLevel->automap)
+		primaryLevel->automap->ResetFollowLocation();
 	Printf("%s\n", GStrings(am_followplayer ? "AMSTR_FOLLOWON" : "AMSTR_FOLLOWOFF"));
 }
 
@@ -208,9 +210,9 @@ CCMD(am_toggletexture)
 
 CCMD(am_setmark)
 {
-	if (currentUILevel && currentUILevel->automap)
+	if (primaryLevel && primaryLevel->automap)
 	{
-		int m = currentUILevel->automap->addMark();
+		int m = primaryLevel->automap->addMark();
 		if (m >= 0)
 		{
 			Printf("%s %d\n", GStrings("AMSTR_MARKEDSPOT"), m);
@@ -220,7 +222,7 @@ CCMD(am_setmark)
 
 CCMD(am_clearmarks)
 {
-	if (currentUILevel && currentUILevel->automap && currentUILevel->automap->clearMarks())
+	if (primaryLevel && primaryLevel->automap && primaryLevel->automap->clearMarks())
 	{
 		Printf("%s\n", GStrings("AMSTR_MARKSCLEARED"));
 	}
@@ -228,8 +230,8 @@ CCMD(am_clearmarks)
 
 CCMD(am_gobig)
 {
-	if (currentUILevel && currentUILevel->automap)
-		currentUILevel->automap->GoBig();
+	if (primaryLevel && primaryLevel->automap)
+		primaryLevel->automap->GoBig();
 }
 
 CCMD(togglemap)
@@ -2914,7 +2916,7 @@ void DAutomap::drawThings ()
 						// That is the case for all default keys, however.
 						if (t->IsKindOf(NAME_Key))
 						{
-							if (G_SkillProperty(SKILLP_EasyKey))
+							if (G_SkillProperty(SKILLP_EasyKey) || am_showkeys_always)
 							{
 								// Already drawn by AM_drawKeys(), so don't draw again
 								color.Index = -1;
@@ -3146,7 +3148,7 @@ void DAutomap::Drawer (int bottom)
 
 	drawWalls(allmap);
 	drawPlayers();
-	if (G_SkillProperty(SKILLP_EasyKey))
+	if (G_SkillProperty(SKILLP_EasyKey) || am_showkeys_always)
 		drawKeys();
 	if ((am_cheat >= 2 && am_cheat != 4) || allthings)
 		drawThings();
@@ -3278,7 +3280,7 @@ void AM_ToggleMap()
 		return;
 
 	// ... or if there is no automap.
-	if (!currentUILevel || !currentUILevel->automap)
+	if (!primaryLevel || !primaryLevel->automap)
 		return;
 
 	if (!automapactive)
@@ -3291,7 +3293,7 @@ void AM_ToggleMap()
 		Button_AM_ZoomIn.Reset();
 		Button_AM_ZoomOut.Reset();
 
-		currentUILevel->automap->startDisplay();
+		primaryLevel->automap->startDisplay();
 		automapactive = true;
 		viewactive = (am_overlay != 0.f);
 	}

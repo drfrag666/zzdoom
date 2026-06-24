@@ -129,7 +129,7 @@ public:
 	void StartTravel ();
 	void FinishTravel ();
 	bool IsLeader (player_t *player);
-	void SetBodyAt (const DVector3 &pos, int hostnum);
+	void SetBodyAt (FLevelLocals *Level, const DVector3 &pos, int hostnum);
 	double FakeFire (AActor *source, AActor *dest, ticcmd_t *cmd);
 	bool SafeCheckPosition (AActor *actor, double x, double y, FCheckPosition &tm);
 	void BotTick(AActor *mo);
@@ -159,7 +159,6 @@ private:
 protected:
 	bool	 ctf;
 	int		 t_join;
-	bool	 observer; //Consoleplayer is observer.
 };
 
 class DBot : public DThinker
@@ -242,10 +241,5 @@ extern cycle_t BotThinkCycles, BotSupportCycles;
 
 EXTERN_CVAR (Float, bot_flag_return_time)
 EXTERN_CVAR (Int, bot_next_color)
-EXTERN_CVAR (Bool, bot_allow_duds)
-EXTERN_CVAR (Int, bot_maxcorpses)
-EXTERN_CVAR (Bool, bot_observer)
-EXTERN_CVAR (Bool, bot_watersplash)
-EXTERN_CVAR (Bool, bot_chat)
 
 #endif	// __B_BOT_H__

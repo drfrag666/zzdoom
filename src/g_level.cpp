@@ -129,7 +129,8 @@ extern bool sendpause, sendsave, sendturn180, SendLand;
 void *statcopy;					// for statistics driver
 
 FLevelLocals level;				// info about current level
-FLevelLocals *currentUILevel = &level;	// level for which to display the user interface.
+FLevelLocals *primaryLevel = &level;	// level for which to display the user interface.
+FLevelLocals *currentVMLevel = &level;	// level which currently ticks. Used as global input to the VM and some functions called by it.
 
 
 //==========================================================================
@@ -177,7 +178,7 @@ CCMD (map)
 	if (argv.argc() > 1)
 	{
 		const char *mapname = argv[1];
-		if (!strcmp(mapname, "*")) mapname = currentUILevel->MapName.GetChars();
+		if (!strcmp(mapname, "*")) mapname = primaryLevel->MapName.GetChars();
 
 		try
 		{
@@ -227,7 +228,7 @@ UNSAFE_CCMD(recordmap)
 	if (argv.argc() > 2)
 	{
 		const char *mapname = argv[2];
-		if (!strcmp(mapname, "*")) mapname = currentUILevel->MapName.GetChars();
+		if (!strcmp(mapname, "*")) mapname = primaryLevel->MapName.GetChars();
 
 		try
 		{
@@ -318,7 +319,7 @@ void G_NewInit ()
 	int i;
 
 	// Destory all old player refrences that may still exist
-	TThinkerIterator<AActor> it(&level, NAME_PlayerPawn, STAT_TRAVELLING);
+	TThinkerIterator<AActor> it(primaryLevel, NAME_PlayerPawn, STAT_TRAVELLING);
 	AActor *pawn, *next;
 
 	next = it.Next();
@@ -414,8 +415,8 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	int i;
 
 	// did we have any level before?
-	if (level.info != nullptr)
-		E_WorldUnloadedUnsafe();
+	if (primaryLevel->info != nullptr)
+		staticEventManager.WorldUnloaded();
 
 	if (!savegamerestore)
 	{
@@ -431,7 +432,10 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	UnlatchCVars ();
 	G_VerifySkill();
 	UnlatchCVars ();
-	level.Thinkers.DestroyThinkersInList(STAT_STATIC);
+	for (auto Level : AllLevels())
+	{
+		Level->Thinkers.DestroyThinkersInList(STAT_STATIC);
+	}
 
 	if (paused)
 	{
@@ -448,7 +452,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 		for (i = 0; i < MAXPLAYERS; ++i)
 		{
 			if (playeringame[i])
-				players[i].SetLogText ("Find help");
+				players[i].SetLogText ("$TXT_FINDHELP");
 		}
 	}
 
@@ -471,10 +475,10 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 		}
 		FRandom::StaticClearRandom ();
 		P_ClearACSVars(true);
-		level.time = 0;
-		level.maptime = 0;
-		level.totaltime = 0;
-		level.spawnindex = 0;
+		primaryLevel->time = 0;
+		primaryLevel->maptime = 0;
+		primaryLevel->totaltime = 0;
+		primaryLevel->spawnindex = 0;
 
 		if (!multiplayer || !deathmatch)
 		{
@@ -498,7 +502,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	//Added by MC: Initialize bots.
 	if (!deathmatch)
 	{
-		level.BotInfo.Init ();
+		primaryLevel->BotInfo.Init ();
 	}
 
 	if (bTitleLevel)
@@ -534,7 +538,7 @@ EXTERN_CVAR(Bool, sv_singleplayerrespawn)
 
 void FLevelLocals::ChangeLevel(const char *levelname, int position, int flags, int nextSkill)
 {
-	if (this != currentUILevel) return;	// only the primary level may exit.
+	if (!isPrimaryLevel()) return;	// only the primary level may exit.
 
 	FString nextlevel;
 	level_info_t *nextinfo = nullptr;
@@ -622,9 +626,13 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int flags, i
 	unloading = true;
 	Behaviors.StartTypedScripts (SCRIPT_Unloading, NULL, false, 0, true);
 	// [ZZ] safe world unload
-	E_WorldUnloaded();
+	for (auto Level : AllLevels())
+	{
+		// Todo: This must be exolicitly sandboxed!
+		Level->localEventManager->WorldUnloaded();
+	}
 	// [ZZ] unsafe world unload (changemap != map)
-	E_WorldUnloadedUnsafe();
+	staticEventManager.WorldUnloaded();
 	unloading = false;
 
 	STAT_ChangeLevel(nextlevel, this);
@@ -638,9 +646,9 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int flags, i
 
 	for(int i = 0; i < MAXPLAYERS; i++)
 	{
-		if (playeringame[i])
+		if (PlayerInGame(i))
 		{
-			player_t *player = &players[i];
+			player_t *player = Players[i];
 
 			// Un-crouch all players here.
 			player->Uncrouch();
@@ -734,7 +742,7 @@ void	G_DoCompleted (void)
 	// Close the conversation menu if open.
 	P_FreeStrifeConversations ();
 
-	if (level.DoCompleted(nextlevel, wminfo))
+	if (primaryLevel->DoCompleted(nextlevel, wminfo))
 	{
 		gamestate = GS_INTERMISSION;
 		viewactive = false;
@@ -916,7 +924,7 @@ void G_DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool
 	gamestate_t oldgs = gamestate;
 
 	// Here the new level needs to be allocated.
-	level.DoLoadLevel(nextmapname, position, autosave, newGame);
+	primaryLevel->DoLoadLevel(nextmapname, position, autosave, newGame);
 
 	// Reset the global state for the new level.
 	if (wipegamestate == GS_LEVEL)
@@ -978,13 +986,16 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	if (flags2 & LEVEL2_FORCETEAMPLAYOFF)
 		teamplay = false;
 
-	FString mapname = nextmapname;
-	mapname.ToLower();
-	Printf (
+	if (isPrimaryLevel())
+	{
+		FString mapname = nextmapname;
+		mapname.ToLower();
+		Printf(
 			"\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
 			"\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n"
 			TEXTCOLOR_BOLD "%s - %s\n\n",
 			mapname.GetChars(), LevelName.GetChars());
+	}
 
 	// Set the sky map.
 	// First thing, we have a dummy sky texture name,
@@ -1022,7 +1033,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 	if (newGame)
 	{
-		E_NewGame(EventHandlerType::Global);
+		staticEventManager.NewGame();
 	}
 
 	P_SetupLevel (this, position, newGame);
@@ -1077,7 +1088,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 			}
 
 			const bool fromSnapshot = FromSnapshot;
-			E_PlayerEntered(ii, fromSnapshot && finishstate == FINISH_SameHub);
+			localEventManager->PlayerEntered(ii, fromSnapshot && finishstate == FINISH_SameHub);
 
 			if (fromSnapshot)
 			{
@@ -1095,9 +1106,9 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 
 	StatusBar->AttachToPlayer (&players[consoleplayer]);
 	//      unsafe world load
-	E_WorldLoadedUnsafe();
+	staticEventManager.WorldLoaded();
 	//      regular world load (savegames are handled internally)
-	E_WorldLoaded();
+	localEventManager->WorldLoaded();
 	DoDeferedScripts ();	// [RH] Do script actions that were triggered on another map.
 	
 
@@ -1236,7 +1247,7 @@ void FLevelLocals::WorldDone (void)
  
 DEFINE_ACTION_FUNCTION(FLevelLocals, WorldDone)
 {
-	currentUILevel->WorldDone();
+	primaryLevel->WorldDone();
 	return 0;
 }
 
@@ -1252,9 +1263,9 @@ void G_DoWorldDone (void)
 	{
 		// Don't crash if no next map is given. Just repeat the current one.
 		Printf ("No next map specified.\n");
-		nextlevel = level.MapName;
+		nextlevel = primaryLevel->MapName;
 	}
-	level.StartTravel ();
+	primaryLevel->StartTravel ();
 	G_DoLoadLevel (nextlevel, startpos, true, false);
 	startpos = 0;
 	gameaction = ga_nothing;
@@ -1433,6 +1444,27 @@ int FLevelLocals::FinishTravel ()
 	return failnum;
 }
  
+//==========================================================================
+//
+//
+//==========================================================================
+
+FLevelLocals::FLevelLocals() : Behaviors(this), tagManager(this)
+{
+	// Make sure that these point to the right data all the time.
+	// This will be needed for as long as it takes to completely separate global UI state from per-level play state.
+	for (int i = 0; i < MAXPLAYERS; i++)
+	{
+		Players[i] = &players[i];
+	}
+	localEventManager = new EventManager;
+}
+
+FLevelLocals::~FLevelLocals()
+{
+	if (localEventManager) delete localEventManager;
+}
+
 //==========================================================================
 //
 //
@@ -2079,6 +2111,11 @@ void FLevelLocals::Mark()
 	GC::Mark(BotInfo.firstthing);
 	GC::Mark(BotInfo.body1);
 	GC::Mark(BotInfo.body2);
+	if (localEventManager)
+	{
+		GC::Mark(localEventManager->FirstEventHandler);
+		GC::Mark(localEventManager->LastEventHandler);
+	}
 	Thinkers.MarkRoots();
 	for (auto &c : CorpseQueue)
 	{
@@ -2242,7 +2279,7 @@ CCMD(skyfog)
 	if (argv.argc()>1)
 	{
 		// Do this only on the primary level.
-		currentUILevel->skyfog = MAX(0, (int)strtoull(argv[1], NULL, 0));
+		primaryLevel->skyfog = MAX(0, (int)strtoull(argv[1], NULL, 0));
 	}
 }
 

@@ -77,6 +77,7 @@
 #include "m_argv.h"
 #include "fragglescript/t_fs.h"
 #include "swrenderer/r_swrenderer.h"
+#include "xlat/xlat.h"
 
 enum
 {
@@ -1079,7 +1080,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 		if (map->HasBehavior)
 			ss->special = LittleShort(ms->special);
 		else	// [RH] Translate to new sector special
-			ss->special = P_TranslateSectorSpecial (LittleShort(ms->special));
+			ss->special = Level->TranslateSectorSpecial (LittleShort(ms->special));
 		Level->tagManager.AddSectorTag(i, LittleShort(ms->tag));
 		ss->thinglist = nullptr;
 		ss->touching_thinglist = nullptr;		// phares 3/14/98
@@ -2975,7 +2976,7 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 				translator = gameinfo.translator.GetChars();
 			}
 		}
-		P_LoadTranslator(translator);
+		Level->Translator = P_LoadTranslator(translator);
 		Level->maptype = MAPTYPE_DOOM;
 	}
 	if (map->isText)

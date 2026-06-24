@@ -65,7 +65,7 @@ bool P_CheckTickerPaused ()
 		 && wipegamestate == gamestate)
 	{
 		// Only the current UI level's settings are relevant for sound.
-		S_PauseSound (!(currentUILevel->flags2 & LEVEL2_PAUSE_MUSIC_IN_MENUS), false);
+		S_PauseSound (!(primaryLevel->flags2 & LEVEL2_PAUSE_MUSIC_IN_MENUS), false);
 		return true;
 	}
 	return false;
@@ -99,7 +99,7 @@ void P_Ticker (void)
 
 	// [RH] Frozen mode is only changed every 4 tics, to make it work with A_Tracer().
 	// This may not be perfect but it is not really relevant for sublevels that tracer homing behavior is preserved.
-	if ((currentUILevel->maptime & 3) == 0)
+	if ((primaryLevel->maptime & 3) == 0)
 	{
 		if (globalchangefreeze)
 		{
@@ -127,9 +127,14 @@ void P_Ticker (void)
 	P_ResetSightCounters (false);
 	R_ClearInterpolationPath();
 
+	// Since things will be moving, it's okay to interpolate them in the renderer.
+	r_NoInterpolate = false;
+
 	// Reset all actor interpolations on all levels before the current thinking turn so that indirect actor movement gets properly interpolated.
 	for (auto Level : AllLevels())
 	{
+		// todo: set up a sandbox for secondary levels here.
+
 		auto it = Level->GetThinkerIterator<AActor>();
 		AActor *ac;
 
@@ -138,31 +143,27 @@ void P_Ticker (void)
 			ac->ClearInterpolation();
 		}
 		P_ThinkParticles(Level);	// [RH] make the particles think
-	}
 
-	// Since things will be moving, it's okay to interpolate them in the renderer.
-	r_NoInterpolate = false;
+		for (i = 0; i < MAXPLAYERS; i++)
+			if (Level->PlayerInGame(i))
+				P_PlayerThink(Level->Players[i]);
 
+		// [ZZ] call the WorldTick hook
+		Level->localEventManager->WorldTick();
+		Level->Tick();			// [RH] let the level tick
+		Level->Thinkers.RunThinkers(Level);
 
-	for (i = 0; i<MAXPLAYERS; i++)
-		if (playeringame[i])
-			P_PlayerThink (&players[i]);
-
-	// [ZZ] call the WorldTick hook
-	E_WorldTick();
-	StatusBar->CallTick ();		// [RH] moved this here
-	level.Tick ();			// [RH] let the level tick
-	level.Thinkers.RunThinkers(&level);
-
-	//if added by MC: Freeze mode.
-	if (!level.isFrozen())
-	{
-		P_UpdateSpecials (&level);
-		P_RunEffects(&level);	// [RH] Run particle effects
-	}
+		//if added by MC: Freeze mode.
+		if (!Level->isFrozen())
+		{
+			P_UpdateSpecials(Level);
+			P_RunEffects(Level);	// [RH] Run particle effects
+		}
 
 		// for par times
-	level.time++;
-	level.maptime++;
-	level.totaltime++;
+		Level->time++;
+		Level->maptime++;
+		Level->totaltime++;
+	}
+	StatusBar->CallTick();		// Status bar should tick AFTER the thinkers to properly reflect the level's state at this time.
 }

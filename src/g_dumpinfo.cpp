@@ -40,6 +40,8 @@
 #include "d_net.h"
 #include "p_setup.h"
 #include "w_wad.h"
+#include "v_text.h"
+#include "c_functions.h"
 
 //==========================================================================
 //
@@ -199,5 +201,110 @@ CCMD(printsections)
 	}
 }
 
+CCMD(dumptags)
+{
+	for (auto Level : AllLevels())
+	{
+		Level->tagManager.DumpTags();
+	}
+}
 
+
+
+CCMD(dump3df)
+{
+	if (argv.argc() > 1)
+	{
+		// Print 3D floor info for a single sector.
+		// This only checks the primary level.
+		int sec = (int)strtoll(argv[1], NULL, 10);
+		if ((unsigned)sec >= primaryLevel->sectors.Size())
+		{
+			Printf("Sector %d does not exist.\n", sec);
+			return;
+		}
+		sector_t *sector = &primaryLevel->sectors[sec];
+		TArray<F3DFloor*> & ffloors = sector->e->XFloor.ffloors;
+
+		for (unsigned int i = 0; i < ffloors.Size(); i++)
+		{
+			double height = ffloors[i]->top.plane->ZatPoint(sector->centerspot);
+			double bheight = ffloors[i]->bottom.plane->ZatPoint(sector->centerspot);
+
+			IGNORE_FORMAT_PRE
+				Printf("FFloor %d @ top = %f (model = %d), bottom = %f (model = %d), flags = %B, alpha = %d %s %s\n",
+					i, height, ffloors[i]->top.model->sectornum,
+					bheight, ffloors[i]->bottom.model->sectornum,
+					ffloors[i]->flags, ffloors[i]->alpha, (ffloors[i]->flags&FF_EXISTS) ? "Exists" : "", (ffloors[i]->flags&FF_DYNAMIC) ? "Dynamic" : "");
+			IGNORE_FORMAT_POST
+		}
+	}
+}
+
+//============================================================================
+//
+// print the group link table to the console
+//
+//============================================================================
+
+CCMD(dumplinktable)
+{
+	for (auto Level : AllLevels())
+	{
+		Printf("Portal displacements for %s:\n", Level->MapName.GetChars());
+		for (int x = 1; x < Level->Displacements.size; x++)
+		{
+			for (int y = 1; y < Level->Displacements.size; y++)
+			{
+				FDisplacement &disp = Level->Displacements(x, y);
+				Printf("%c%c(%6d, %6d)", TEXTCOLOR_ESCAPE, 'C' + disp.indirect, int(disp.pos.X), int(disp.pos.Y));
+			}
+			Printf("\n");
+		}
+	}
+}
+
+
+//===========================================================================
+//
+// CCMD printinv
+//
+// Prints the console player's current inventory.
+//
+//===========================================================================
+
+CCMD(printinv)
+{
+	int pnum = consoleplayer;
+
+#ifdef _DEBUG
+	// Only allow peeking on other players' inventory in debug builds.
+	if (argv.argc() > 1)
+	{
+		pnum = atoi(argv[1]);
+		if (pnum < 0 || pnum >= MAXPLAYERS)
+		{
+			return;
+		}
+	}
+#endif
+	C_PrintInv(players[pnum].mo);
+}
+
+CCMD(targetinv)
+{
+	FTranslatedLineTarget t;
+
+	if (CheckCheatmode() || players[consoleplayer].mo == NULL)
+		return;
+
+	C_AimLine(&t, true);
+
+	if (t.linetarget)
+	{
+		C_PrintInv(t.linetarget);
+	}
+	else Printf("No target found. Targetinv cannot find actors that have "
+		"the NOBLOCKMAP flag or have height/radius of 0.\n");
+}
 

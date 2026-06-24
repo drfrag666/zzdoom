@@ -54,6 +54,8 @@
 #include "doomstat.h"
 #include "vm.h"
 #include "doomerrors.h"
+#include "i_system.h"
+#include "g_game.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -163,7 +165,7 @@ static int DoomSpecificInfo (char *buffer, char *end)
 	}
 	else
 	{
-		p += snprintf (buffer+p, size-p, "\n\nCurrent map: %s", currentUILevel->MapName.GetChars());
+		p += snprintf (buffer+p, size-p, "\n\nCurrent map: %s", primaryLevel->MapName.GetChars());
 
 		if (!viewactive)
 		{

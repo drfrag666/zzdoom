@@ -577,16 +577,16 @@ else()
 endif()
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h
-	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/xlat/xlat_parser.y
-	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/xlat/xlat_parser.y )
+	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/gamedata/xlat/xlat_parser.y
+	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/gamedata/xlat/xlat_parser.y )
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h
 	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/zcc-parse.lemon
 	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/zcc-parse.lemon )
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
-	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/sc_man_scanner.re
-	DEPENDS re2c ${CMAKE_CURRENT_SOURCE_DIR}/sc_man_scanner.re )
+	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/utility/sc_man_scanner.re
+	DEPENDS re2c ${CMAKE_CURRENT_SOURCE_DIR}/utility/sc_man_scanner.re )
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
@@ -621,7 +621,10 @@ file( GLOB HEADER_FILES
 	fragglescript/*.h
 	g_shared/*.h
 	g_statusbar/*.h
-	g_inventory/*.h
+	gamedata/*.h
+	gamedata/resourcefiles/*.h
+	gamedata/textures/*.h
+	gamedata/xlat/*.h
 	intermission/*.h
 	maploader/*.h
 	menu/*.h
@@ -635,11 +638,11 @@ file( GLOB HEADER_FILES
 	win32/*.h
 	r_data/*.h
 	r_data/models/*.h
-	rapidjson/*.h
-	resourcefiles/*.h
-	sfmt/*.h
+	utility/rapidjson/*.h
+	utility/sfmt/*.h
+	utility/math./*h
+	utility/*.h
 	sound/*.h
-	textures/*.h
 	scripting/*.h
 	scripting/backend/*.h
 	scripting/decorate/*.h
@@ -652,91 +655,91 @@ file( GLOB HEADER_FILES
 	sound/timidity/*.h
 	sound/timiditypp/*.h
 	sound/wildmidi/*.h
-	xlat/*.h
-	swrenderer/*.h
-	swrenderer/drawers/*.h
-	swrenderer/scene/*.h
-	swrenderer/segments/*.h
-	swrenderer/line/*.h
-	swrenderer/plane/*.h
-	swrenderer/things/*.h
-	swrenderer/viewport/*.h
-	polyrenderer/*.h
-	polyrenderer/math/*.h
-	polyrenderer/drawers/*.h
-	polyrenderer/scene/*.h
+	rendering/swrenderer/*.h
+	rendering/swrenderer/textures/*.h
+	rendering/swrenderer/drawers/*.h
+	rendering/swrenderer/scene/*.h
+	rendering/swrenderer/segments/*.h
+	rendering/swrenderer/line/*.h
+	rendering/swrenderer/plane/*.h
+	rendering/swrenderer/things/*.h
+	rendering/swrenderer/viewport/*.h
+	rendering/polyrenderer/*.h
+	rendering/polyrenderer/math/*.h
+	rendering/polyrenderer/drawers/*.h
+	rendering/polyrenderer/scene/*.h
 	*.h
 )
 
 set ( SWRENDER_SOURCES
-	swrenderer/r_swcanvas.cpp
-	swrenderer/r_swcolormaps.cpp
-	swrenderer/r_swrenderer.cpp
-	swrenderer/r_memory.cpp
-	swrenderer/r_renderthread.cpp
-	swrenderer/drawers/r_draw.cpp
-	swrenderer/drawers/r_draw_pal.cpp
-	swrenderer/drawers/r_draw_rgba.cpp
-	swrenderer/drawers/r_thread.cpp
-	swrenderer/scene/r_3dfloors.cpp
-	swrenderer/scene/r_light.cpp
-	swrenderer/scene/r_opaque_pass.cpp
-	swrenderer/scene/r_portal.cpp
-	swrenderer/scene/r_scene.cpp
-	swrenderer/scene/r_translucent_pass.cpp
-	swrenderer/viewport/r_drawerargs.cpp
-	swrenderer/viewport/r_skydrawer.cpp
-	swrenderer/viewport/r_spandrawer.cpp
-	swrenderer/viewport/r_spritedrawer.cpp
-	swrenderer/viewport/r_viewport.cpp
-	swrenderer/viewport/r_walldrawer.cpp
-	swrenderer/line/r_line.cpp
-	swrenderer/line/r_farclip_line.cpp
-	swrenderer/line/r_walldraw.cpp
-	swrenderer/line/r_wallsetup.cpp
-	swrenderer/line/r_fogboundary.cpp
-	swrenderer/line/r_renderdrawsegment.cpp
-	swrenderer/segments/r_clipsegment.cpp
-	swrenderer/segments/r_drawsegment.cpp
-	swrenderer/segments/r_portalsegment.cpp
-	swrenderer/things/r_visiblesprite.cpp
-	swrenderer/things/r_visiblespritelist.cpp
-	swrenderer/things/r_voxel.cpp
-	swrenderer/things/r_particle.cpp
-	swrenderer/things/r_playersprite.cpp
-	swrenderer/things/r_sprite.cpp
-	swrenderer/things/r_wallsprite.cpp
-	swrenderer/things/r_decal.cpp
-	swrenderer/things/r_model.cpp
-	swrenderer/plane/r_visibleplane.cpp
-	swrenderer/plane/r_visibleplanelist.cpp
-	swrenderer/plane/r_skyplane.cpp
-	swrenderer/plane/r_planerenderer.cpp
-	swrenderer/plane/r_flatplane.cpp
-	swrenderer/plane/r_slopeplane.cpp
+	rendering/swrenderer/r_swcanvas.cpp
+	rendering/swrenderer/r_swcolormaps.cpp
+	rendering/swrenderer/r_swrenderer.cpp
+	rendering/swrenderer/r_memory.cpp
+	rendering/swrenderer/r_renderthread.cpp
+	rendering/swrenderer/drawers/r_draw.cpp
+	rendering/swrenderer/drawers/r_draw_pal.cpp
+	rendering/swrenderer/drawers/r_draw_rgba.cpp
+	rendering/swrenderer/drawers/r_thread.cpp
+	rendering/swrenderer/scene/r_3dfloors.cpp
+	rendering/swrenderer/scene/r_light.cpp
+	rendering/swrenderer/scene/r_opaque_pass.cpp
+	rendering/swrenderer/scene/r_portal.cpp
+	rendering/swrenderer/scene/r_scene.cpp
+	rendering/swrenderer/scene/r_translucent_pass.cpp
+	rendering/swrenderer/viewport/r_drawerargs.cpp
+	rendering/swrenderer/viewport/r_skydrawer.cpp
+	rendering/swrenderer/viewport/r_spandrawer.cpp
+	rendering/swrenderer/viewport/r_spritedrawer.cpp
+	rendering/swrenderer/viewport/r_viewport.cpp
+	rendering/swrenderer/viewport/r_walldrawer.cpp
+	rendering/swrenderer/line/r_line.cpp
+	rendering/swrenderer/line/r_farclip_line.cpp
+	rendering/swrenderer/line/r_walldraw.cpp
+	rendering/swrenderer/line/r_wallsetup.cpp
+	rendering/swrenderer/line/r_fogboundary.cpp
+	rendering/swrenderer/line/r_renderdrawsegment.cpp
+	rendering/swrenderer/segments/r_clipsegment.cpp
+	rendering/swrenderer/segments/r_drawsegment.cpp
+	rendering/swrenderer/segments/r_portalsegment.cpp
+	rendering/swrenderer/things/r_visiblesprite.cpp
+	rendering/swrenderer/things/r_visiblespritelist.cpp
+	rendering/swrenderer/things/r_voxel.cpp
+	rendering/swrenderer/things/r_particle.cpp
+	rendering/swrenderer/things/r_playersprite.cpp
+	rendering/swrenderer/things/r_sprite.cpp
+	rendering/swrenderer/things/r_wallsprite.cpp
+	rendering/swrenderer/things/r_decal.cpp
+	rendering/swrenderer/things/r_model.cpp
+	rendering/swrenderer/plane/r_visibleplane.cpp
+	rendering/swrenderer/plane/r_visibleplanelist.cpp
+	rendering/swrenderer/plane/r_skyplane.cpp
+	rendering/swrenderer/plane/r_planerenderer.cpp
+	rendering/swrenderer/plane/r_flatplane.cpp
+	rendering/swrenderer/plane/r_slopeplane.cpp
 )
 
 set( POLYRENDER_SOURCES
-	polyrenderer/poly_renderer.cpp
-	polyrenderer/poly_renderthread.cpp
-	polyrenderer/scene/poly_scene.cpp
-	polyrenderer/scene/poly_portal.cpp
-	polyrenderer/scene/poly_cull.cpp
-	polyrenderer/scene/poly_decal.cpp
-	polyrenderer/scene/poly_particle.cpp
-	polyrenderer/scene/poly_plane.cpp
-	polyrenderer/scene/poly_playersprite.cpp
-	polyrenderer/scene/poly_wall.cpp
-	polyrenderer/scene/poly_wallsprite.cpp
-	polyrenderer/scene/poly_sprite.cpp
-	polyrenderer/scene/poly_model.cpp
-	polyrenderer/scene/poly_sky.cpp
-	polyrenderer/scene/poly_light.cpp
-	polyrenderer/drawers/poly_buffer.cpp
-	polyrenderer/drawers/poly_triangle.cpp
-	polyrenderer/drawers/poly_draw_args.cpp
-	polyrenderer/drawers/screen_triangle.cpp
-	polyrenderer/math/gpu_types.cpp
+	rendering/polyrenderer/poly_renderer.cpp
+	rendering/polyrenderer/poly_renderthread.cpp
+	rendering/polyrenderer/scene/poly_scene.cpp
+	rendering/polyrenderer/scene/poly_portal.cpp
+	rendering/polyrenderer/scene/poly_cull.cpp
+	rendering/polyrenderer/scene/poly_decal.cpp
+	rendering/polyrenderer/scene/poly_particle.cpp
+	rendering/polyrenderer/scene/poly_plane.cpp
+	rendering/polyrenderer/scene/poly_playersprite.cpp
+	rendering/polyrenderer/scene/poly_wall.cpp
+	rendering/polyrenderer/scene/poly_wallsprite.cpp
+	rendering/polyrenderer/scene/poly_sprite.cpp
+	rendering/polyrenderer/scene/poly_model.cpp
+	rendering/polyrenderer/scene/poly_sky.cpp
+	rendering/polyrenderer/scene/poly_light.cpp
+	rendering/polyrenderer/drawers/poly_buffer.cpp
+	rendering/polyrenderer/drawers/poly_triangle.cpp
+	rendering/polyrenderer/drawers/poly_draw_args.cpp
+	rendering/polyrenderer/drawers/screen_triangle.cpp
+	rendering/polyrenderer/math/gpu_types.cpp
 )
 
 # These files will be flagged as "headers" so that they appear in project files
@@ -746,9 +749,9 @@ set( NOT_COMPILED_SOURCE_FILES
 	${SWRENDER_SOURCES}
 	${POLYRENDER_SOURCES}
 	sc_man_scanner.h
-	sc_man_scanner.re
+	utility/sc_man_scanner.re
 	g_statusbar/sbarinfo_commands.cpp
-	xlat/xlat_parser.y
+	gamedata/xlat/xlat_parser.y
 	xlat_parser.c
 	xlat_parser.h
 	scripting/zscript/zcc-parse.lemon
@@ -762,8 +765,8 @@ set( NOT_COMPILED_SOURCE_FILES
 
 # Enable fast math for some sources
 set( FASTMATH_SOURCES
-	swrenderer/r_all.cpp
-	polyrenderer/poly_all.cpp
+	rendering/swrenderer/r_all.cpp
+	rendering/polyrenderer/poly_all.cpp
 	sound/oplsynth/opl_mus_player.cpp
 	sound/mpg123_decoder.cpp
 	sound/music_midi_base.cpp
@@ -802,7 +805,6 @@ set( FASTMATH_SOURCES
 )
 
 set (PCH_SOURCES
-	actorptrselect.cpp
 	am_map.cpp
 	b_bot.cpp
 	b_func.cpp
@@ -818,63 +820,30 @@ set (PCH_SOURCES
 	c_dispatch.cpp
 	c_expr.cpp
 	c_functions.cpp
-	cmdlib.cpp
-	colormatcher.cpp
-	configfile.cpp
 	ct_chat.cpp
 	cycler.cpp
-	d_dehacked.cpp
 	d_iwad.cpp
 	d_main.cpp
 	d_net.cpp
 	d_netinfo.cpp
 	d_protocol.cpp
-	decallib.cpp
 	dobject.cpp
 	dobjgc.cpp
 	dobjtype.cpp
 	doomstat.cpp
-	dsectoreffect.cpp
-	dthinker.cpp
 	f_wipe.cpp
-	files.cpp
-	files_decompress.cpp
 	g_cvars.cpp
-	g_doomedmap.cpp
 	g_dumpinfo.cpp
 	g_game.cpp
 	g_hub.cpp
 	g_level.cpp
-	g_mapinfo.cpp
-	g_skill.cpp
 	gameconfigfile.cpp
-	gi.cpp
 	gitinfo.cpp
 	hu_scores.cpp
-	i_module.cpp
 	i_net.cpp
-	i_time.cpp
-	info.cpp
-	keysections.cpp
-	m_alloc.cpp
-	m_argv.cpp
-	m_bbox.cpp
 	m_cheat.cpp
 	m_joy.cpp
 	m_misc.cpp
-	m_png.cpp
-	m_random.cpp
-	memarena.cpp
-	md5.cpp
-	name.cpp
-	nodebuild.cpp
-	nodebuild_classify_nosse2.cpp
-	nodebuild_events.cpp
-	nodebuild_extract.cpp
-	nodebuild_gl.cpp
-	nodebuild_utility.cpp
-	p_3dfloors.cpp
-	p_3dmidtex.cpp
 	p_acs.cpp
 	p_actionfunctions.cpp
 	p_conversation.cpp
@@ -882,7 +851,6 @@ set (PCH_SOURCES
 	p_effect.cpp
 	p_enemy.cpp
 	p_interaction.cpp
-	p_linkedsectors.cpp
 	p_lnspec.cpp
 	p_map.cpp
 	p_maputl.cpp
@@ -890,58 +858,52 @@ set (PCH_SOURCES
 	p_openmap.cpp
 	p_pspr.cpp
 	p_saveg.cpp
-	p_secnodes.cpp
-	p_sectors.cpp
 	p_setup.cpp
-	p_sight.cpp
 	p_spec.cpp
 	p_states.cpp
-	p_switch.cpp
-	p_tags.cpp
-	p_teleport.cpp
-	p_terrain.cpp
 	p_things.cpp
 	p_tick.cpp
-	p_trace.cpp
 	p_usdf.cpp
 	p_user.cpp
-	p_xlat.cpp
-	parsecontext.cpp
-	po_man.cpp
-	portal.cpp
 	r_utility.cpp
 	r_sky.cpp
 	r_videoscale.cpp
 	s_advsound.cpp
 	s_environment.cpp
-	s_playlist.cpp
 	s_sndseq.cpp
 	s_sound.cpp
 	serializer.cpp
-	sc_man.cpp
 	scriptutil.cpp
 	st_stuff.cpp
 	statistics.cpp
 	stats.cpp
-	stringtable.cpp
-	teaminfo.cpp
-	umapinfo.cpp
 	v_blend.cpp
-	v_collection.cpp
 	v_draw.cpp
 	v_font.cpp
 	v_palette.cpp
 	v_pfx.cpp
 	v_text.cpp
 	v_video.cpp
-	w_wad.cpp
 	wi_stuff.cpp
-	zstrformat.cpp
-	g_inventory/a_keys.cpp
-	g_inventory/a_pickups.cpp
-	g_inventory/a_weapons.cpp
+	gamedata/a_keys.cpp
+	gamedata/a_weapons.cpp
+	gamedata/decallib.cpp
+	gamedata/g_mapinfo.cpp
+	gamedata/g_skill.cpp
+	gamedata/gi.cpp
+	gamedata/stringtable.cpp
+	gamedata/umapinfo.cpp
+	gamedata/w_wad.cpp
+	gamedata/d_dehacked.cpp
+	gamedata/g_doomedmap.cpp
+	gamedata/info.cpp
+	gamedata/keysections.cpp
+	gamedata/p_terrain.cpp
+	gamedata/teaminfo.cpp
+	g_shared/a_pickups.cpp
 	g_shared/a_action.cpp
 	g_shared/a_decals.cpp
+	g_shared/a_decalfx.cpp
 	g_shared/a_doors.cpp
 	g_shared/a_dynlight.cpp
 	g_shared/a_flashfader.cpp
@@ -957,6 +919,21 @@ set (PCH_SOURCES
 	g_shared/a_plats.cpp
 	g_shared/a_pusher.cpp
 	g_shared/a_scroll.cpp
+	g_shared/dsectoreffect.cpp
+	g_shared/p_secnodes.cpp
+	g_shared/p_sectors.cpp
+	g_shared/p_sight.cpp
+	g_shared/p_switch.cpp
+	g_shared/p_tags.cpp
+	g_shared/p_teleport.cpp
+	g_shared/actorptrselect.cpp
+	g_shared/dthinker.cpp
+	g_shared/p_3dfloors.cpp
+	g_shared/p_3dmidtex.cpp
+	g_shared/p_linkedsectors.cpp
+	g_shared/p_trace.cpp
+	g_shared/po_man.cpp
+	g_shared/portal.cpp
 	g_statusbar/hudmessages.cpp
 	g_statusbar/shared_hud.cpp
 	g_statusbar/sbarinfo.cpp
@@ -978,41 +955,42 @@ set (PCH_SOURCES
 	menu/optionmenu.cpp
 	menu/playermenu.cpp
 	menu/videomenu.cpp
-	resourcefiles/ancientzip.cpp
-	resourcefiles/file_7z.cpp
-	resourcefiles/file_grp.cpp
-	resourcefiles/file_lump.cpp
-	resourcefiles/file_rff.cpp
-	resourcefiles/file_wad.cpp
-	resourcefiles/file_zip.cpp
-	resourcefiles/file_pak.cpp
-	resourcefiles/file_directory.cpp
-	resourcefiles/resourcefile.cpp
-	textures/animations.cpp
-	textures/anim_switches.cpp
-	textures/bitmap.cpp
-	textures/texture.cpp
-	textures/texturemanager.cpp
-	textures/skyboxtexture.cpp
-	textures/formats/automaptexture.cpp
-	textures/formats/buildtexture.cpp
-	textures/formats/canvastexture.cpp
-	textures/formats/ddstexture.cpp
-	textures/formats/flattexture.cpp
-	textures/formats/imgztexture.cpp
-	textures/formats/jpegtexture.cpp
-	textures/formats/md5check.cpp
-	textures/formats/multipatchtexture.cpp
-	textures/formats/patchtexture.cpp
-	textures/formats/pcxtexture.cpp
-	textures/formats/pngtexture.cpp
-	textures/formats/rawpagetexture.cpp
-	textures/formats/emptytexture.cpp
-	textures/formats/shadertexture.cpp
-	textures/formats/tgatexture.cpp
-	textures/formats/worldtexture.cpp
-	textures/formats/warptexture.cpp
-	xlat/parse_xlat.cpp
+	gamedata/resourcefiles/ancientzip.cpp
+	gamedata/resourcefiles/file_7z.cpp
+	gamedata/resourcefiles/file_grp.cpp
+	gamedata/resourcefiles/file_lump.cpp
+	gamedata/resourcefiles/file_rff.cpp
+	gamedata/resourcefiles/file_wad.cpp
+	gamedata/resourcefiles/file_zip.cpp
+	gamedata/resourcefiles/file_pak.cpp
+	gamedata/resourcefiles/file_directory.cpp
+	gamedata/resourcefiles/resourcefile.cpp
+	gamedata/textures/animations.cpp
+	gamedata/textures/anim_switches.cpp
+	gamedata/textures/bitmap.cpp
+	gamedata/textures/texture.cpp
+	gamedata/textures/texturemanager.cpp
+	gamedata/textures/skyboxtexture.cpp
+	gamedata/textures/formats/automaptexture.cpp
+	gamedata/textures/formats/buildtexture.cpp
+	gamedata/textures/formats/canvastexture.cpp
+	gamedata/textures/formats/ddstexture.cpp
+	gamedata/textures/formats/flattexture.cpp
+	gamedata/textures/formats/imgztexture.cpp
+	gamedata/textures/formats/jpegtexture.cpp
+	gamedata/textures/formats/md5check.cpp
+	gamedata/textures/formats/multipatchtexture.cpp
+	gamedata/textures/formats/patchtexture.cpp
+	gamedata/textures/formats/pcxtexture.cpp
+	gamedata/textures/formats/pngtexture.cpp
+	gamedata/textures/formats/rawpagetexture.cpp
+	gamedata/textures/formats/emptytexture.cpp
+	gamedata/textures/formats/shadertexture.cpp
+	gamedata/textures/formats/tgatexture.cpp
+	gamedata/textures/formats/worldtexture.cpp
+	gamedata/p_xlat.cpp
+	gamedata/xlat/parse_xlat.cpp
+	gamedata/xlat/parsecontext.cpp
 	fragglescript/t_func.cpp
 	fragglescript/t_load.cpp
 	fragglescript/t_oper.cpp
@@ -1068,7 +1046,7 @@ set (PCH_SOURCES
 	scripting/zscript/ast.cpp
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
-	sfmt/SFMT.cpp
+	utility/sfmt/SFMT.cpp
 	sound/i_music.cpp
 	sound/i_sound.cpp
 	sound/i_soundfont.cpp
@@ -1133,9 +1111,35 @@ set (PCH_SOURCES
 	sound/wildmidi/reverb.cpp
 	sound/wildmidi/wildmidi_lib.cpp
 	sound/wildmidi/wm_error.cpp
+	rendering/swrenderer/textures/warptexture.cpp
 	events.cpp
 	GuillotineBinPack.cpp
 	SkylineBinPack.cpp
+	utility/files.cpp
+	utility/files_decompress.cpp
+	utility/m_png.cpp
+	utility/m_random.cpp
+	utility/memarena.cpp
+	utility/md5.cpp
+	utility/nodebuilder/nodebuild.cpp
+	utility/nodebuilder/nodebuild_classify_nosse2.cpp
+	utility/nodebuilder/nodebuild_events.cpp
+	utility/nodebuilder/nodebuild_extract.cpp
+	utility/nodebuilder/nodebuild_gl.cpp
+	utility/nodebuilder/nodebuild_utility.cpp
+	utility/sc_man.cpp
+	utility/cmdlib.cpp
+	utility/colormatcher.cpp
+	utility/configfile.cpp
+	utility/i_module.cpp
+	utility/i_time.cpp
+	utility/m_alloc.cpp
+	utility/m_argv.cpp
+	utility/m_bbox.cpp
+	utility/name.cpp
+	utility/s_playlist.cpp
+	utility/v_collection.cpp
+	utility/zstrformat.cpp
 )
 
 enable_precompiled_headers( g_pch.h PCH_SOURCES )
@@ -1148,33 +1152,33 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${X86_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
-	x86.cpp
-	strnatcmp.c
-	zstring.cpp
-	math/asin.c
-	math/atan.c
-	math/const.c
-	math/cosh.c
-	math/exp.c
-	math/isnan.c
-	math/log.c
-	math/log10.c
-	math/mtherr.c
-	math/polevl.c
-	math/pow.c
-	math/powi.c
-	math/sin.c
-	math/sinh.c
-	math/sqrt.c
-	math/tan.c
-	math/tanh.c
-	math/fastsin.cpp
+	utility/x86.cpp
+	utility/strnatcmp.c
+	utility/zstring.cpp
+	utility/math/asin.c
+	utility/math/atan.c
+	utility/math/const.c
+	utility/math/cosh.c
+	utility/math/exp.c
+	utility/math/isnan.c
+	utility/math/log.c
+	utility/math/log10.c
+	utility/math/mtherr.c
+	utility/math/polevl.c
+	utility/math/pow.c
+	utility/math/powi.c
+	utility/math/sin.c
+	utility/math/sinh.c
+	utility/math/sqrt.c
+	utility/math/tan.c
+	utility/math/tanh.c
+	utility/math/fastsin.cpp
 	zzautozend.cpp
 )
 
 set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
 set_source_files_properties( xlat/parse_xlat.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c" )
-set_source_files_properties( sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
+set_source_files_properties( utility/sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
 set_source_files_properties( ${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE )
 if ( WIN32 )
 	set_source_files_properties( win32/fb_d3d9.cpp win32/fb_d3d9_wipe.cpp PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
@@ -1198,13 +1202,16 @@ target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
 include_directories( .
 	g_statusbar
 	g_shared
-	g_inventory
+	gamedata
+	gamedata/textures
+	rendering
 	sound
-	textures
 	sound/oplsynth
 	sound/timidity
 	sound/wildmidi
 	xlat
+	utility
+	utility/nodebuilder
 	scripting
 	scripting/vm
 	../gdtoa
@@ -1312,26 +1319,29 @@ source_group("External\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/m
 source_group("External\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rapidjson/.+")
 source_group("External\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sfmt/.+")
 source_group("FraggleScript" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/fragglescript/.+")
+source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
+source_group("Game Data\\Resource Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/resourcefiles/.+")
+source_group("Game Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/textures/.+")
+source_group("Game Data\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/textures/formats/.+")
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
 source_group("Map Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/maploader/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
-source_group("Software Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/.+")
-source_group("Software Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/drawers/.+")
-source_group("Software Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/scene/.+")
-source_group("Software Renderer\\Segments" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/segments/.+")
-source_group("Software Renderer\\Line" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/line/.+")
-source_group("Software Renderer\\Plane" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/plane/.+")
-source_group("Software Renderer\\Things" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/things/.+")
-source_group("Software Renderer\\Viewport" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/swrenderer/viewport/.+")
-source_group("Poly Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/.+")
-source_group("Poly Renderer\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/math/.+")
-source_group("Poly Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/drawers/.+")
-source_group("Poly Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/polyrenderer/scene/.+")
+source_group("Rendering" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/.+")
+source_group("Rendering\\Software Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/.+")
+source_group("Rendering\\Software Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/drawers/.+")
+source_group("Rendering\\Software Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/scene/.+")
+source_group("Rendering\\Software Renderer\\Segments" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/segments/.+")
+source_group("Rendering\\Software Renderer\\Line" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/line/.+")
+source_group("Rendering\\Software Renderer\\Plane" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/plane/.+")
+source_group("Rendering\\Software Renderer\\Things" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/things/.+")
+source_group("Rendering\\Software Renderer\\Viewport" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/viewport/.+")
+source_group("Rendering\\Poly Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/.+")
+source_group("Rendering\\Poly Renderer\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/math/.+")
+source_group("Rendering\\Poly Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/drawers/.+")
+source_group("Rendering\\Poly Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/scene/.+")
 source_group("Render Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/.+")
-source_group("Render Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/textures/.+")
 source_group("Render Data\\Models" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/models/.+")
 source_group("Render Interface" FILES r_defs.h r_renderer.h r_sky.cpp r_sky.h r_state.h r_utility.cpp r_utility.h)
-source_group("Resource Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/resourcefiles/.+")
 source_group("Platforms\\POSIX Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/posix/.+")
 source_group("Platforms\\Cocoa Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/posix/cocoa/.+")
 source_group("Platforms\\OS X Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/.+")
@@ -1343,8 +1353,13 @@ source_group("Scripting\\ZScript frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_
 source_group("Scripting\\Compiler backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/backend/.+")
 source_group("Scripting\\VM" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/vm/.+")
 source_group("Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/.+")
+source_group("Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/.+")
+source_group("Utility\\Node Builder" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/nodebuilder/.+")
+source_group("Utility\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/math/.+")
+source_group("Utility\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/rapidjson/.+")
+source_group("Utility\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/sfmt/.+")
 source_group("Shared Game" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_shared/.+")
 source_group("Statusbar" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_statusbar/.+")
 source_group("Versioning" FILES version.h win32/zdoom.rc)
 source_group("Xlat" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/xlat/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h)
-source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h sc_man_scanner.re)
+source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h utility/sc_man_scanner.re)

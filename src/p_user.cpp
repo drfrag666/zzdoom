@@ -90,6 +90,8 @@
 #include "p_acs.h"
 #include "events.h"
 #include "g_game.h"
+#include "v_video.h"
+#include "gstrings.h"
 
 static FRandom pr_skullpop ("SkullPop");
 
@@ -234,46 +236,6 @@ void SetupPlayerClasses ()
 				newclass.Flags |= PCF_NOMENU;
 			}
 			PlayerClasses.Push(newclass);
-		}
-	}
-}
-
-CCMD (clearplayerclasses)
-{
-	if (ParsingKeyConf)
-	{
-		PlayerClasses.Clear ();
-	}
-}
-
-CCMD (addplayerclass)
-{
-	if (ParsingKeyConf && argv.argc () > 1)
-	{
-		PClassActor *ti = PClass::FindActor(argv[1]);
-
-		if (ValidatePlayerClass(ti, argv[1]))
-		{
-			FPlayerClass newclass;
-
-			newclass.Type = ti;
-			newclass.Flags = 0;
-
-			int arg = 2;
-			while (arg < argv.argc())
-			{
-				if (!stricmp (argv[arg], "nomenu"))
-				{
-					newclass.Flags |= PCF_NOMENU;
-				}
-				else
-				{
-					Printf ("Unknown flag '%s' for player class '%s'\n", argv[arg], argv[1]);
-				}
-
-				arg++;
-			}
-			PlayerClasses.Push (newclass);
 		}
 	}
 }
@@ -442,7 +404,7 @@ void player_t::SetLogText (const char *text)
 	{
 		// Print log text to console
 		AddToConsole(-1, TEXTCOLOR_GOLD);
-		AddToConsole(-1, LogText);
+		AddToConsole(-1, GStrings(LogText));
 		AddToConsole(-1, "\n");
 	}
 }
@@ -605,7 +567,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(APlayerPawn, GetPainFlashForType, GetPainFlash)
 
 void player_t::SendPitchLimits() const
 {
-	if (this - players == consoleplayer)
+	if (this == mo->Level->GetConsolePlayer())
 	{
 		Net_WriteByte(DEM_SETPITCHLIMIT);
 		Net_WriteByte(Renderer->GetMaxViewPitch(false));	// up
@@ -652,9 +614,10 @@ bool player_t::Resurrect()
 	mo->special1 = 0;	// required for the Hexen fighter's fist attack. 
 								// This gets set by AActor::Die as flag for the wimpy death and must be reset here.
 	mo->SetState(mo->SpawnState);
+	int pnum = mo->Level->PlayerNum(this);
 	if (!(mo->flags2 & MF2_DONTTRANSLATE))
 	{
-		mo->Translation = TRANSLATION(TRANSLATION_Players, uint8_t(this - players));
+		mo->Translation = TRANSLATION(TRANSLATION_Players, uint8_t(pnum));
 	}
 	if (ReadyWeapon != nullptr)
 	{
@@ -669,8 +632,7 @@ bool player_t::Resurrect()
 
 	// player is now alive.
 	// fire E_PlayerRespawned and start the ACS SCRIPT_Respawn.
-	E_PlayerRespawned(int(this - players));
-	//
+	mo->Level->localEventManager->PlayerRespawned(pnum);
 	mo->Level->Behaviors.StartTypedScripts(SCRIPT_Respawn, mo, true);
 	return true;
 }
@@ -971,8 +933,8 @@ void P_CheckPlayerSprite(AActor *actor, int &spritenum, DVector2 &scale)
 
 CUSTOM_CVAR (Float, sv_aircontrol, 0.00390625f, CVAR_SERVERINFO|CVAR_NOSAVE)
 {
-	currentUILevel->aircontrol = self;
-	currentUILevel->AirControlChanged ();
+	primaryLevel->aircontrol = self;
+	primaryLevel->AirControlChanged ();
 }
 
 //==========================================================================
@@ -1084,7 +1046,7 @@ void P_CheckMusicChange(player_t *player)
 	{
 		if (--player->MUSINFOtics < 0)
 		{
-			if (player - players == consoleplayer)
+			if (player == player->mo->Level->GetConsolePlayer())
 			{
 				if (player->MUSINFOactor->args[0] != 0)
 				{
@@ -1100,7 +1062,7 @@ void P_CheckMusicChange(player_t *player)
 					S_ChangeMusic("*");
 				}
 			}
-			DPrintf(DMSG_NOTIFY, "MUSINFO change for player %d to %d\n", (int)(player - players), player->MUSINFOactor->args[0]);
+			DPrintf(DMSG_NOTIFY, "MUSINFO change for player %d to %d\n", (int)player->mo->Level->PlayerNum(player), player->MUSINFOactor->args[0]);
 		}
 	}
 }
@@ -1348,7 +1310,7 @@ void P_PredictPlayer (player_t *player)
 		singletics ||
 		demoplayback ||
 		player->mo == NULL ||
-		player != &players[consoleplayer] ||
+		player != player->mo->Level->GetConsolePlayer() ||
 		player->playerstate != PST_LIVE ||
 		!netgame ||
 		/*player->morphTics ||*/

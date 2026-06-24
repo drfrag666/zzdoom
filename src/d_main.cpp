@@ -174,7 +174,7 @@ CUSTOM_CVAR (Int, fraglimit, 0, CVAR_SERVERINFO)
 			if (playeringame[i] && self <= D_GetFragCount(&players[i]))
 			{
 				Printf ("%s\n", GStrings("TXT_FRAGLIMIT"));
-				level.ExitLevel (0, false);
+				primaryLevel->ExitLevel (0, false);
 				break;
 			}
 		}
@@ -286,7 +286,7 @@ void D_ProcessEvents (void)
 		if (M_Responder (ev))
 			continue;				// menu ate the event
 		// check events
-		if (ev->type != EV_Mouse && E_Responder(ev)) // [ZZ] ZScript ate the event // update 07.03.17: mouse events are handled directly
+		if (ev->type != EV_Mouse && primaryLevel->localEventManager->Responder(ev)) // [ZZ] ZScript ate the event // update 07.03.17: mouse events are handled directly
 			continue;
 		G_Responder (ev);
 	}
@@ -308,7 +308,7 @@ void D_PostEvent (const event_t *ev)
 		return;
 	}
 	events[eventhead] = *ev;
-	if (ev->type == EV_Mouse && menuactive == MENU_Off && ConsoleState != c_down && ConsoleState != c_falling && !E_Responder(ev) && !paused)
+	if (ev->type == EV_Mouse && menuactive == MENU_Off && ConsoleState != c_down && ConsoleState != c_falling && !primaryLevel->localEventManager->Responder(ev) && !paused)
 	{
 		if (Button_Mlook.bDown || freelook)
 		{
@@ -733,7 +733,8 @@ void D_Display ()
 			C_NewModeAdjust ();
 			// Reload crosshair if transitioned to a different size
 			ST_LoadCrosshair (true);
-			currentUILevel->automap->NewResolution();
+			if (primaryLevel && primaryLevel->automap)
+				primaryLevel->automap->NewResolution();
 			// Reset the mouse cursor in case the bit depth changed
 			vid_cursor.Callback();
 		}
@@ -849,7 +850,7 @@ void D_Display ()
 			screen->DrawBlendingRect();
 			if (automapactive)
 			{
-				currentUILevel->automap->Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
+				primaryLevel->automap->Drawer (hud_althud? viewheight : StatusBar->GetTopOfStatusbar());
 			}
 			if (!automapactive || viewactive)
 			{
@@ -1013,7 +1014,7 @@ void D_ErrorCleanup ()
 {
 	savegamerestore = false;
 	screen->Unlock ();
-	level.BotInfo.RemoveAllBots (&level, true);
+	primaryLevel->BotInfo.RemoveAllBots (primaryLevel, true);
 	D_QuitNetGame ();
 	if (demorecording || demoplayback)
 		G_CheckDemoStatus ();
@@ -2600,14 +2601,14 @@ void D_DoomMain (void)
 		PClassActor::StaticSetActorNums();
 
 		//Added by MC:
-		level.BotInfo.getspawned.Clear();
+		primaryLevel->BotInfo.getspawned.Clear();
 		argcount = Args->CheckParmList("-bots", &args);
 		for (p = 0; p < argcount; ++p)
 		{
-			level.BotInfo.getspawned.Push(args[p]);
+			primaryLevel->BotInfo.getspawned.Push(args[p]);
 		}
-		level.BotInfo.spawn_tries = 0;
-		level.BotInfo.wanted_botnum = level.BotInfo.getspawned.Size();
+		primaryLevel->BotInfo.spawn_tries = 0;
+		primaryLevel->BotInfo.wanted_botnum = primaryLevel->BotInfo.getspawned.Size();
 
 		if (!batchrun) Printf ("P_Init: Init Playloop state.\n");
 		StartScreen->LoadingStatus ("Init game engine", 0x3f);
@@ -2771,8 +2772,11 @@ void D_DoomMain (void)
 		// clean up game state
 		ST_Clear();
 		D_ErrorCleanup ();
-		level.Thinkers.DestroyThinkersInList(STAT_STATIC);
-		E_Shutdown(false);
+		for (auto Level : AllLevels())
+		{
+			Level->Thinkers.DestroyThinkersInList(STAT_STATIC);
+		}
+		staticEventManager.Shutdown();
 		P_FreeLevelData();
 
 		M_SaveDefaults(NULL);			// save config before the restart

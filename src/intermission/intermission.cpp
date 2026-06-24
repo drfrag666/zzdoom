@@ -832,7 +832,7 @@ void DIntermissionController::Ticker ()
 			switch (mGameState)
 			{
 			case FSTATE_InLevel:
-				currentUILevel->SetMusic();
+				primaryLevel->SetMusic();
 				gamestate = GS_LEVEL;
 				wipegamestate = GS_LEVEL;
 				P_ResumeConversation ();

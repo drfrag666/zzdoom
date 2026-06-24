@@ -37,6 +37,7 @@
 #include <time.h>
 
 #include "version.h"
+#include "i_system.h"
 #include "hardware.h"
 #include "i_video.h"
 #include "i_system.h"

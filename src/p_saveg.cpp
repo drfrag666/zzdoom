@@ -588,13 +588,13 @@ void P_SerializePlayers(FLevelLocals *Level, FSerializer &arc, bool skipload)
 			// Record each player's name, followed by their data.
 			for (i = 0; i < MAXPLAYERS; ++i)
 			{
-				if (playeringame[i])
+				if (Level->PlayerInGame(i))
 				{
 					if (arc.BeginObject(nullptr))
 					{
-						const char *n = players[i].userinfo.GetName();
+						const char *n = Level->Players[i]->userinfo.GetName();
 						arc.StringPtr("playername", n);
-						players[i].Serialize(arc);
+						Level->Players[i]->Serialize(arc);
 						arc.EndObject();
 					}
 				}
@@ -625,7 +625,8 @@ void P_SerializePlayers(FLevelLocals *Level, FSerializer &arc, bool skipload)
 			Level->SpawnExtraPlayers();
 		}
 		// Redo pitch limits, since the spawned player has them at 0.
-		players[consoleplayer].SendPitchLimits();
+		auto p = Level->GetConsolePlayer();
+		if (p) p->SendPitchLimits();
 	}
 }
 
@@ -822,7 +823,7 @@ void CopyPlayer(player_t *dst, player_t *src, const char *name)
 
 	if (dst->Bot != nullptr)
 	{
-		botinfo_t *thebot = level.BotInfo.botinfo;
+		botinfo_t *thebot = src->mo->Level->BotInfo.botinfo;
 		while (thebot && stricmp(name, thebot->name))
 		{
 			thebot = thebot->next;
@@ -831,7 +832,7 @@ void CopyPlayer(player_t *dst, player_t *src, const char *name)
 		{
 			thebot->inuse = BOTINUSE_Yes;
 		}
-		level.BotInfo.botnum++;
+		src->mo->Level->BotInfo.botnum++;
 		dst->userinfo.TransferFrom(uibackup2);
 	}
 	else
@@ -1000,7 +1001,8 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	// [ZZ] serialize health groups
 	P_SerializeHealthGroups(this, arc);
 	// [ZZ] serialize events
-	E_SerializeEvents(arc);
+	arc("firstevent", localEventManager->FirstEventHandler)
+		("lastevent", localEventManager->LastEventHandler);
 	Thinkers.SerializeThinkers(arc, hubload);
 	arc("polyobjs", Polyobjects);
 	SerializeSubsectors(arc, "subsectors");
@@ -1024,6 +1026,7 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 				FWeaponSlots::SetupWeaponSlots(Players[i]->mo);
 			}
 		}
+		localEventManager->SetOwnerForHandlers();	// This cannot be automated.
 		RecreateAllAttachedLights();
 
 		automap->UpdateShowAllLines();
