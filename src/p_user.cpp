@@ -371,18 +371,37 @@ size_t player_t::PropagateMark()
 
 void player_t::SetLogNumber (int num)
 {
-	char lumpname[16];
+	char lumpname[26];
 	int lumpnum;
+
+	// First look up TXT_LOGTEXT%d in the string table
+	mysnprintf(lumpname, countof(lumpname), "$TXT_LOGTEXT%d", num);
+	auto text = GStrings[lumpname+1];
+	if (text)
+	{
+		SetLogText(lumpname);	// set the label, not the content, so that a language change can be picked up.
+		return;
+	}
 
 	mysnprintf (lumpname, countof(lumpname), "LOG%d", num);
 	lumpnum = Wads.CheckNumForName (lumpname);
-	if (lumpnum == -1)
+	if (lumpnum != -1)
 	{
-		// Leave the log message alone if this one doesn't exist.
-		//SetLogText (lumpname);
-	}
-	else
-	{
+		auto fn = Wads.GetLumpFile(lumpnum);
+		auto wadname = Wads.GetWadName(fn);
+		if (!stricmp(wadname, "STRIFE0.WAD") || !stricmp(wadname, "STRIFE1.WAD") || !stricmp(wadname, "SVE.WAD"))
+		{
+			// If this is an original IWAD text, try looking up its lower priority string version first.
+
+			mysnprintf(lumpname, countof(lumpname), "$TXT_ILOG%d", num);
+			auto text = GStrings[lumpname + 1];
+			if (text)
+			{
+				SetLogText(lumpname);	// set the label, not the content, so that a language change can be picked up.
+				return;
+			}
+		}
+
 		auto lump = Wads.ReadLump(lumpnum);
 		SetLogText (lump.GetString());
 	}
@@ -400,11 +419,11 @@ void player_t::SetLogText (const char *text)
 {
 	LogText = text;
 
-	if (mo->CheckLocalView())
+	if (mo && mo->CheckLocalView())
 	{
 		// Print log text to console
 		AddToConsole(-1, TEXTCOLOR_GOLD);
-		AddToConsole(-1, GStrings(LogText));
+		AddToConsole(-1, LogText[0] == '$'? GStrings(text+1) : text );
 		AddToConsole(-1, "\n");
 	}
 }
@@ -567,7 +586,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(APlayerPawn, GetPainFlashForType, GetPainFlash)
 
 void player_t::SendPitchLimits() const
 {
-	if (this == mo->Level->GetConsolePlayer())
+	if (this - players == consoleplayer)
 	{
 		Net_WriteByte(DEM_SETPITCHLIMIT);
 		Net_WriteByte(Renderer->GetMaxViewPitch(false));	// up

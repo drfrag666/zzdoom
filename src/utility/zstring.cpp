@@ -38,6 +38,7 @@
 #include <new>		// for bad_alloc
 
 #include "zstring.h"
+#include "v_text.h"
 
 FNullStringData FString::NullString =
 {
@@ -377,6 +378,25 @@ FString &FString::CopyCStrPart(const char *tail, size_t tailLen)
 		ResetToNull();
 	}
 	return *this;
+}
+
+size_t FString::CharacterCount() const
+{
+	// Counts string length in Unicode code points.
+	size_t len = 0;
+	const uint8_t *cp = (const uint8_t*)Chars;
+	while (GetCharFromString(cp)) len++;
+	return len;
+}
+
+
+int FString::GetNextCharacter(int &position) const
+{
+	const uint8_t *cp = (const uint8_t*)Chars;
+	const uint8_t *cpread = cp + position;
+	int chr = GetCharFromString(cpread);
+	position += int(cpread - cp);
+	return chr;
 }
 
 void FString::Truncate(size_t newlen)
@@ -1130,14 +1150,14 @@ digits		= [0-9];
 	return yych == '\0';
 }
 
-long FString::ToLong (int base) const
+int64_t FString::ToLong (int base) const
 {
-	return (long)strtoll (Chars, NULL, base);
+	return strtoll (Chars, NULL, base);
 }
 
-unsigned long FString::ToULong (int base) const
+uint64_t FString::ToULong (int base) const
 {
-	return (unsigned long)strtoull (Chars, NULL, base);
+	return strtoull (Chars, NULL, base);
 }
 
 double FString::ToDouble () const

@@ -317,6 +317,10 @@ public:
 	}
 
 	void SetScaledSize(int fitwidth, int fitheight);
+	void SetScale(const DVector2 &scale)
+	{
+		Scale = scale;
+	}
 	PalEntry GetSkyCapColor(bool bottom);
 	static PalEntry averageColor(const uint32_t *data, int size, int maxout);
 

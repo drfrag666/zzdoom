@@ -116,6 +116,7 @@ namespace swrenderer
 		double savedvisibility = Thread->Light->GetVisibility();
 		AActor *savedcamera = Thread->Viewport->viewpoint.camera;
 		sector_t *savedsector = Thread->Viewport->viewpoint.sector;
+		auto Level = Thread->Viewport->Level();
 
 		for (VisiblePlane *pl = planes->PopFirstPortalPlane(); pl != nullptr; pl = planes->PopFirstPortalPlane())
 		{
@@ -135,7 +136,7 @@ namespace swrenderer
 				// Don't let gun flashes brighten the sky box
 				AActor *sky = port->mSkybox;
 				Thread->Viewport->viewpoint.extralight = 0;
-				Thread->Light->SetVisibility(Thread->Viewport.get(), sky->args[0] * 0.25f);
+				Thread->Light->SetVisibility(Thread->Viewport.get(), sky->args[0] * 0.25f, !!(Level->flags3 & LEVEL3_NOLIGHTFADE));
 
 				Thread->Viewport->viewpoint.Pos = sky->InterpolatedPosition(Thread->Viewport->viewpoint.TicFrac);
 				Thread->Viewport->viewpoint.Angles.Yaw = savedangles.Yaw + (sky->PrevAngles.Yaw + deltaangle(sky->PrevAngles.Yaw, sky->Angles.Yaw) * Thread->Viewport->viewpoint.TicFrac);
@@ -148,7 +149,7 @@ namespace swrenderer
 			case PORTS_PORTAL:
 			case PORTS_LINKEDPORTAL:
 				Thread->Viewport->viewpoint.extralight = pl->extralight;
-				Thread->Light->SetVisibility(Thread->Viewport.get(), pl->visibility);
+				Thread->Light->SetVisibility(Thread->Viewport.get(), pl->visibility, !!(Level->flags3 & LEVEL3_NOLIGHTFADE));
 				Thread->Viewport->viewpoint.Pos.X = pl->viewpos.X + port->mDisplacement.X;
 				Thread->Viewport->viewpoint.Pos.Y = pl->viewpos.Y + port->mDisplacement.Y;
 				Thread->Viewport->viewpoint.Pos.Z = pl->viewpos.Z;
@@ -252,7 +253,7 @@ namespace swrenderer
 		Thread->Viewport->viewpoint.camera = savedcamera;
 		Thread->Viewport->viewpoint.sector = savedsector;
 		Thread->Viewport->viewpoint.Pos = savedpos;
-		Thread->Light->SetVisibility(Thread->Viewport.get(), savedvisibility);
+		Thread->Light->SetVisibility(Thread->Viewport.get(), savedvisibility, !!(Level->flags3 & LEVEL3_NOLIGHTFADE));
 		Thread->Viewport->viewpoint.extralight = savedextralight;
 		Thread->Viewport->viewpoint.Angles = savedangles;
 		Thread->Viewport->viewpoint.SetViewAngle(Thread->Viewport->viewwindow);

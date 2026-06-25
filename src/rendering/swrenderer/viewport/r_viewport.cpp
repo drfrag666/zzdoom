@@ -150,7 +150,7 @@ namespace swrenderer
 		InitTextureMapping();
 
 		// Reset r_*Visibility vars
-		thread->Light->SetVisibility(this, r_visibility);
+		thread->Light->SetVisibility(this, r_visibility, !!(level.flags3 & LEVEL3_NOLIGHTFADE));
 
 		SetupBuffer();
 	}

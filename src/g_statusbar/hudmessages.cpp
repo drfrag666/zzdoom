@@ -195,7 +195,7 @@ DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int h
 	HandleAspect = true;
 	Top = y;
 	HoldTics = (int)(holdTime * TICRATE);
-	Tics = 0;
+	Tics = -1;	// -1 to compensate for one additional Tick the message will receive.
 	TextColor = textColor;
 	State = 0;
 	SourceText = copystring (text);
@@ -773,7 +773,8 @@ bool DHUDMessageTypeOnFadeOut::Tick ()
 				if (State == 3 && --step >= 0)
 				{
 					linedrawcount++;
-					if (text[linevis++] == TEXTCOLOR_ESCAPE)
+					
+					if (text.GetNextCharacter(linevis) == TEXTCOLOR_ESCAPE)
 					{
 						if (text[linevis] == '[')
 						{ // named color

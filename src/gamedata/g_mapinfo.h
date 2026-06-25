@@ -201,7 +201,7 @@ enum ELevelFlags : unsigned int
 	LEVEL2_LAXACTIVATIONMAPINFO	= 0x00000008,	// LEVEL_LAXMONSTERACTIVATION is not a default.
 
 	LEVEL2_MISSILESACTIVATEIMPACT=0x00000010,	// Missiles are the activators of SPAC_IMPACT events, not their shooters
-	LEVEL2_FROZEN				= 0x00000020,	// Game is frozen by a TimeFreezer
+	//							= 0x00000020,	// unused
 
 	LEVEL2_KEEPFULLINVENTORY	= 0x00000040,	// doesn't reduce the amount of inventory items to 1
 
@@ -427,15 +427,18 @@ struct cluster_info_t
 };
 
 // Cluster flags
-#define CLUSTER_HUB				0x00000001	// Cluster uses hub behavior
-#define CLUSTER_EXITTEXTINLUMP	0x00000002	// Exit text is the name of a lump
-#define CLUSTER_ENTERTEXTINLUMP	0x00000004	// Enter text is the name of a lump
-#define CLUSTER_FINALEPIC		0x00000008	// Finale "flat" is actually a full-sized image
-#define CLUSTER_LOOKUPEXITTEXT	0x00000010	// Exit text is the name of a language string
-#define CLUSTER_LOOKUPENTERTEXT	0x00000020	// Enter text is the name of a language string
-#define CLUSTER_LOOKUPNAME		0x00000040	// Name is the name of a language string
-#define CLUSTER_LOOKUPCLUSTERNAME 0x00000080	// Cluster name is the name of a language string
-#define CLUSTER_ALLOWINTERMISSION 0x00000100  // Allow intermissions between levels in a hub.
+enum
+{
+	CLUSTER_HUB				= 0x00000001,	// Cluster uses hub behavior
+	CLUSTER_EXITTEXTINLUMP	= 0x00000002,	// Exit text is the name of a lump
+	CLUSTER_ENTERTEXTINLUMP	= 0x00000004,	// Enter text is the name of a lump
+	CLUSTER_FINALEPIC		= 0x00000008,	// Finale "flat" is actually a full-sized image
+	CLUSTER_LOOKUPEXITTEXT	= 0x00000010,	// Exit text is the name of a language string
+	CLUSTER_LOOKUPENTERTEXT	= 0x00000020,	// Enter text is the name of a language string
+	CLUSTER_LOOKUPNAME		= 0x00000040,	// Name is the name of a language string
+	CLUSTER_LOOKUPCLUSTERNAME = 0x00000080,	// Cluster name is the name of a language string
+	CLUSTER_ALLOWINTERMISSION = 0x00000100  // Allow intermissions between levels in a hub.
+};
 
 extern TArray<level_info_t> wadlevelinfos;
 

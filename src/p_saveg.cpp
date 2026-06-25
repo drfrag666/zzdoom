@@ -933,7 +933,6 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 		Thinkers.DestroyAllThinkers();
 		interpolator.ClearInterpolations();
 		arc.ReadObjects(hubload);
-		ActiveSequences = 0;
 	}
 
 	arc("multiplayer", multiplayer);
@@ -965,7 +964,6 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 		("spotstate", SpotState)
 		("fragglethinker", FraggleScriptThinker)
 		("acsthinker", ACSThinker)
-		("impactdecalcount", ImpactDecalCount)
 		("scrolls", Scrolls)
 		("automap", automap)
 		("interpolator", interpolator)
@@ -1016,7 +1014,7 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 	if (arc.isReading())
 	{
 		for (auto &sec : sectors)
-	{
+		{
 			P_Recalculate3DFloors(&sec);
 		}
 		for (int i = 0; i < MAXPLAYERS; ++i)
@@ -1028,6 +1026,10 @@ void FLevelLocals::Serialize(FSerializer &arc, bool hubload)
 		}
 		localEventManager->SetOwnerForHandlers();	// This cannot be automated.
 		RecreateAllAttachedLights();
+
+		auto it = GetThinkerIterator<DImpactDecal>(NAME_None, STAT_AUTODECAL);
+		ImpactDecalCount = 0;
+		while (it.Next()) ImpactDecalCount++;
 
 		automap->UpdateShowAllLines();
 

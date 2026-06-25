@@ -593,7 +593,6 @@ public:
 	int			airsupply;
 	int			DefaultEnvironment;		// Default sound environment.
 
-	int ActiveSequences;
 	DSeqNode *SequenceListHead;
 
 	// [RH] particle globals
@@ -609,7 +608,7 @@ public:
 	int8_t		WallHorizLight;
 
 	bool		FromSnapshot;			// The current map was restored from a snapshot
-	uint8_t		frozenstate;
+	int		frozenstate;
 
 	double		teamdamage;
 
