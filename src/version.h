@@ -34,10 +34,6 @@
 #ifndef __VERSION_H__
 #define __VERSION_H__
 
-#ifdef _WIN32
-#include "gitinfo.h"
-#endif // _WIN32
-
 const char *GetGitDescription();
 const char *GetGitHash();
 const char *GetGitTime();
@@ -45,11 +41,7 @@ const char *GetVersionString();
 
 /** Lots of different version numbers **/
 
-#ifdef GIT_DESCRIPTION
-#define VERSIONSTR GIT_DESCRIPTION
-#else
 #define VERSIONSTR "3.8pre"
-#endif
 
 // The version as seen in the Windows resource
 #define RC_FILEVERSION 3,7,9999,0
@@ -100,6 +92,7 @@ const char *GetVersionString();
 
 // More stuff that needs to be different for derivatives.
 #define GAMENAME "ZZDoom"
+#define WGAMENAME L"ZZDoom"
 #define GAMENAMELOWERCASE "zzdoom"
 #define FORUM_URL "http://forum.zdoom.org/"
 #define BUGS_FORUM_URL	"http://forum.zdoom.org/viewforum.php?f=2"

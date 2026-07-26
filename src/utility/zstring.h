@@ -37,6 +37,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stddef.h>
+#include <string>
 #include "tarray.h"
 #include "name.h"
 
@@ -57,6 +58,9 @@
 #define IGNORE_FORMAT_POST
 #endif
 
+#ifdef _WIN32
+std::wstring WideString(const char *);
+#endif
 
 struct FStringData
 {
@@ -128,6 +132,12 @@ public:
 	FString (const char *copyStr);
 	FString (const char *copyStr, size_t copyLen);
 	FString (char oneChar);
+	// This is intentionally #ifdef'd. The only code which needs this is parts of the Windows backend that receive Unicode text from the system.
+#ifdef _WIN32
+	explicit FString(const wchar_t *copyStr);
+	FString &operator = (const wchar_t *copyStr);
+	std::wstring WideString() const { return ::WideString(Chars); }
+#endif
 
 	// Concatenation constructors
 	FString (const FString &head, const FString &tail);
@@ -198,6 +208,9 @@ public:
 	FString Left (size_t numChars) const;
 	FString Right (size_t numChars) const;
 	FString Mid (size_t pos, size_t numChars = ~(size_t)0) const;
+
+	void AppendCharacter(int codepoint);
+	void DeleteLastCharacter();
 
 	long IndexOf (const FString &substr, long startIndex=0) const;
 	long IndexOf (const char *substr, long startIndex=0) const;

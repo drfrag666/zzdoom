@@ -39,6 +39,7 @@
 
 #include "zstring.h"
 #include "v_text.h"
+#include "utf8.h"
 
 FNullStringData FString::NullString =
 {
@@ -474,6 +475,28 @@ FString FString::Mid (size_t pos, size_t numChars) const
 	}
 	return FString (Chars + pos, numChars);
 }
+
+void FString::AppendCharacter(int codepoint)
+{
+	(*this) << MakeUTF8(codepoint);
+}
+
+void FString::DeleteLastCharacter()
+{
+	if (Len() == 0) return;
+	auto pos = Len() - 1;
+	while (pos > 0 && Chars[pos] >= 0x80 && Chars[pos] < 0xc0) pos--;
+	if (pos <= 0)
+	{
+		Data()->Release();
+		ResetToNull();
+	}
+	else
+	{
+		Truncate(pos);
+	}
+}
+
 
 long FString::IndexOf (const FString &substr, long startIndex) const
 {
@@ -1250,6 +1273,53 @@ void FString::Split(TArray<FString>& tokens, const char *delimiter, EmptyTokenTy
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+// Convert from and to Windows wide strings so that we can interface with the Unicode version of the Windows API.
+FString::FString(const wchar_t *copyStr)
+{
+	if (copyStr == NULL || *copyStr == '\0')
+	{
+		ResetToNull();
+	}
+	else
+	{
+		auto len = wcslen(copyStr);
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, copyStr, (int)len, nullptr, 0, nullptr, nullptr);
+		AllocBuffer(size_needed);
+		WideCharToMultiByte(CP_UTF8, 0, copyStr, (int)len, Chars, size_needed, nullptr, nullptr);
+		Chars[size_needed] = 0;
+	}
+}
+
+FString &FString::operator=(const wchar_t *copyStr)
+{
+	if (copyStr == NULL || *copyStr == '\0')
+	{
+		Data()->Release();
+		ResetToNull();
+	}
+	else
+	{
+		auto len = wcslen(copyStr);
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, copyStr, (int)len, nullptr, 0, nullptr, nullptr);
+		ReallocBuffer(size_needed);
+		WideCharToMultiByte(CP_UTF8, 0, copyStr, (int)len, Chars, size_needed, nullptr, nullptr);
+		Chars[size_needed] = 0;
+	}
+	return *this;
+}
+
+std::wstring WideString(const char *cin)
+{
+	const uint8_t *in = (const uint8_t*)cin;
+	// This is a bit tricky because we need to support both UTF-8 and legacy content in ISO-8859-1
+	// and thanks to user-side string manipulation it can be that a text mixes both.
+	// To convert the string this uses the same function as all text printing in the engine.
+	TArray<wchar_t> buildbuffer;
+	while (*in) buildbuffer.Push((wchar_t)GetCharFromString(in));
+	buildbuffer.Push(0);
+	return std::wstring(buildbuffer.Data());
+}
 
 static HANDLE StringHeap;
 const SIZE_T STRING_HEAP_SIZE = 64*1024;

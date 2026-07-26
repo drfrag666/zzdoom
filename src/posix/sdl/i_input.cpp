@@ -47,6 +47,7 @@
 #include "events.h"
 #include "g_game.h"
 #include "g_levellocals.h"
+#include "utf8.h"
 
 
 static void I_CheckGUICapture ();
@@ -392,7 +393,12 @@ void MessagePump (const SDL_Event &sev)
 		else
 		{
 			event.type = EV_KeyDown;
-			event.data1 = sev.wheel.y > 0 ? KEY_MWHEELUP : KEY_MWHEELDOWN;
+
+			if (sev.wheel.y != 0)
+				event.data1 = sev.wheel.y > 0 ? KEY_MWHEELUP : KEY_MWHEELDOWN;
+			else
+				event.data1 = sev.wheel.x > 0 ? KEY_MWHEELRIGHT : KEY_MWHEELLEFT;
+
 			D_PostEvent (&event);
 			event.type = EV_KeyUp;
 			D_PostEvent (&event);
@@ -485,10 +491,9 @@ void MessagePump (const SDL_Event &sev)
 	case SDL_TEXTINPUT:
 		if (GUICapture)
 		{
-			int utf8_decode(const char *src, int *size);
 			int size;
 			
-			int unichar = utf8_decode(sev.text.text, &size);
+			int unichar = utf8_decode((const uint8_t*)sev.text.text, &size);
 			if (size != 4)
 			{
 				event.type = EV_GUI_Event;

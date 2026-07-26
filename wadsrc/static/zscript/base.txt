@@ -15,7 +15,7 @@ struct _ native	// These are the global variables, the struct is only here to av
 	native readonly ui bool netgame;
 
 	native readonly bool automapactive;
-	native play uint gameaction;
+	native readonly uint gameaction;
 	native readonly int gamestate;
 	native readonly TextureID skyflatnum;
 	native readonly Font smallfont;
@@ -894,6 +894,8 @@ struct StringStruct native
 	native int ToInt(int base = 0) const;
 	native double ToDouble() const;
 	native void Split(out Array<String> tokens, String delimiter, EmptyTokenType keepEmpty = TOK_KEEPEMPTY) const;
+	native void AppendCharacter(int c);
+	native void DeleteLastCharacter();
 }
 
 class SectorEffect : Thinker native

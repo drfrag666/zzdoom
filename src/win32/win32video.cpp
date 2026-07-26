@@ -390,8 +390,6 @@ void Win32Video::BlankForGDI ()
 
 void Win32Video::DumpAdapters()
 {
-	using OptWin32::GetMonitorInfoA;
-
 	if (D3D == NULL)
 	{
 		Printf("Multi-monitor support requires Direct3D.\n");
@@ -417,11 +415,10 @@ void Win32Video::DumpAdapters()
 			*p = '\0';
 		}
 		HMONITOR hm = D3D->GetAdapterMonitor(i);
-		MONITORINFOEX mi;
+		MONITORINFOEXA mi;
 		mi.cbSize = sizeof(mi);
 
-		assert(GetMonitorInfo); // Missing in NT4, but so is D3D
-		if (GetMonitorInfo(hm, &mi))
+		if (GetMonitorInfoA(hm, &mi))
 		{
 			mysnprintf(moreinfo, countof(moreinfo), " [%ldx%ld @ (%ld,%ld)]%s",
 				mi.rcMonitor.right - mi.rcMonitor.left,
