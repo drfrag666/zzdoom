@@ -993,6 +993,7 @@ set (PCH_SOURCES
 	gamedata/textures/formats/canvastexture.cpp
 	gamedata/textures/formats/ddstexture.cpp
 	gamedata/textures/formats/flattexture.cpp
+	gamedata/textures/formats/fontchars.cpp
 	gamedata/textures/formats/imgztexture.cpp
 	gamedata/textures/formats/jpegtexture.cpp
 	gamedata/textures/formats/md5check.cpp
@@ -1005,6 +1006,10 @@ set (PCH_SOURCES
 	gamedata/textures/formats/shadertexture.cpp
 	gamedata/textures/formats/tgatexture.cpp
 	gamedata/textures/formats/worldtexture.cpp
+	gamedata/fonts/singlelumpfont.cpp
+	gamedata/fonts/singlepicfont.cpp
+	gamedata/fonts/specialfont.cpp
+	gamedata/fonts/font.cpp
 	gamedata/fonts/v_font.cpp
 	gamedata/fonts/v_text.cpp	
 	gamedata/p_xlat.cpp

@@ -35,6 +35,8 @@
 #define __V_FONT_H__
 
 #include "doomtype.h"
+#include "w_wad.h"
+#include "vectors.h"
 
 class DCanvas;
 struct FRemapTable;
@@ -123,6 +125,7 @@ protected:
 	int TranslationType = 0;
 	char Cursor;
 	bool noTranslate;
+	bool MixedCase = false;
 	struct CharData
 	{
 		FTexture *Pic;
