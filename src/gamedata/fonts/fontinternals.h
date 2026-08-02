@@ -37,6 +37,6 @@ extern TArray<PalEntry> TranslationColors;
 extern uint16_t lowerforupper[65536];
 extern uint16_t upperforlower[65536];
 
-void RecordTextureColors (FTexture *pic, uint8_t *colorsused);
+void RecordTextureColors (FTexture *pic, uint32_t *colorsused);
 bool myislower(int code);
 int stripaccent(int code);

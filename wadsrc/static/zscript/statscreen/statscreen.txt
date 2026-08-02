@@ -8,26 +8,17 @@ class InterBackground native play version("2.5")
 	native virtual void drawBackground(int CurState, bool drawsplat, bool snl_pointeron);
 }
 
+// This is obsolete. Hopefully this was never used...
 struct PatchInfo play version("2.5")
 {
 	Font mFont;
-	TextureID mPatch;
+	deprecated("3.8") TextureID mPatch;
 	int mColor;
 
 	void Init(GIFont gifont)
 	{
-		if (gifont.color == 'Null')
-		{
-			mPatch = TexMan.CheckForTexture(gifont.fontname, TexMan.Type_MiscPatch);
-			mColor = mPatch.isValid() ? Font.CR_UNTRANSLATED : Font.CR_UNDEFINED;
-			mFont = NULL;
-		}
-		else
-		{
-			mFont = Font.GetFont(gifont.fontname);
-			mColor = Font.FindFontColor(gifont.color);
-			mPatch.SetInvalid();
-		}
+		mFont = Font.GetFont(gifont.fontname);
+		mColor = Font.FindFontColor(gifont.color);
 		if (mFont == NULL)
 		{
 			mFont = BigFont;
@@ -42,7 +33,7 @@ class StatusScreen abstract play version("2.5")
 	enum EValues
 	{
 		// GLOBAL LOCATIONS
-		TITLEY = 2,
+		TITLEY = 5,
 
 		// SINGPLE-PLAYER STUFF
 		SP_STATSX = 50,
@@ -111,6 +102,8 @@ class StatusScreen abstract play version("2.5")
 	TextureID 		timepic;
 	TextureID 		par;
 	TextureID 		sucks;
+	TextureID		finishedPatch;
+	TextureID		enteringPatch;
 
 	// [RH] Info to dynamically generate the level name graphics
 	String			lnametexts[2];
@@ -179,28 +172,43 @@ class StatusScreen abstract play version("2.5")
 
 	//====================================================================
 	//
-	// Draws a text, either as patch or as string from the string table
+	// Only kept so that mods that were accessing it continue to compile
 	//
 	//====================================================================
 
-	int DrawPatchText(int y, PatchInfo pinfo, String stringname)
+	deprecated("3.8") int DrawPatchText(int y, PatchInfo pinfo, String stringname)
 	{
 		String string = Stringtable.Localize(stringname);
 		int midx = screen.GetWidth() / 2;
 
-		if (pinfo.mPatch.isValid())
+		screen.DrawText(pinfo.mFont, pinfo.mColor, midx - pinfo.mFont.StringWidth(string) * CleanXfac/2, y, string, DTA_CleanNoMove, true);
+		return y + pinfo.mFont.GetHeight() * CleanYfac;
+	}
+
+	//====================================================================
+	//
+	// Draws a text, either as patch or as string from the string table
+	//
+	//====================================================================
+	
+	int DrawPatchOrText(int y, PatchInfo pinfo, TextureID patch, String stringname)
+	{
+		String string = Stringtable.Localize(stringname);
+		int midx = screen.GetWidth() / 2;
+		
+		if (TexMan.OkForLocalization(patch, stringname))
 		{
-			let size = TexMan.GetScaledSize(pinfo.mPatch);
-			screen.DrawTexture(pinfo.mPatch, true, midx - size.X * CleanXfac/2, y, DTA_CleanNoMove, true);
+			let size = TexMan.GetScaledSize(patch);
+			screen.DrawTexture(patch, true, midx - size.X * CleanXfac/2, y, DTA_CleanNoMove, true);
 			return y + int(size.Y * CleanYfac);
 		}
-		else 
+		else
 		{
 			screen.DrawText(pinfo.mFont, pinfo.mColor, midx - pinfo.mFont.StringWidth(string) * CleanXfac/2, y, string, DTA_CleanNoMove, true);
 			return y + pinfo.mFont.GetHeight() * CleanYfac;
 		}
 	}
-
+	
 
 	//====================================================================
 	//
@@ -211,7 +219,7 @@ class StatusScreen abstract play version("2.5")
 	//
 	//====================================================================
 
-	int drawLF ()
+	virtual int drawLF ()
 	{
 		int y = TITLEY * CleanYfac;
 
@@ -221,10 +229,12 @@ class StatusScreen abstract play version("2.5")
 		y -= ((mapname.mFont.GetHeight() - finished.mFont.GetHeight()) * CleanYfac) / 4;
 
 		// draw "Finished!"
-		if (y < (NG_STATSY - finished.mFont.GetHeight()*3/4) * CleanYfac)
+
+		int statsy = multiplayer? NG_STATSY : SP_STATSY * CleanYFac;
+		if (y < (statsy - finished.mFont.GetHeight()*3/4) * CleanYfac)
 		{
 			// don't draw 'finished' if the level name is too tall
-			y = DrawPatchText(y, finished, "$WI_FINISHED");
+			y = DrawPatchOrText(y, finished, finishedPatch, "$WI_FINISHED");
 		}
 		return y;
 	}
@@ -239,11 +249,11 @@ class StatusScreen abstract play version("2.5")
 	//
 	//====================================================================
 
-	void drawEL ()
+	virtual void drawEL ()
 	{
 		int y = TITLEY * CleanYfac;
 
-		y = DrawPatchText(y, entering, "$WI_ENTERING");
+		y = DrawPatchOrText(y, entering, enteringPatch, "$WI_ENTERING");
 		y += entering.mFont.GetHeight() * CleanYfac / 4;
 		DrawName(y, wbs.LName1, lnametexts[1]);
 	}
@@ -258,12 +268,11 @@ class StatusScreen abstract play version("2.5")
 	// Returns new x position, that is, the left edge of the number.
 	//
 	//====================================================================
-	int drawNum (Font fnt, int x, int y, int n, int digits, bool leadingzeros = true, int translation = Font.CR_UNTRANSLATED)
+	int drawNum (Font fnt, int x, int y, int n, int digits, bool leadingzeros = true, int translation = Font.CR_UNTRANSLATED, bool nomove = false)
 	{
 		int fntwidth = fnt.StringWidth("3");
 		String text;
 		int len;
-		bool nomove = fnt != IntermissionFont;
 
 		if (nomove)
 		{
@@ -310,14 +319,14 @@ class StatusScreen abstract play version("2.5")
 	//
 	//====================================================================
 
-	void drawPercent (Font fnt, int x, int y, int p, int b, bool show_total = true, int color = Font.CR_UNTRANSLATED)
+	void drawPercent (Font fnt, int x, int y, int p, int b, bool show_total = true, int color = Font.CR_UNTRANSLATED, bool nomove = false)
 	{
 		if (p < 0)
 			return;
 
 		if (wi_percents)
 		{
-			if (fnt != IntermissionFont)
+			if (nomove)
 			{
 				x -= fnt.StringWidth("%") * CleanXfac;
 			}
@@ -325,8 +334,8 @@ class StatusScreen abstract play version("2.5")
 			{
 				x -= fnt.StringWidth("%");
 			}
-			screen.DrawText(fnt, color, x, y, "%", fnt != IntermissionFont ? DTA_CleanNoMove : DTA_Clean, true);
-			if (fnt != IntermissionFont)
+			screen.DrawText(fnt, color, x, y, "%", nomove? DTA_CleanNoMove : DTA_Clean, true);
+			if (nomove)
 			{
 				x -= 2*CleanXfac;
 			}
@@ -336,9 +345,9 @@ class StatusScreen abstract play version("2.5")
 		{
 			if (show_total)
 			{
-				x = drawNum(fnt, x, y, b, 2, false);
+				x = drawNum(fnt, x, y, b, 2, false, color);
 				x -= fnt.StringWidth("/");
-				screen.DrawText (IntermissionFont, color, x, y, "/", DTA_Clean, true);
+				screen.DrawText (fnt, color, x, y, "/", nomove? DTA_CleanNoMove : DTA_Clean, true);
 			}
 			drawNum (fnt, x, y, p, -1, false, color);
 		}
@@ -350,27 +359,12 @@ class StatusScreen abstract play version("2.5")
 	//
 	//====================================================================
 
-	void drawTime (int x, int y, int t, bool no_sucks=false)
+	void drawTimeFont (Font printFont, int x, int y, int t, int color)
 	{
 		bool sucky;
 
 		if (t < 0)
 			return;
-
-		sucky = !no_sucks && t >= wbs.sucktime * 60 * 60 && wbs.sucktime > 0;
-
-		if (sucky)
-		{ // "sucks"
-			if (Sucks.isValid())
-			{
-				let size = TexMan.GetScaledSize(Sucks);
-				screen.DrawTexture (Sucks, true, x - size.X, y - size.Y - 2, DTA_Clean, true); 
-			}
-			else
-			{
-				screen.DrawText (BigFont, Font.CR_UNTRANSLATED, x  - BigFont.StringWidth("SUCKS"), y - IntermissionFont.GetHeight() - 2,	"SUCKS", DTA_Clean, true);
-			}
-		}
 
 		int hours = t / 3600;
 		t -= hours * 3600;
@@ -380,19 +374,24 @@ class StatusScreen abstract play version("2.5")
 
 		// Why were these offsets hard coded? Half the WADs with custom patches
 		// I tested screwed up miserably in this function!
-		int num_spacing = IntermissionFont.GetCharWidth("3");
-		int colon_spacing = IntermissionFont.GetCharWidth(":");
+		int num_spacing = printFont.GetCharWidth("3");
+		int colon_spacing = printFont.GetCharWidth(":");
 
-		x = drawNum (IntermissionFont, x, y, seconds, 2) - 1;
-		DrawCharPatch (IntermissionFont, ":", x -= colon_spacing, y);
-		x = drawNum (IntermissionFont, x, y, minutes, 2, hours!=0);
+		x = drawNum (printFont, x, y, seconds, 2, true, color) - 1;
+		DrawCharPatch (printFont, ":", x -= colon_spacing, y, color);
+		x = drawNum (printFont, x, y, minutes, 2, hours!=0, color);
 		if (hours)
 		{
-			DrawCharPatch (IntermissionFont, ":", x -= colon_spacing, y);
-			drawNum (IntermissionFont, x, y, hours, 2);
+			DrawCharPatch (printFont, ":", x -= colon_spacing, y, color);
+			drawNum (printFont, x, y, hours, 2, false, color);
 		}
 	}
 
+	void drawTime (int x, int y, int t, bool no_sucks=false)
+	{
+		drawTimeFont(IntermissionFont, x, y, t, Font.CR_UNTRANSLATED);
+	}
+		
 
 	//====================================================================
 	//
@@ -697,13 +696,15 @@ class StatusScreen abstract play version("2.5")
 		finished.Init(gameinfo.mStatscreenFinishedFont);
 		mapname.Init(gameinfo.mStatscreenMapNameFont);
 
-		Kills = TexMan.CheckForTexture("WIOSTK", TexMan.Type_MiscPatch);		// "kills"
-		Secret = TexMan.CheckForTexture("WIOSTS", TexMan.Type_MiscPatch);		// "scrt"
-		P_secret = TexMan.CheckForTexture("WISCRT2", TexMan.Type_MiscPatch);	// "secret"
-		Items = TexMan.CheckForTexture("WIOSTI", TexMan.Type_MiscPatch);		// "items"
+		Kills = TexMan.CheckForTexture("WIOSTK", TexMan.Type_MiscPatch);			// "kills"
+		Secret = TexMan.CheckForTexture("WIOSTS", TexMan.Type_MiscPatch);		// "scrt", not used
+		P_secret = TexMan.CheckForTexture("WISCRT2", TexMan.Type_MiscPatch);		// "secret"
+		Items = TexMan.CheckForTexture("WIOSTI", TexMan.Type_MiscPatch);			// "items"
 		Timepic = TexMan.CheckForTexture("WITIME", TexMan.Type_MiscPatch);		// "time"
 		Sucks = TexMan.CheckForTexture("WISUCKS", TexMan.Type_MiscPatch);		// "sucks"
 		Par = TexMan.CheckForTexture("WIPAR", TexMan.Type_MiscPatch);			// "par"
+		enteringPatch = TexMan.CheckForTexture("WIENTER", TexMan.Type_MiscPatch);	// "entering"
+		finishedPatch = TexMan.CheckForTexture("WIF", TexMan.Type_MiscPatch);			// "finished"
 
 		lnametexts[0] = wbstartstruct.thisname;		
 		lnametexts[1] = wbstartstruct.nextname;

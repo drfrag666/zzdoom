@@ -106,6 +106,7 @@ public:
 	int GetCharCode(int code, bool needpic) const;
 	char GetCursor() const { return Cursor; }
 	void SetCursor(char c) { Cursor = c; }
+	void SetKerning(int c) { GlobalKerning = c; }
 	bool NoTranslate() const { return noTranslate; }
 
 protected:
@@ -115,7 +116,7 @@ protected:
 		const void *ranges, int total_colors, const PalEntry *palette);
 	void FixXMoves();
 
-	static int SimpleTranslation (uint8_t *colorsused, uint8_t *translation,
+	static int SimpleTranslation (uint32_t *colorsused, uint8_t *translation,
 		uint8_t *identity, double **luminosity);
 
 	int FirstChar, LastChar;

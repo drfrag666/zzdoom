@@ -38,6 +38,8 @@
 #include "doomstat.h"
 #include "w_wad.h"
 #include "templates.h"
+#include "i_system.h"
+#include "gstrings.h"
 
 #include "r_data/r_translate.h"
 #include "r_data/sprites.h"
@@ -355,7 +357,72 @@ FTextureID FTextureManager::GetTexture (const char *name, ETextureType usetype, 
 FTexture *FTextureManager::FindTexture(const char *texname, ETextureType usetype, BITFIELD flags)
 {
 	FTextureID texnum = CheckForTexture (texname, usetype, flags);
-	return !texnum.isValid()? NULL : Textures[texnum.GetIndex()].Texture;
+	return !texnum.isValid()? nullptr : Textures[texnum.GetIndex()].Texture;
+}
+
+//==========================================================================
+//
+// Defines how graphics substitution is handled.
+// 0: Never replace a text-containing graphic with a font-based text.
+// 1: Always replace, regardless of any missing information. Useful for testing the substitution without providing full data.
+// 2: Only replace for non-default texts, i.e. if some language redefines the string's content, use it instead of the graphic. Never replace a localized graphic.
+// 3: Only replace if the string is not the default and the graphic comes from the IWAD. Never replace a localized graphic.
+// 4: Like 1, but lets localized graphics pass.
+//
+//==========================================================================
+
+CUSTOM_CVAR(Int, cl_localizationmode,0, CVAR_ARCHIVE)
+{
+	if (self < 0 || self > 4) self = 0;
+}
+
+//==========================================================================
+//
+// FTextureManager :: OkForLocalization
+//
+//==========================================================================
+
+bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitute)
+{
+	if (!texnum.isValid()) return false;
+	
+	// First the unconditional settings, 0='never' and 1='always'.
+	if (cl_localizationmode == 0) return true;
+	if (cl_localizationmode == 1) return false;
+	
+	uint32_t langtable = 0;
+	if (*substitute == '$') substitute = GStrings.GetString(substitute+1, &langtable);
+	if (substitute == nullptr) return true;	// The text does not exist.
+	
+	// Modes 2, 3 and 4 must not replace localized textures.
+	int localizedTex = ResolveLocalizedTexture(texnum);
+	if (localizedTex != texnum.GetIndex()) return true;	// Do not substitute a localized variant of the graphics patch.
+	
+	// For mode 4 we are done now.
+	if (cl_localizationmode == 4) return false;
+	
+	// Mode 2 and 3 must reject any text replacement from the default language tables.
+	if ((langtable & MAKE_ID(255,0,0,0)) == MAKE_ID('*', 0, 0, 0)) return true;	// Do not substitute if the string comes from the default table.
+	if (cl_localizationmode == 2) return false;
+	
+	// Mode 3 must also reject substitutions for non-IWAD content.
+	int file = Wads.GetLumpFile(Textures[texnum.GetIndex()].Texture->SourceLump);
+	if (file > Wads.GetIwadNum()) return true;
+
+	return false;
+}
+
+static int OkForLocalization(int index, const FString &substitute)
+{
+	return TexMan.OkForLocalization(FSetTextureID(index), substitute);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, OkForLocalization, OkForLocalization)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(name);
+	PARAM_STRING(subst)
+	ACTION_RETURN_INT(OkForLocalization(name, subst));
 }
 
 //==========================================================================
@@ -993,6 +1060,83 @@ void FTextureManager::SortTexturesByType(int start, int end)
 
 //==========================================================================
 //
+// FTextureManager :: AddLocalizedVariants
+//
+//==========================================================================
+
+void FTextureManager::AddLocalizedVariants()
+{
+	TArray<FolderEntry> content;
+	Wads.GetLumpsInFolder("localized/textures/", content, false);
+	for (auto &entry : content)
+	{
+		FString name = entry.name;
+		auto tokens = name.Split(".", FString::TOK_SKIPEMPTY);
+		if (tokens.Size() == 2)
+		{
+			auto ext = tokens[1];
+			// Do not interpret common extensions for images as language IDs.
+			if (ext.CompareNoCase("png") == 0 || ext.CompareNoCase("jpg") == 0 || ext.CompareNoCase("gfx") == 0 || ext.CompareNoCase("tga") == 0 || ext.CompareNoCase("lmp") == 0)
+			{
+				Printf("%s contains no language IDs and will be ignored\n", entry.name);
+				continue;
+			}
+		}
+		if (tokens.Size() >= 2)
+		{
+			FString base = ExtractFileBase(tokens[0]);
+			FTextureID origTex = CheckForTexture(base, ETextureType::MiscPatch);
+			if (origTex.isValid())
+			{
+				FTextureID tex = CheckForTexture(entry.name, ETextureType::MiscPatch);
+				if (tex.isValid())
+				{
+					FTexture *otex = TexMan[origTex];
+					FTexture *ntex = TexMan[tex];
+					if (otex->GetScaledWidth() != ntex->GetScaledWidth() || otex->GetScaledHeight() != ntex->GetScaledHeight())
+					{
+						Printf("Localized texture %s must be the same size as the one it replaces\n", entry.name);
+					}
+					else
+					{
+						tokens[1].ToLower();
+						auto langids = tokens[1].Split("-", FString::TOK_SKIPEMPTY);
+						for (auto &lang : langids)
+						{
+							if (lang.Len() == 2 || lang.Len() == 3)
+							{
+								uint32_t langid = MAKE_ID(lang[0], lang[1], lang[2], 0);
+								uint64_t comboid = (uint64_t(langid) << 32) | origTex.GetIndex();
+								LocalizedTextures.Insert(comboid, tex.GetIndex());
+								Textures[origTex.GetIndex()].HasLocalization = true;
+							}
+							else
+							{
+								Printf("Invalid language ID in texture %s\n", entry.name);
+							}
+						}
+					}
+				}
+				else
+				{
+					Printf("%s is not a texture\n", entry.name);
+				}
+			}
+			else
+			{
+				Printf("Unknown texture %s for localized variant %s\n", tokens[0].GetChars(), entry.name);
+			}
+		}
+		else
+		{
+			Printf("%s contains no language IDs and will be ignored\n", entry.name);
+		}
+
+	}
+}
+
+//==========================================================================
+//
 // FTextureManager :: Init
 //
 //==========================================================================
@@ -1066,6 +1210,7 @@ void FTextureManager::Init()
 	InitSwitchList();
 	InitPalettedVersions();
 	AdjustSpriteOffsets();
+	AddLocalizedVariants();
 }
 
 //==========================================================================
@@ -1116,6 +1261,25 @@ FTextureID FTextureManager::PalCheck(FTextureID tex)
 	int *newtex = PalettedVersions.CheckKey(tex.GetIndex());
 	if (newtex == NULL || *newtex == 0) return tex;
 	return *newtex;
+}
+
+//==========================================================================
+//
+// FTextureManager :: ResolveLocalizedTexture
+//
+//==========================================================================
+
+int FTextureManager::ResolveLocalizedTexture(FTextureID tex)
+{
+	for(int i = 0; i < 4; i++)
+	{
+		uint32_t lang = LanguageIDs[i];
+		uint64_t index = (uint64_t(lang) << 32) + tex.GetIndex();
+		if (auto pTex = LocalizedTextures.CheckKey(index)) return *pTex;
+		index = (uint64_t(lang & MAKE_ID(255, 255, 0, 0)) << 32) + tex.GetIndex();
+		if (auto pTex = LocalizedTextures.CheckKey(index)) return *pTex;
+	}
+	return tex.GetIndex();
 }
 
 //===========================================================================
