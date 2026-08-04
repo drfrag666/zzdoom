@@ -128,7 +128,8 @@ LISTMENU "MainMenuTextOnly"
 	
 	TextItem "$MNU_NEWGAME", "n", "PlayerclassMenu"
 	TextItem "$MNU_OPTIONS", "o", "OptionsMenu"
-	TextItem "$MNU_GAMEFILES", "g", "GameFilesMenu"
+	TextItem "$MNU_LOADGAME", "l", "LoadGameMenu"
+	TextItem "$MNU_SAVEGAME", "s", "SaveGameMenu"
 	IfOption(ReadThis)
 	{
 		TextItem "$MNU_INFO", "i", "ReadThisMenu"
@@ -417,12 +418,12 @@ ListMenu "PlayerMenu"
 	IfGame(Doom, Heretic, Strife, Chex)
 	{
 		MouseWindow 0, 220
-		PlayerDisplay 220, 80, "20 00 00", "80 00 40", 1, "PlayerDisplay"
+		PlayerDisplay 220, 48, "20 00 00", "80 00 40", 1, "PlayerDisplay"
 	}
 	IfGame(Hexen)
 	{
 		MouseWindow 0, 220
-		PlayerDisplay 220, 80, "00 07 00", "40 53 40", 1, "PlayerDisplay"
+		PlayerDisplay 220, 48, "00 07 00", "40 53 40", 1, "PlayerDisplay"
 	}
 
 	ValueText "$PLYRMNU_TEAM", "Team"
@@ -451,25 +452,12 @@ OptionMenu "CustomizeControls" protected
 {
 	Title "$CNTRLMNU_TITLE"
 
-	StaticText ""
 	Submenu    "$CNTRLMNU_ACTION"      , "ActionControlsMenu"
-
-	StaticText ""
 	Submenu    "$CNTRLMNU_CHAT"        , "ChatControlsMenu"
-
-	StaticText ""
 	Submenu    "$CNTRLMNU_WEAPONS"     , "WeaponsControlMenu"
-
-	StaticText ""
 	Submenu    "$CNTRLMNU_INVENTORY"   , "InventoryControlsMenu"
-
-	StaticText ""
 	Submenu    "$CNTRLMNU_OTHER"       , "OtherControlsMenu"
-
-	StaticText ""
 	Submenu    "$CNTRLMNU_POPUPS"      , "StrifeControlsMenu"
-
-	StaticText ""
 	Submenu    "$MAPCNTRLMNU_CONTROLS" , "MapControlsMenu"
 }
 
@@ -897,9 +885,6 @@ OptionMenu "VideoOptions" protected
 	Option "$DSPLYMNU_NOMONSTERINTERPOLATION",	"nomonsterinterpolation", "NoYes"
 	Slider "$DSPLYMNU_MENUDIM",					"dimamount", 0, 1.0, 0.05, 2
 	ColorPicker "$DSPLYMNU_DIMCOLOR",			"dimcolor"
-	Slider "$DSPLYMNU_MOVEBOB",			"movebob", 0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_STILLBOB",		"stillbob", 0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_BOBSPEED",				"wbobspeed", 0, 2.0, 0.1
 
 }
 
@@ -986,6 +971,11 @@ OptionMenu "HUDOptions" protected
 	Option "$HUDMNU_POISONFLASHES",			"pf_poison", "ZDoomHexen"
 	Option "$HUDMNU_ICEFLASHES",			"pf_ice", "ZDoomHexen"
 	Option "$HUDMNU_HAZARDFLASHES",			"pf_hazard", "ZDoomStrife"
+	StaticText " "
+	Slider "$DSPLYMNU_MOVEBOB",				"movebob", 0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_STILLBOB",			"stillbob", 0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_BOBSPEED",			"wbobspeed", 0, 2.0, 0.1
+	
 }
 
 OptionMenu "ScalingOptions" protected
@@ -1125,11 +1115,14 @@ OptionMenu "MiscOptions" protected
 	Option "$MISCMNU_SAVELOADCONFIRMATION",			"saveloadconfirmation", "OnOff"
 	Slider "$MISCMNU_AUTOSAVECOUNT",			"autosavecount", 1, 20, 1, 0
 	Option "$MISCMNU_DEHLOAD",					"dehload", "dehopt"
+	Option "$MISCMNU_ENABLESCRIPTSCREENSHOTS",		"enablescriptscreenshot", "OnOff"
 	Option "$MISCMNU_INTERSCROLL",				"nointerscrollabort", "OffOn"
 	StaticText " "
 	Option "$MISCMNU_CACHENODES",				"gl_cachenodes", "OnOff"
 	Slider "$MISCMNU_CACHETIME",				"gl_cachetime", 0.0, 2.0, 0.1
 	SafeCommand "$MISCMNU_CLEARNODECACHE",		"clearnodecache"
+	StaticText " "
+	Option "$OPTMNU_LANGUAGE", "language", "LanguageOptions"
 }
 
 //-------------------------------------------------------------------------------------------
@@ -1273,6 +1266,10 @@ OptionMenu MapColorMenu protected
 	Title "$MAPCOLORMNU_TITLE"
 	SafeCommand "$MAPCOLORMNU_DEFAULTMAPCOLORS", 		"am_restorecolors"
 	StaticText " "
+	Submenu "$MAPCOLORMNU_CHEATMODE",					"MapColorMenuCheats"
+	Submenu "$MAPCOLORMNU_OVERLAY",						"MapColorMenuOverlay"
+	Submenu "$MAPCOLORMNU_OVCHEATMODE",					"MapColorMenuCheatsOverlay"
+	StaticText " "
 	ColorPicker "$MAPCOLORMNU_BACKCOLOR",				"am_backcolor"
 	ColorPicker "$MAPCOLORMNU_YOURCOLOR",				"am_yourcolor"
 	ColorPicker "$MAPCOLORMNU_WALLCOLOR",				"am_wallcolor"
@@ -1289,8 +1286,11 @@ OptionMenu MapColorMenu protected
 	ColorPicker "$MAPCOLORMNU_UNEXPLOREDSECRETCOLOR",	"am_unexploredsecretcolor"
 	ColorPicker "$MAPCOLORMNU_SPECIALWALLCOLOR",		"am_specialwallcolor"
 	ColorPicker "$MAPCOLORMNU_PORTAL",					"am_portalcolor"
-	StaticText " "
-	StaticText "$MAPCOLORMNU_CHEATMODE", 1
+}
+
+OptionMenu MapColorMenuCheats protected
+{
+	Title "$MAPCOLORMNU_CHEATMODE"
 	ColorPicker "$MAPCOLORMNU_TSWALLCOLOR",				"am_tswallcolor"
 	ColorPicker "$MAPCOLORMNU_SECRETWALLCOLOR",			"am_secretwallcolor"
 	ColorPicker "$MAPCOLORMNU_THINGCOLOR",				"am_thingcolor"
@@ -1299,8 +1299,11 @@ OptionMenu MapColorMenu protected
 	ColorPicker "$MAPCOLORMNU_FRIENDCOLOR",				"am_thingcolor_friend"
 	ColorPicker "$MAPCOLORMNU_ITEMCOLOR",				"am_thingcolor_item"
 	ColorPicker "$MAPCOLORMNU_COUNTITEMCOLOR",			"am_thingcolor_citem"
-	StaticText " "
-	StaticText "$MAPCOLORMNU_OVERLAY", 1
+}
+
+OptionMenu MapColorMenuOverlay protected
+{
+	Title "$MAPCOLORMNU_OVERLAY"
 	ColorPicker "$MAPCOLORMNU_YOURCOLOR",				"am_ovyourcolor"
 	ColorPicker "$MAPCOLORMNU_WALLCOLOR",				"am_ovwallcolor"
 	ColorPicker "$MAPCOLORMNU_FDWALLCOLOR",				"am_ovfdwallcolor"
@@ -1313,8 +1316,11 @@ OptionMenu MapColorMenu protected
 	ColorPicker "$MAPCOLORMNU_SECRETSECTORCOLOR",		"am_ovsecretsectorcolor"
 	ColorPicker "$MAPCOLORMNU_SPECIALWALLCOLOR",		"am_ovspecialwallcolor"
 	ColorPicker "$MAPCOLORMNU_PORTAL",					"am_ovportalcolor"
-	StaticText " "
-	StaticText "$MAPCOLORMNU_OVCHEATMODE", 1
+}
+
+OptionMenu MapColorMenuCheatsOverlay protected
+{
+	Title "$MAPCOLORMNU_OVCHEATMODE"
 	ColorPicker "$MAPCOLORMNU_TSWALLCOLOR",				"am_ovotherwallscolor"
 	ColorPicker "$MAPCOLORMNU_SECRETWALLCOLOR",			"am_ovsecretwallcolor"
 	ColorPicker "$MAPCOLORMNU_THINGCOLOR",				"am_ovthingcolor"
@@ -1448,6 +1454,9 @@ OptionMenu GameplayOptions protected
 {
 	Title 	"$GMPLYMNU_TITLE"
 	//Indent 222
+	Submenu "$GMPLYMNU_DEATHMATCH",				"DeathmatchOptions"
+	Submenu "$GMPLYMNU_COOPERATIVE",			"CoopOptions"
+	StaticText " "
 	Option "$GMPLYMNU_TEAMPLAY",				"teamplay",	"OnOff"
 	Slider	"$GMPLYMNU_TEAMDAMAGE",	"teamdamage", 0, 1, 0.05,2
 	StaticText " "
@@ -1480,9 +1489,13 @@ OptionMenu GameplayOptions protected
 	Option "$GMPLYMNU_DONTCHECKAMMO",			"sv_dontcheckammo", "NoYes"
 	Option "$GMPLYMNU_KILLBOSSSPAWNS",			"sv_killbossmonst", "YesNo"
 	Option "$GMPLYMNU_NOCOUNTENDMONSTER",		"sv_nocountendmonst", "NoYes"
+	Class "GameplayMenu"
+}
 
-	StaticText " "
-	StaticText "$GMPLYMNU_DEATHMATCH",1
+OptionMenu DeathmatchOptions protected
+{
+	Title 	"$GMPLYMNU_DEATHMATCH"
+
 	Option "$GMPLYMNU_WEAPONSSTAY",				"sv_weaponstay", "YesNo"
 	Option "$GMPLYMNU_ALLOWPOWERUPS",			"sv_noitems", "NoYes"
 	Option "$GMPLYMNU_ALLOWHEALTH",				"sv_nohealth", "NoYes"
@@ -1496,9 +1509,13 @@ OptionMenu GameplayOptions protected
 	Option "$GMPLYMNU_LOSEFRAG",				"sv_losefrag", "YesNo"
 	Option "$GMPLYMNU_KEEPFRAGS",				"sv_keepfrags", "YesNo"
 	Option "$GMPLYMNU_NOTEAMSWITCH",			"sv_noteamswitch", "YesNo"
+	Class "GameplayMenu"
+}
 
-	StaticText " "
-	StaticText "$GMPLYMNU_COOPERATIVE",1
+OptionMenu CoopOptions protected
+{
+	Title 	"$GMPLYMNU_COOPERATIVE"
+
 	Option "$GMPLYMNU_MULTIPLAYERWEAPONS",	 	"sv_noweaponspawn", "NoYes"
 	Option "$GMPLYMNU_LOSEINVENTORY",			"sv_cooploseinventory", "YesNo"
 	Option "$GMPLYMNU_KEEPKEYS",				"sv_cooplosekeys", "NoYes"
@@ -1533,9 +1550,19 @@ OptionMenu "CompatibilityOptions" protected
 {
 	Title "$CMPTMNU_TITLE"
 	Option "$CMPTMNU_MODE",							"compatmode", "CompatModes", "", 1
-
 	StaticText " "
-	StaticText "$CMPTMNU_ACTORBEHAVIOR",1
+	Submenu "$CMPTMNU_ACTORBEHAVIOR",				"CompatActorMenu"
+	Submenu "$CMPTMNU_DEHACKEDBEHAVIOR",			"CompatDehackedMenu"
+	Submenu "$CMPTMNU_MAPACTIONBEHAVIOR",			"CompatMapMenu"
+	Submenu "$CMPTMNU_PHYSICSBEHAVIOR",				"CompatPhysicsMenu"
+	Submenu "$CMPTMNU_RENDERINGBEHAVIOR",			"CompatRenderMenu"
+	Submenu "$CMPTMNU_SOUNDBEHAVIOR",				"CompatSoundMenu"
+	Class "CompatibilityMenu"
+}
+
+OptionMenu "CompatActorMenu" protected
+{
+	Title "$CMPTMNU_ACTORBEHAVIOR"
 	Option "$CMPTMNU_CORPSEGIBS",					"compat_CORPSEGIBS", "YesNo"
 	Option "$CMPTMNU_NOBLOCKFRIENDS",				"compat_NOBLOCKFRIENDS", "YesNo"
 	Option "$CMPTMNU_LIMITPAIN",					"compat_LIMITPAIN", "YesNo"
@@ -1545,14 +1572,20 @@ OptionMenu "CompatibilityOptions" protected
 	Option "$CMPTMNU_INVISIBILITY",					"compat_INVISIBILITY", "YesNo"
 	Option "$CMPTMNU_MINOTAUR",						"compat_MINOTAUR", "YesNo"
 	Option "$CMPTMNU_NOTOSSDROPS",					"compat_NOTOSSDROPS", "YesNo"
+	Class "CompatibilityMenu"
+}
 
-	StaticText " "
-	StaticText "$CMPTMNU_DEHACKEDBEHAVIOR",1
+OptionMenu "CompatDehackedMenu" protected
+{
+	Title "$CMPTMNU_DEHACKEDBEHAVIOR"
 	Option "$CMPTMNU_DEHHEALTH",					"compat_DEHHEALTH", "YesNo"
 	Option "$CMPTMNU_MUSHROOM",						"compat_MUSHROOM", "YesNo"
+	Class "CompatibilityMenu"
+}
 
-	StaticText " "
-	StaticText "$CMPTMNU_MAPACTIONBEHAVIOR",1
+OptionMenu "CompatMapMenu" protected
+{
+	Title "$CMPTMNU_MAPACTIONBEHAVIOR"
 	Option "$CMPTMNU_USEBLOCKING",					"compat_USEBLOCKING", "YesNo"
 	Option "$CMPTMNU_ANYBOSSDEATH",					"compat_ANYBOSSDEATH", "YesNo"
 	Option "$CMPTMNU_NODOORLIGHT",					"compat_NODOORLIGHT", "YesNo"
@@ -1565,9 +1598,12 @@ OptionMenu "CompatibilityOptions" protected
 	Option "$CMPTMNU_TELEPORT",						"compat_teleport", "YesNo"
 	Option "$CMPTMNU_PUSHWINDOW",					"compat_pushwindow", "YesNo"
 	Option "$CMPTMNU_CHECKSWITCHRANGE",				"compat_checkswitchrange", "YesNo"
+	Class "CompatibilityMenu"
+}
 
-	StaticText " "
-	StaticText "$CMPTMNU_PHYSICSBEHAVIOR",1
+OptionMenu "CompatPhysicsMenu" protected
+{
+	Title "$CMPTMNU_PHYSICSBEHAVIOR"
 	Option "$CMPTMNU_NOPASSOVER",					"compat_nopassover", "YesNo"
 	Option "$CMPTMNU_BOOMSCROLL",					"compat_BOOMSCROLL", "YesNo"
 	Option "$CMPTMNU_BADANGLES",					"compat_badangles", "YesNo"
@@ -1576,23 +1612,28 @@ OptionMenu "CompatibilityOptions" protected
 	Option "$CMPTMNU_TRACE",						"compat_TRACE", "YesNo"
 	Option "$CMPTMNU_HITSCAN",						"compat_HITSCAN", "YesNo"
 	Option "$CMPTMNU_MISSILECLIP",					"compat_MISSILECLIP", "YesNo"
+	Class "CompatibilityMenu"
+}
 
 
-	StaticText " "
-	StaticText "$CMPTMNU_RENDERINGBEHAVIOR",1
+OptionMenu "CompatRenderMenu" protected
+{
+	Title "$CMPTMNU_RENDERINGBEHAVIOR"
 	Option "$CMPTMNU_POLYOBJ",						"compat_POLYOBJ", "YesNo"
 	Option "$CMPTMNU_MASKEDMIDTEX",					"compat_MASKEDMIDTEX", "YesNo"
 	Option "$CMPTMNU_SPRITESORT",					"compat_SPRITESORT", "YesNo"
+	Class "CompatibilityMenu"
+}
 
-	StaticText " "
-	StaticText "$CMPTMNU_SOUNDBEHAVIOR",1
+OptionMenu "CompatSoundMenu" protected
+{
+	Title "$CMPTMNU_SOUNDBEHAVIOR"
 	Option "$CMPTMNU_SOUNDSLOTS",					"compat_soundslots", "YesNo"
 	Option "$CMPTMNU_SILENTPICKUP",					"compat_SILENTPICKUP", "YesNo"
 	Option "$CMPTMNU_SILENTINSTANTFLOORS",			"compat_silentinstantfloors", "YesNo"
 	Option "$CMPTMNU_SECTORSOUNDS",					"compat_SECTORSOUNDS", "YesNo"
 	Option "$CMPTMNU_SOUNDCUTOFF",					"compat_soundcutoff", "YesNo"
 	Option "$CMPTMNU_SOUNDTARGET",					"compat_SOUNDTARGET", "YesNo"
-
 	Class "CompatibilityMenu"
 }
 
@@ -1699,7 +1740,7 @@ OptionString SpeakerModes
 OptionString Resamplers
 {
 	"NoInterp",		"$OPTSTR_NOINTERPOLATION"
-	"Linear",		"$OPTVAL_LINEAR"
+	"Linear",		"$OPTVAL_LINEAR_1"
 	"Cubic",		"$OPTVAL_CUBIC"
 	"Spline",		"$OPTSTR_SPLINE"
 }
@@ -1722,9 +1763,13 @@ OptionValue MidiDevices
 OptionMenu SoundOptions protected
 {
 	Title "$SNDMNU_TITLE"
+	Slider "$SNDMNU_MASTERVOLUME",		"snd_mastervolume", 0, 1, 0.05, 2
+	StaticText " "
 	Slider "$SNDMNU_SFXVOLUME",			"snd_sfxvolume", 0, 1, 0.05, 2
-	Slider "$SNDMNU_MENUVOLUME",		"snd_menuvolume", 0, 1, 0.05, 2
 	Slider "$SNDMNU_MUSICVOLUME",		"snd_musicvolume", 0, 1, 0.05, 2
+	StaticText " "
+	Slider "$SNDMNU_MENUVOLUME",		"snd_menuvolume", 0, 1, 0.05, 2
+	StaticText " "
 	Option "$SNDMNU_MIDIDEVICE",		"snd_mididevice", "MidiDevices"
 	StaticText " "
 	Option "$SNDMNU_UNDERWATERREVERB",	"snd_waterreverb", "OnOff"
@@ -1833,7 +1878,7 @@ OptionValue ModReplayers
 OptionValue ModQuality
 {
 	0.0, "$OPTVAL_ALIASING"
-	1.0, "$OPTVAL_LINEAR"
+	1.0, "$OPTVAL_LINEAR_1"
 	2.0, "$OPTVAL_CUBIC"
 	3.0, "$OPTVAL_BLEP"		// Band-limited step
 	4.0, "$OPTVAL_LINEARSLOW"
@@ -2208,20 +2253,13 @@ OptionMenu "ReverbSave" protected
  *
  *=======================================*/
 
-OptionMenu "LanguageOptions"
+OptionString "LanguageOptions"
 {
-	Title "$OPTMNU_LANGUAGE"
-	StaticText " "
-	Command "English (UK)", "language eng"
-	Command "English (US)", "language enu"
-	Command "Français (FR)", "language fr"
-	Command "Italiano (ITA)", "language ita"
-	Command "Português do Brasil (PTB)", "language ptb"
-	Command "Русский (RU)", "language rus"
-}
-
-AddOptionMenu "OptionsMenu"
-{
-	StaticText " "
-	Submenu "$OPTMNU_LANGUAGE", "LanguageOptions"
+	"auto", "Auto"
+	"eng", "English (UK)"
+	"enu", "English (US)"
+	"fr", "Français (FR)"
+	"ita", "Italiano (ITA)"
+	"ptb", "Português do Brasil (PTB)"
+	"rus", "Русский (RU)"
 }

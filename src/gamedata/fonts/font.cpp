@@ -204,6 +204,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 				}
 				if (lump.isValid())
 				{
+					Type = Multilump;
 					if (position < minchar) minchar = position;
 					if (position > maxchar) maxchar = position;
 					charMap.Insert(position, TexMan[lump]);
@@ -228,6 +229,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 						auto tex = TexMan[lump];
 						tex->SetScale(Scale);
 						charMap.Insert((int)position, tex);
+						Type = Folder;
 					}
 				}
 			}
@@ -664,12 +666,24 @@ int FFont::GetCharCode(int code, bool needpic) const
 			}
 		}
 
+		code = originalcode;
 		if (myislower(code))
 		{
 			int upper = upperforlower[code];
 			// Stripping accents did not help - now try uppercase for lowercase
 			if (upper != code) return GetCharCode(upper, needpic);
 		}
+
+		// Same for the uppercase character. Since we restart at the accented version this must go through the entire thing again.
+		while ((newcode = stripaccent(code)) != code)
+		{
+			code = newcode;
+			if (code >= FirstChar && code <= LastChar && (!needpic || Chars[code - FirstChar].Pic != nullptr))
+			{
+				return code;
+			}
+		}
+
 	}
 
 	return -1;

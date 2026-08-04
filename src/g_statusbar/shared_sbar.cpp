@@ -1488,15 +1488,15 @@ void DBaseStatusBar::DrawString(FFont *font, const FString &cstring, double x, d
 		break;
 	case DI_TEXT_ALIGN_RIGHT:
 		if (!monospaced)
-			x -= static_cast<int> (font->StringWidth(cstring) + (spacing * cstring.Len()));
+			x -= static_cast<int> (font->StringWidth(cstring) + (spacing * cstring.CharacterCount()));
 		else //monospaced, so just multiply the character size
-			x -= static_cast<int> ((spacing) * cstring.Len());
+			x -= static_cast<int> ((spacing) * cstring.CharacterCount());
 		break;
 	case DI_TEXT_ALIGN_CENTER:
 		if (!monospaced)
-			x -= static_cast<int> (font->StringWidth(cstring) + (spacing * cstring.Len())) / 2;
+			x -= static_cast<int> (font->StringWidth(cstring) + (spacing * cstring.CharacterCount())) / 2;
 		else //monospaced, so just multiply the character size
-			x -= static_cast<int> ((spacing)* cstring.Len()) / 2;
+			x -= static_cast<int> ((spacing)* cstring.CharacterCount()) / 2;
 		break;
 	}
 
@@ -1534,7 +1534,7 @@ void DBaseStatusBar::DrawString(FFont *font, const FString &cstring, double x, d
 		Scale = { 1.,1. };
 	}
 	int ch;
-	while (ch = *str++, ch != '\0')
+	while (ch = GetCharFromString(str), ch != '\0')
 	{
 		if (ch == ' ')
 		{
@@ -1550,7 +1550,7 @@ void DBaseStatusBar::DrawString(FFont *font, const FString &cstring, double x, d
 		}
 
 		int width;
-		FTexture* c = font->GetChar((unsigned char)ch, &width);
+		FTexture* c = font->GetChar(ch, &width);
 		if (c == NULL) //missing character.
 		{
 			continue;

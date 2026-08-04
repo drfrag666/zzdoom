@@ -1986,6 +1986,7 @@ MISCMNU_ALLCHEATS				= "Enable cheats from all games";
 MISCMNU_ENABLEAUTOSAVES			= "Enable autosaves";
 MISCMNU_AUTOSAVECOUNT			= "Number of autosaves";
 MISCMNU_SAVELOADCONFIRMATION  = "Save/Load confirmation";
+MISCMNU_ENABLESCRIPTSCREENSHOTS	= "Enable making screenshots by scripts";
 MISCMNU_DEHLOAD					= "Load *.deh/*.bex lumps";
 MISCMNU_CACHENODES				= "Cache nodes";
 MISCMNU_CACHETIME				= "Time threshold for node caching";
@@ -2201,6 +2202,7 @@ CMPTMNU_CHECKSWITCHRANGE	= "Enable buggy CheckSwitchRange behavior";
 
 // Sound Options
 SNDMNU_TITLE			= "Sound Options";
+SNDMNU_MASTERVOLUME		= "Master volume";
 SNDMNU_SFXVOLUME		= "Sounds volume";
 SNDMNU_MENUVOLUME		= "Menu volume";
 SNDMNU_MUSICVOLUME		= "Music volume";

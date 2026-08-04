@@ -485,7 +485,6 @@ endif()
 # Start defining source files for ZDoom
 set( PLAT_WIN32_SOURCES
 	sound/mididevices/music_win_mididevice.cpp
-	win32/critsec.cpp
 	win32/fb_d3d9.cpp
 	win32/fb_d3d9_wipe.cpp
 	win32/fb_ddraw.cpp
@@ -509,7 +508,6 @@ set( PLAT_POSIX_SOURCES
 	posix/i_steam.cpp )
 set( PLAT_SDL_SOURCES
 	posix/sdl/crashcatcher.c
-	posix/sdl/critsec.cpp
 	posix/sdl/hardware.cpp
 	posix/sdl/i_gui.cpp
 	posix/sdl/i_input.cpp
@@ -526,7 +524,6 @@ set( PLAT_OSX_SOURCES
 	posix/osx/i_specialpaths.mm
 	posix/osx/zdoom.icns )
 set( PLAT_COCOA_SOURCES
-	posix/cocoa/critsec.cpp
 	posix/cocoa/i_input.mm
 	posix/cocoa/i_joystick.cpp
 	posix/cocoa/i_main.mm
@@ -662,6 +659,7 @@ file( GLOB HEADER_FILES
 	sound/timidity/*.h
 	sound/timiditypp/*.h
 	sound/wildmidi/*.h
+	rendering/2d/*.h
 	rendering/swrenderer/*.h
 	rendering/swrenderer/textures/*.h
 	rendering/swrenderer/drawers/*.h
@@ -839,7 +837,6 @@ set (PCH_SOURCES
 	c_expr.cpp
 	c_functions.cpp
 	ct_chat.cpp
-	cycler.cpp
 	d_iwad.cpp
 	d_main.cpp
 	d_net.cpp
@@ -849,7 +846,6 @@ set (PCH_SOURCES
 	dobjgc.cpp
 	dobjtype.cpp
 	doomstat.cpp
-	f_wipe.cpp
 	g_cvars.cpp
 	g_dumpinfo.cpp
 	g_game.cpp
@@ -881,7 +877,6 @@ set (PCH_SOURCES
 	p_states.cpp
 	p_things.cpp
 	p_tick.cpp
-	p_usdf.cpp
 	p_user.cpp
 	r_utility.cpp
 	r_sky.cpp
@@ -893,11 +888,6 @@ set (PCH_SOURCES
 	serializer.cpp
 	scriptutil.cpp
 	st_stuff.cpp
-	statistics.cpp
-	stats.cpp
-	v_drawtext.cpp
-	v_blend.cpp
-	v_draw.cpp
 	v_palette.cpp
 	v_pfx.cpp
 	v_video.cpp
@@ -916,6 +906,7 @@ set (PCH_SOURCES
 	gamedata/info.cpp
 	gamedata/keysections.cpp
 	gamedata/p_terrain.cpp
+	gamedata/statistics.cpp
 	gamedata/teaminfo.cpp
 	g_shared/a_pickups.cpp
 	g_shared/a_action.cpp
@@ -956,12 +947,18 @@ set (PCH_SOURCES
 	g_statusbar/sbarinfo.cpp
 	g_statusbar/sbar_mugshot.cpp
 	g_statusbar/shared_sbar.cpp
+	rendering/2d/f_wipe.cpp
+	rendering/2d/v_drawtext.cpp
+	rendering/2d/v_blend.cpp
+	rendering/2d/v_draw.cpp
 	maploader/edata.cpp
 	maploader/specials.cpp
 	maploader/maploader.cpp
 	maploader/slopes.cpp
 	maploader/glnodes.cpp
 	maploader/udmf.cpp
+	maploader/usdf.cpp
+	maploader/strifedialogue.cpp
 	maploader/polyobjects.cpp
 	maploader/compatibility.cpp
 	menu/joystickmenu.cpp
@@ -1027,6 +1024,7 @@ set (PCH_SOURCES
 	intermission/intermission.cpp
 	intermission/intermission_parse.cpp
 	r_data/colormaps.cpp
+	r_data/cycler.cpp
 	r_data/a_dynlightdata.cpp
 	r_data/r_translate.cpp
 	r_data/sprites.cpp
@@ -1144,6 +1142,7 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
 	utility/sc_man.cpp
+	utility/stats.cpp
 	utility/cmdlib.cpp
 	utility/colormatcher.cpp
 	utility/configfile.cpp
@@ -1195,6 +1194,13 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	utility/math/tan.c
 	utility/math/tanh.c
 	utility/math/fastsin.cpp
+	utility/xlsxread/xlsxio_read.cpp
+	utility/xlsxread/expat/xmlparse.c
+	utility/xlsxread/expat/xmlrole.c
+	utility/xlsxread/expat/xmltok.c
+	utility/xlsxread/expat/xmltok_impl.c
+	utility/xlsxread/expat/xmltok_ns.c
+
 	zzautozend.cpp
 )
 
@@ -1228,6 +1234,7 @@ include_directories( .
 	gamedata/textures
 	gamedata/fonts
 	rendering
+	rendering/2d
 	sound
 	sound/oplsynth
 	sound/timidity
@@ -1351,6 +1358,7 @@ source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/int
 source_group("Map Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/maploader/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
 source_group("Rendering" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/.+")
+source_group("Rendering\\2D" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/2d/.+")
 source_group("Rendering\\Software Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/.+")
 source_group("Rendering\\Software Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/drawers/.+")
 source_group("Rendering\\Software Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/swrenderer/scene/.+")

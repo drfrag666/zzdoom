@@ -81,6 +81,18 @@ extern int NumTextColors;
 class FFont
 {
 public:
+
+	enum EFontType
+	{
+		Unknown,
+		Folder,
+		Multilump,
+		Fon1,
+		Fon2,
+		BMF,
+		Custom
+	};
+
 	FFont (const char *fontname, const char *nametemplate, const char *filetemplate, int first, int count, int base, int fdlump, int spacewidth=-1, bool notranslate = false);
 	virtual ~FFont ();
 
@@ -119,6 +131,7 @@ protected:
 	static int SimpleTranslation (uint32_t *colorsused, uint8_t *translation,
 		uint8_t *identity, double **luminosity);
 
+	EFontType Type = EFontType::Unknown;
 	int FirstChar, LastChar;
 	int SpaceWidth;
 	int FontHeight;
@@ -144,10 +157,11 @@ protected:
 	friend struct FontsDeleter;
 
 	friend void V_ClearFonts();
+	friend void V_InitFonts();
 };
 
 
-extern FFont *SmallFont, *SmallFont2, *BigFont, *ConFont, *IntermissionFont;
+extern FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont;
 
 void V_InitFonts();
 void V_ClearFonts();

@@ -259,7 +259,7 @@ player_t::~player_t()
 	DestroyPSprites();
 }
 
-player_t &player_t::operator=(const player_t &p)
+void player_t::CopyFrom(player_t &p, bool copyPSP)
 {
 	mo = p.mo;
 	playerstate = p.playerstate;
@@ -312,7 +312,6 @@ player_t &player_t::operator=(const player_t &p)
 	extralight = p.extralight;
 	fixedcolormap = p.fixedcolormap;
 	fixedlightlevel = p.fixedlightlevel;
-	psprites = p.psprites;
 	morphTics = p.morphTics;
 	MorphedPlayerClass = p.MorphedPlayerClass;
 	MorphStyle = p.MorphStyle;
@@ -346,7 +345,12 @@ player_t &player_t::operator=(const player_t &p)
 	ConversationFaceTalker = p.ConversationFaceTalker;
 	MUSINFOactor = p.MUSINFOactor;
 	MUSINFOtics = p.MUSINFOtics;
-	return *this;
+	if (copyPSP)
+	{
+		// This needs to transfer ownership completely.
+		psprites = p.psprites;
+		p.psprites = nullptr;
+	}
 }
 
 size_t player_t::PropagateMark()
@@ -950,7 +954,7 @@ void P_CheckPlayerSprite(AActor *actor, int &spritenum, DVector2 &scale)
 	}
 }
 
-CUSTOM_CVAR (Float, sv_aircontrol, 0.00390625f, CVAR_SERVERINFO|CVAR_NOSAVE)
+CUSTOM_CVAR (Float, sv_aircontrol, 0.00390625f, CVAR_SERVERINFO|CVAR_NOSAVE|CVAR_NOINITCALL)
 {
 	primaryLevel->aircontrol = self;
 	primaryLevel->AirControlChanged ();
@@ -1346,7 +1350,7 @@ void P_PredictPlayer (player_t *player)
 	}
 
 	// Save original values for restoration later
-	PredictionPlayerBackup = *player;
+	PredictionPlayerBackup.CopyFrom(*player, false);
 
 	auto act = player->mo;
 	PredictionActor = player->mo;
@@ -1471,7 +1475,7 @@ void P_UnPredictPlayer ()
 		int inventorytics = player->inventorytics;
 		const bool settings_controller = player->settings_controller;
 
-		*player = PredictionPlayerBackup;
+		player->CopyFrom(PredictionPlayerBackup, false);
 
 		player->settings_controller = settings_controller;
 		// Restore the camera instead of using the backup's copy, because spynext/prev

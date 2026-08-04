@@ -837,8 +837,17 @@ int stripaccent(int code)
 	}
 	else if (code >= 0x100 && code < 0x180)
 	{
-		static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZz ";
-		return accentless[code -0x100];
+		// For the double-accented Hungarian letters it makes more sense to first map them to the very similar looking Umlauts.
+		// (And screw the crappy specs here that do not allow UTF-8 multibyte characters here.)
+		if (code == 0x150) code = 0xd6;
+		else if (code == 0x151) code = 0xf6;
+		else if (code == 0x170) code = 0xdc;
+		else if (code == 0x171) code = 0xfc;
+		else
+		{
+			static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZz ";
+			return accentless[code - 0x100];
+		}
 	}
 	else if (code >= 0x200 && code < 0x21c)
 	{
@@ -854,9 +863,16 @@ int stripaccent(int code)
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
+	if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	FFont *font = FFont::FindFont (name);
 	if (font == NULL)
 	{
+		if (!stricmp(name, "BIGUPPER"))
+		{
+			font = FFont::FindFont("BIGFONT");
+			if (font) return font;
+		}
+
 		int lump = -1;
 		int folderfile = -1;
 		
@@ -1492,12 +1508,28 @@ void V_InitFonts()
 			SmallFont2 = new FFont("SmallFont2", "STBFN%.3d", "defsmallfont2", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
 		}
 	}
+
+	//This must be read before BigFont so that it can be properly substituted.
+	BigUpper = V_GetFont("BigUpper");
+
 	if (!(BigFont = V_GetFont("BigFont")))
 	{
 		if (gameinfo.gametype & GAME_Raven)
 		{
 			BigFont = new FFont("BigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
 		}
+	}
+
+	// let PWAD BIGFONTs override the stock BIGUPPER font. (This check needs to be made smarter.)
+	if (BigUpper && BigFont->Type != FFont::Folder && BigUpper->Type == FFont::Folder)
+	{
+		delete BigUpper;
+		BigUpper = BigFont;
+	}
+
+	if (BigUpper == nullptr)
+	{
+		BigUpper = BigFont;
 	}
 	if (!(ConFont = V_GetFont("ConsoleFont", "CONFONT")))
 	{

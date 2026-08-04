@@ -57,7 +57,7 @@
 
 FTextureManager TexMan;
 
-CUSTOM_CVAR(Bool, vid_nopalsubstitutions, false, CVAR_ARCHIVE)
+CUSTOM_CVAR(Bool, vid_nopalsubstitutions, false, CVAR_ARCHIVE|CVAR_NOINITCALL)
 {
 	// This is in case the sky texture has been substituted.
 	R_InitSkyMap ();
@@ -387,8 +387,8 @@ bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitut
 	if (!texnum.isValid()) return false;
 	
 	// First the unconditional settings, 0='never' and 1='always'.
+	if (cl_localizationmode == 1 || gameinfo.forcetextinmenus) return false;
 	if (cl_localizationmode == 0) return true;
-	if (cl_localizationmode == 1) return false;
 	
 	uint32_t langtable = 0;
 	if (*substitute == '$') substitute = GStrings.GetString(substitute+1, &langtable);
