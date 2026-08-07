@@ -254,7 +254,7 @@ void FSingleLumpFont::LoadFON1 (int lump, const uint8_t *data)
 	GlobalKerning = 0;
 	PatchRemap = new uint8_t[256];
 
-	for(unsigned int i = 0;i < 256;++i)
+	for(unsigned int i = 0;i < 0x2123;++i)
 		Chars[i].Pic = nullptr;
 
 	LoadTranslations();
