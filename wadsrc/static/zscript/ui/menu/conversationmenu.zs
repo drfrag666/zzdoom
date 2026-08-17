@@ -82,6 +82,7 @@ class ConversationMenu : Menu
 	PlayerInfo mPlayer;
 	int mSelection;
 	int ConversationPauseTic;
+	int LineHeight;
 	
 	int SpeechWidth;
 	int ReplyWidth;
@@ -107,6 +108,7 @@ class ConversationMenu : Menu
 		
 		ReplyWidth = 320-50-10;
 		SpeechWidth = screen.GetWidth()/CleanXfac - 24*2;
+		LineHeight = SmallFont.GetHeight();
 
 		FormatSpeakerMessage();
 		return FormatReplies(activereply);
@@ -139,9 +141,9 @@ class ConversationMenu : Menu
 			let ReplyText = Stringtable.Localize(reply.Reply);
 			if (reply.NeedsGold)
 			{
-				let trade = Stringtable.Localize("$TXT_TRADE");
+				ReplyText.AppendFormat(" %s", Stringtable.Localize("$TXT_TRADE"));
 				let amount = String.Format("%u", reply.PrintAmount);
-				trade.Replace("%u", amount);
+				ReplyText.Replace("%u", amount);
 			}
 			let ReplyLines = SmallFont.BreakLines (ReplyText, ReplyWidth);
 
@@ -173,8 +175,8 @@ class ConversationMenu : Menu
 		mResponseLines.Push(goodbyestr);
 
 		// Determine where the top of the reply list should be positioned.
-		mYpos = MIN (140, 192 - mResponseLines.Size() * OptionMenuSettings.mLinespacing);
-		i = 44 + mResponseLines.Size() * OptionMenuSettings.mLinespacing;
+		mYpos = MIN (140, 192 - mResponseLines.Size() * LineHeight);
+		i = 44 + mResponseLines.Size() * LineHeight;
 		if (mYpos - 100 < i - screen.GetHeight() / CleanYfac / 2)
 		{
 			mYpos = i - screen.GetHeight() / CleanYfac / 2 + 100;
@@ -304,7 +306,7 @@ class ConversationMenu : Menu
 	override bool MouseEvent(int type, int x, int y)
 	{
 		int sel = -1;
-		int fh = OptionMenuSettings.mLinespacing;
+		int fh = LineHeight;
 
 		// convert x/y from screen to virtual coordinates, according to CleanX/Yfac use in DrawTexture
 		x = ((x - (screen.GetWidth() / 2)) / CleanXfac) + 160;
@@ -381,7 +383,7 @@ class ConversationMenu : Menu
 	virtual void DrawSpeakerText(bool dimbg)
 	{
 		String speakerName;
-		int linesize = OptionMenuSettings.mLinespacing * CleanYfac;
+		int linesize = LineHeight * CleanYfac;
 		int cnt = mDialogueLines.Count();
 
 		// Who is talking to you?
@@ -433,10 +435,10 @@ class ConversationMenu : Menu
 	{
 		// Dim the screen behind the PC's choices.
 		screen.Dim(0, 0.45, (24 - 160) * CleanXfac + screen.GetWidth() / 2, (mYpos - 2 - 100) * CleanYfac + screen.GetHeight() / 2,
-			272 * CleanXfac, MIN(mResponseLines.Size() * OptionMenuSettings.mLinespacing + 4, 200 - mYpos) * CleanYfac);
+			272 * CleanXfac, MIN(mResponseLines.Size() * LineHeight + 4, 200 - mYpos) * CleanYfac);
 
 		int y = mYpos;
-		int fontheight = OptionMenuSettings.mLinespacing;
+		int fontheight = LineHeight;
 
 		int response = 0;
 		for (int i = 0; i < mResponseLines.Size(); i++)

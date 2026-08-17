@@ -393,8 +393,8 @@ size_t FString::CharacterCount() const
 
 int FString::GetNextCharacter(int &position) const
 {
-	const uint8_t *cp = (const uint8_t*)Chars;
-	const uint8_t *cpread = cp + position;
+	const uint8_t *cp = (const uint8_t*)Chars + position;
+	const uint8_t *cpread = cp;
 	int chr = GetCharFromString(cpread);
 	position += int(cpread - cp);
 	return chr;
@@ -828,12 +828,12 @@ void FString::StripLeftRight ()
 	if (max == 0) return;
 	for (i = 0; i < max; ++i)
 	{
-		if (!isspace((unsigned char)Chars[i]))
+		if (Chars[i] < 0 || !isspace((unsigned char)Chars[i]))
 			break;
 	}
 	for (j = max - 1; j >= i; --j)
 	{
-		if (!isspace((unsigned char)Chars[j]))
+		if (Chars[i] < 0 || !isspace((unsigned char)Chars[j]))
 			break;
 	}
 	if (i == 0 && j == max - 1)
@@ -1249,6 +1249,8 @@ void FString::Split(TArray<FString>& tokens, const char *delimiter, EmptyTokenTy
 	const long selfLen = static_cast<long>(Len());
 	const long delimLen = static_cast<long>(strlen(delimiter));
 	long lastPos = 0;
+
+	if (selfLen == 0) return;	// Empty strings do not contain tokens, even with TOK_KEEPEMPTY.
 
 	while (lastPos <= selfLen)
 	{

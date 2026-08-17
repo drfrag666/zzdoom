@@ -126,7 +126,7 @@ namespace swrenderer
 			DrawerThreads::ResetDebugDrawPos();
 		}
 
-		RenderActorView(player->mo);
+		RenderActorView(player->mo, true, false);
 
 		// Apply special colormap if the target cannot do it
 		if (CameraLight::Instance()->ShaderColormap() && viewport->RenderTarget->IsBgra() && !(r_shadercolormaps && screen->Accel2D))
@@ -141,7 +141,7 @@ namespace swrenderer
 		DrawerWaitCycles.Unclock();
 	}
 
-	void RenderScene::RenderActorView(AActor *actor, bool dontmaplines)
+	void RenderScene::RenderActorView(AActor *actor, bool renderPlayerSprites, bool dontmaplines)
 	{
 		WallCycles.Reset();
 		PlaneCycles.Reset();
@@ -181,7 +181,8 @@ namespace swrenderer
 		if (r_modelscene)
 			MainThread()->Viewport->SetupPolyViewport(MainThread());
 
-		RenderPSprites();
+		if (renderPlayerSprites)
+			RenderPSprites();
 
 		MainThread()->Viewport->viewpoint.camera->renderflags = savedflags;
 
@@ -383,7 +384,7 @@ namespace swrenderer
 		if (r_modelscene)
 			PolyTriangleDrawer::ResizeBuffers(viewport->RenderTarget);
 
-		RenderActorView(actor, dontmaplines);
+		RenderActorView(actor, false, dontmaplines);
 		DrawerWaitCycles.Clock();
 		DrawerThreads::WaitForWorkers();
 		DrawerWaitCycles.Unclock();

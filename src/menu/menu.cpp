@@ -56,6 +56,7 @@
 #include "scripting/types.h"
 
 int DMenu::InMenu;
+static ScaleOverrider *CurrentScaleOverrider;
 //
 // Todo: Move these elsewhere
 //
@@ -335,7 +336,7 @@ bool DMenu::TranslateKeyboardEvents()
 //
 //=============================================================================
 
-void M_StartControlPanel (bool makeSound)
+void M_StartControlPanel (bool makeSound, bool scaleoverride)
 {
 	// intro might call this repeatedly
 	if (CurrentMenu != nullptr)
@@ -359,6 +360,8 @@ void M_StartControlPanel (bool makeSound)
 	}
 	BackbuttonTime = 0;
 	BackbuttonAlpha = 0;
+	if (scaleoverride && !CurrentScaleOverrider) CurrentScaleOverrider = new ScaleOverrider;
+	else if (!scaleoverride && CurrentScaleOverrider) delete CurrentScaleOverrider;
 }
 
 //=============================================================================
@@ -392,7 +395,7 @@ DEFINE_ACTION_FUNCTION(DMenu, ActivateMenu)
 //
 //=============================================================================
 
-EXTERN_CVAR(Int, cl_localizationmode)
+EXTERN_CVAR(Int, cl_gfxlocalization)
 
 
 void M_SetMenu(FName menu, int param)
@@ -407,7 +410,7 @@ void M_SetMenu(FName menu, int param)
 			{
 				menu = NAME_MainmenuTextOnly;
 			}
-			else
+			else if (cl_gfxlocalization != 0 && !gameinfo.forcenogfxsubstitution)
 			{
 				// For these games we must check up-front if they get localized because in that case another template must be used.
 				DMenuDescriptor **desc = MenuDescriptors.CheckKey(NAME_Mainmenu);
@@ -416,7 +419,7 @@ void M_SetMenu(FName menu, int param)
 					if ((*desc)->IsKindOf(RUNTIME_CLASS(DListMenuDescriptor)))
 					{
 						DListMenuDescriptor *ld = static_cast<DListMenuDescriptor*>(*desc);
-						if (ld->mFromEngine && cl_localizationmode != 0)
+						if (ld->mFromEngine)
 						{
 							// This assumes that replacing one graphic will replace all of them.
 							// So this only checks the "New game" entry for localization capability.
@@ -876,6 +879,8 @@ void M_ClearMenus()
 	}
 	V_SetBorderNeedRefresh();
 	menuactive = MENU_Off;
+	if (CurrentScaleOverrider)  delete CurrentScaleOverrider;
+	CurrentScaleOverrider = nullptr;
 }
 
 //=============================================================================

@@ -381,6 +381,7 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 			I_SetMusicVolume (dlg_musicvolume);
 			S_Sound (npc, CHAN_VOICE|CHAN_NOPAUSE, CurNode->SpeakerVoice, 1, ATTN_NORM);
 		}
+		M_StartControlPanel(false, true);
 
 		// Create the menu. This may be a user-defined class so check if it is good to use.
 		FName cls = CurNode->MenuClassName;
@@ -405,7 +406,6 @@ void P_StartConversation (AActor *npc, AActor *pc, bool facetalker, bool saveang
 		}
 
 		// And open the menu
-		M_StartControlPanel (false);
 		M_ActivateMenu((DMenu*)cmenu);
 		menuactive = MENU_OnNoPause;
 	}
@@ -695,8 +695,7 @@ static void TerminalResponse (const char *str)
 
 		if (StatusBar != NULL)
 		{
-			AddToConsole(-1, str);
-			AddToConsole(-1, "\n");
+			Printf(PRINT_NONOTIFY, "%s\n", str);
 			// The message is positioned a bit above the menu choices, because
 			// merchants can tell you something like this but continue to show
 			// their dialogue screen. I think most other conversations use this

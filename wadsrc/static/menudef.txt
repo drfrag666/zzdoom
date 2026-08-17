@@ -379,6 +379,8 @@ OptionMenu "OptionsMenu" protected
 	Submenu "$OPTMNU_VIDEO",			"VideoModeMenu"
 	Submenu "$OPTMNU_CHANGERENDER",		"RendererMenu"
 	StaticText " "
+	Submenu "$OS_TITLE", "os_Menu"
+	StaticText " "
 	SafeCommand "$OPTMNU_DEFAULTS",	"reset2defaults"
 	SafeCommand	"$OPTMNU_RESETTOSAVED",	"reset2saved"
 	Command "$OPTMNU_CONSOLE",			"menuconsole"
@@ -1200,30 +1202,43 @@ OptionString MapMarkFont
 OptionMenu AutomapOptions protected
 {
 	Title "$AUTOMAPMNU_TITLE"
+
 	Option "$AUTOMAPMNU_COLORSET",				"am_colorset", "MapColorTypes"
 	Option "$AUTOMAPMNU_CUSTOMCOLORS",			"am_customcolors", "YesNo"
 	Submenu "$AUTOMAPMNU_SETCUSTOMCOLORS",		"MapColorMenu"
+
+	StaticText ""
 	Submenu "$AUTOMAPMNU_CONTROLS",				"MapControlsMenu"
-	StaticText " "
+
+	StaticText ""
 	Option "$AUTOMAPMNU_ROTATE",				"am_rotate", "RotateTypes"
 	Option "$AUTOMAPMNU_OVERLAY",				"am_overlay", "OverlayTypes"
 	Option "$AUTOMAPMNU_TEXTURED",				"am_textured", "OnOff"
 	Option "$AUTOMAPMNU_FOLLOW",				"am_followplayer", "OnOff"
-	Option "$AUTOMAPMNU_PTOVERLAY",				"am_portaloverlay", "OnOff"
-	Slider "$AUTOMAPMNU_EMPTYSPACEMARGIN",		"am_emptyspacemargin", 0, 90, 5, 0
-	StaticText " "
+
+	StaticText ""
 	Option "$AUTOMAPMNU_SHOWITEMS",				"am_showitems", "OnOff"
 	Option "$AUTOMAPMNU_SHOWMONSTERS",			"am_showmonsters", "OnOff"
 	Option "$AUTOMAPMNU_SHOWSECRETS",			"am_showsecrets", "OnOff"
 	Option "$AUTOMAPMNU_SHOWTIME",				"am_showtime", "OnOff"
 	Option "$AUTOMAPMNU_SHOWTOTALTIME",			"am_showtotaltime", "OnOff"
-	Option "$AUTOMAPMNU_MAPSECRETS",			"am_map_secrets", "SecretTypes"
 	Option "$AUTOMAPMNU_SHOWMAPLABEL",			"am_showmaplabel", "MaplabelTypes"
-	Option "$AUTOMAPMNU_DRAWMAPBACK",			"am_drawmapback", "MapBackTypes"
+
+	StaticText ""
 	Option "$AUTOMAPMNU_SHOWKEYS",				"am_showkeys", "OnOff"
+	Option "$AUTOMAPMNU_SHOWKEYS_ALWAYS",			"am_showkeys_always", "OnOff"
+
+	StaticText ""
+	Option "$AUTOMAPMNU_MAPSECRETS",			"am_map_secrets", "SecretTypes"
+	Option "$AUTOMAPMNU_DRAWMAPBACK",			"am_drawmapback", "MapBackTypes"
 	Option "$AUTOMAPMNU_SHOWTRIGGERLINES",		"am_showtriggerlines", "MapTriggers"
 	Option "$AUTOMAPMNU_SHOWTHINGSPRITES",		"am_showthingsprites", "STSTypes"
-	StaticText " "
+
+	StaticText ""
+	Option "$AUTOMAPMNU_PTOVERLAY",				"am_portaloverlay", "OnOff"
+	Slider "$AUTOMAPMNU_EMPTYSPACEMARGIN",		"am_emptyspacemargin", 0, 90, 5, 0
+
+	StaticText ""
 	Option "$AUTOMAPMNU_MARKFONT",				"am_markfont", "MapMarkFont"
 	Option "$AUTOMAPMNU_MARKCOLOR",				"am_markcolor", "TextColors"
 }
@@ -1239,18 +1254,24 @@ OptionMenu MapControlsMenu protected
 	Title "$MAPCNTRLMNU_TITLE"
 	ScrollTop 2
 	StaticTextSwitchable 	"$CNTRLMNU_SWITCHTEXT1", "$CNTRLMNU_SWITCHTEXT2", "ControlMessage"
-	StaticText 	""
-	StaticText "$MAPCNTRLMNU_CONTROLS", 1
+
+	StaticText ""
 	MapControl "$MAPCNTRLMNU_PANLEFT",			"+am_panleft"
 	MapControl "$MAPCNTRLMNU_PANRIGHT",			"+am_panright"
 	MapControl "$MAPCNTRLMNU_PANUP",			"+am_panup"
 	MapControl "$MAPCNTRLMNU_PANDOWN",			"+am_pandown"
+
+	StaticText ""
 	MapControl "$MAPCNTRLMNU_ZOOMIN",			"+am_zoomin"
 	MapControl "$MAPCNTRLMNU_ZOOMOUT",			"+am_zoomout"
+
+	StaticText ""
 	MapControl "$MAPCNTRLMNU_TOGGLEZOOM",		"am_gobig"
 	MapControl "$MAPCNTRLMNU_TOGGLEFOLLOW",		"am_togglefollow"
 	MapControl "$MAPCNTRLMNU_TOGGLEGRID",		"am_togglegrid"
 	MapControl "$MAPCNTRLMNU_TOGGLETEXTURE",	"am_toggletexture"
+
+	StaticText ""
 	MapControl "$MAPCNTRLMNU_SETMARK",			"am_setmark"
 	MapControl "$MAPCNTRLMNU_CLEARMARK",		"am_clearmarks"
 }
@@ -1452,6 +1473,7 @@ OptionValue  JumpCrouchFreeLook
 
 OptionMenu GameplayOptions protected
 {
+	Position -35
 	Title 	"$GMPLYMNU_TITLE"
 	//Indent 222
 	Submenu "$GMPLYMNU_DEATHMATCH",				"DeathmatchOptions"
@@ -1494,6 +1516,7 @@ OptionMenu GameplayOptions protected
 
 OptionMenu DeathmatchOptions protected
 {
+	Position -35
 	Title 	"$GMPLYMNU_DEATHMATCH"
 
 	Option "$GMPLYMNU_WEAPONSSTAY",				"sv_weaponstay", "YesNo"
@@ -1514,6 +1537,7 @@ OptionMenu DeathmatchOptions protected
 
 OptionMenu CoopOptions protected
 {
+	Position -35
 	Title 	"$GMPLYMNU_COOPERATIVE"
 
 	Option "$GMPLYMNU_MULTIPLAYERWEAPONS",	 	"sv_noweaponspawn", "NoYes"
@@ -1548,6 +1572,7 @@ OptionValue CompatModes
 
 OptionMenu "CompatibilityOptions" protected
 {
+	Position -35
 	Title "$CMPTMNU_TITLE"
 	Option "$CMPTMNU_MODE",							"compatmode", "CompatModes", "", 1
 	StaticText " "
@@ -1562,6 +1587,7 @@ OptionMenu "CompatibilityOptions" protected
 
 OptionMenu "CompatActorMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_ACTORBEHAVIOR"
 	Option "$CMPTMNU_CORPSEGIBS",					"compat_CORPSEGIBS", "YesNo"
 	Option "$CMPTMNU_NOBLOCKFRIENDS",				"compat_NOBLOCKFRIENDS", "YesNo"
@@ -1577,6 +1603,7 @@ OptionMenu "CompatActorMenu" protected
 
 OptionMenu "CompatDehackedMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_DEHACKEDBEHAVIOR"
 	Option "$CMPTMNU_DEHHEALTH",					"compat_DEHHEALTH", "YesNo"
 	Option "$CMPTMNU_MUSHROOM",						"compat_MUSHROOM", "YesNo"
@@ -1585,6 +1612,7 @@ OptionMenu "CompatDehackedMenu" protected
 
 OptionMenu "CompatMapMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_MAPACTIONBEHAVIOR"
 	Option "$CMPTMNU_USEBLOCKING",					"compat_USEBLOCKING", "YesNo"
 	Option "$CMPTMNU_ANYBOSSDEATH",					"compat_ANYBOSSDEATH", "YesNo"
@@ -1603,6 +1631,7 @@ OptionMenu "CompatMapMenu" protected
 
 OptionMenu "CompatPhysicsMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_PHYSICSBEHAVIOR"
 	Option "$CMPTMNU_NOPASSOVER",					"compat_nopassover", "YesNo"
 	Option "$CMPTMNU_BOOMSCROLL",					"compat_BOOMSCROLL", "YesNo"
@@ -1612,12 +1641,15 @@ OptionMenu "CompatPhysicsMenu" protected
 	Option "$CMPTMNU_TRACE",						"compat_TRACE", "YesNo"
 	Option "$CMPTMNU_HITSCAN",						"compat_HITSCAN", "YesNo"
 	Option "$CMPTMNU_MISSILECLIP",					"compat_MISSILECLIP", "YesNo"
+	Option "$CMPTMNU_EXPLODE1",						"compat_explode1", "YesNo"
+	Option "$CMPTMNU_EXPLODE2",						"compat_explode2", "YesNo"
 	Class "CompatibilityMenu"
 }
 
 
 OptionMenu "CompatRenderMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_RENDERINGBEHAVIOR"
 	Option "$CMPTMNU_POLYOBJ",						"compat_POLYOBJ", "YesNo"
 	Option "$CMPTMNU_MASKEDMIDTEX",					"compat_MASKEDMIDTEX", "YesNo"
@@ -1627,6 +1659,7 @@ OptionMenu "CompatRenderMenu" protected
 
 OptionMenu "CompatSoundMenu" protected
 {
+	Position -35
 	Title "$CMPTMNU_SOUNDBEHAVIOR"
 	Option "$CMPTMNU_SOUNDSLOTS",					"compat_soundslots", "YesNo"
 	Option "$CMPTMNU_SILENTPICKUP",					"compat_SILENTPICKUP", "YesNo"
@@ -2044,9 +2077,9 @@ OptionMenu ModReplayerOptions protected
 
 OptionMenu RendererMenu protected
 {
-	Title "$RNDMNU_TITLE"
-	Option "$RNDMNU_TRUECOLOR",	"swtruecolor", "OnOff"
-	Option "$RNDMNU_POLY",		"r_polyrenderer", "OnOff"
+	Title "$VIDMNU_RENDERMODE"
+	Option "$OPTVAL_SWDOOMTC",	"swtruecolor", "OnOff"
+	Option "$OPTVAL_SWPOLY",		"r_polyrenderer", "OnOff"
 }
 
 /*=======================================
@@ -2262,4 +2295,22 @@ OptionString "LanguageOptions"
 	"ita", "Italiano (ITA)"
 	"ptb", "Português do Brasil (PTB)"
 	"rus", "Русский (RU)"
+}
+
+/*=======================================
+ *
+ * Option Search menu
+ *
+ *=======================================*/
+
+OptionMenu "os_Menu"
+{
+	Class "os_Menu"
+	Title "$OS_TITLE"
+}
+
+OptionValue "os_isanyof_values"
+{
+	0, "$OS_ALL"
+	1, "$OS_ANY"
 }

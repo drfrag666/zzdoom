@@ -1025,7 +1025,7 @@ void FLevelLocals::DoLoadLevel(const FString &nextmapname, int position, bool au
 	if (isPrimaryLevel())
 	{
 		FString mapname = nextmapname;
-	mapname.ToLower();
+		mapname.ToLower();
 		Printf(
 			"\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
 			"\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n"
@@ -2084,8 +2084,35 @@ int FLevelLocals::GetInfighting()
 void FLevelLocals::SetCompatLineOnSide(bool state)
 {
 	int on = (state && (i_compatflags2 & COMPATF2_POINTONLINE));
-	if (on) for (auto l : lines) l.flags |= ML_COMPATSIDE;
-	else for (auto l : lines) l.flags &= ML_COMPATSIDE;
+	if (on) for (auto &l : lines) l.flags |= ML_COMPATSIDE;
+	else for (auto &l : lines) l.flags &= ~ML_COMPATSIDE;
+}
+
+int FLevelLocals::GetCompatibility(int mask)
+{
+	if (info == nullptr) return mask;
+	else return (mask & ~info->compatmask) | (info->compatflags & info->compatmask);
+}
+
+int FLevelLocals::GetCompatibility2(int mask)
+{
+	return (info == nullptr) ? mask
+		: (mask & ~info->compatmask2) | (info->compatflags2 & info->compatmask2);
+}
+
+void FLevelLocals::ApplyCompatibility()
+{
+	int old = i_compatflags;
+	i_compatflags = GetCompatibility(compatflags) | ii_compatflags;
+	if ((old ^ i_compatflags) & COMPATF_POLYOBJ)
+	{
+		ClearAllSubsectorLinks();
+	}
+}
+
+void FLevelLocals::ApplyCompatibility2()
+{
+	i_compatflags2 = GetCompatibility2(compatflags2) | ii_compatflags2;
 }
 
 //==========================================================================
@@ -2103,9 +2130,9 @@ int IsPointInMap(FLevelLocals *Level, double x, double y, double z)
 
 	for (uint32_t i = 0; i < subsector->numlines; i++)
 	{
-		// Skip single sided lines.
+		// Skip double sided lines.
 		seg_t *seg = subsector->firstline + i;
-		if (seg->backsector != nullptr)	continue;
+		if (seg->backsector != nullptr || seg->linedef == nullptr) continue;
 
 		divline_t dline;
 		P_MakeDivline(seg->linedef, &dline);

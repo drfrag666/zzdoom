@@ -325,6 +325,7 @@ public:
 	void DrawText(FFont *font, int normalcolor, double x, double y, const char *string, VMVa_List &args);
 	void DrawChar(FFont *font, int normalcolor, double x, double y, int character, int tag_first, ...);
 	void DrawChar(FFont *font, int normalcolor, double x, double y, int character, VMVa_List &args);
+	void DrawText(FFont *font, int normalcolor, double x, double y, const char32_t *string, int tag_first, ...);
 
 protected:
 	uint8_t *Buffer;
@@ -335,7 +336,8 @@ protected:
 	bool Bgra;
 	int clipleft = 0, cliptop = 0, clipwidth = -1, clipheight = -1;
 
-	void DrawTextCommon(FFont *font, int normalcolor, double x, double y, const char *string, DrawParms &parms);
+	template<class T>
+	void DrawTextCommon(FFont *font, int normalcolor, double x, double y, const T *string, DrawParms &parms);
 
 	bool ClipBox (int &left, int &top, int &width, int &height, const uint8_t *&src, const int srcpitch) const;
 	void DrawTextureV(FTexture *img, double x, double y, uint32_t tag, va_list tags) = delete;
@@ -617,20 +619,52 @@ bool AspectTallerThanWide(float aspect);
 void ScaleWithAspect(int &w, int &h, int Width, int Height);
 
 int GetUIScale(int altval);
+int GetConScale(int altval);
 
 EXTERN_CVAR(Int, uiscale);
 EXTERN_CVAR(Int, con_scaletext);
 EXTERN_CVAR(Int, con_scale);
 
-inline int active_con_scaletext()
+inline int active_con_scaletext(bool newconfont = false)
 {
-	return GetUIScale(con_scaletext);
+	return newconfont? GetConScale(con_scaletext) : GetUIScale(con_scaletext);
 }
 
 inline int active_con_scale()
 {
-	return GetUIScale(con_scale);
+	return GetConScale(con_scale);
 }
+
+
+class ScaleOverrider
+{
+	int savedxfac, savedyfac, savedwidth, savedheight;
+
+public:
+	// This is to allow certain elements to use an optimal fullscreen scale which for the menu would be too large.
+	// The old code contained far too much mess to compensate for the menus which negatively affected everything else.
+	// However, for compatibility reasons the currently used variables cannot be changed so they have to be overridden temporarily.
+	// This class provides a safe interface for this because it ensures that the values get restored afterward.
+	// Currently, the intermission and the level summary screen use this.
+	ScaleOverrider()
+	{
+		savedxfac = CleanXfac;
+		savedyfac = CleanYfac;
+		savedwidth = CleanWidth;
+		savedheight = CleanHeight;
+		V_CalcCleanFacs(320, 200, screen->GetWidth(), screen->GetHeight(), &CleanXfac, &CleanYfac);
+		CleanWidth = screen->GetWidth() / CleanXfac;
+		CleanHeight = screen->GetHeight() / CleanYfac;
+	}
+
+	~ScaleOverrider()
+	{
+		CleanXfac = savedxfac;
+		CleanYfac = savedyfac;
+		CleanWidth = savedwidth;
+		CleanHeight = savedheight;
+	}
+};
 
 
 #endif // __V_VIDEO_H__

@@ -121,6 +121,7 @@ static const uint16_t loweruppercase[] = {
 0x0078,0x0058,
 0x0079,0x0059,
 0x007A,0x005A,
+0x00DF,0x1E9E,
 0x00E0,0x00C0,
 0x00E1,0x00C1,
 0x00E2,0x00C2,
@@ -855,6 +856,11 @@ int stripaccent(int code)
 		static const uint16_t u200map[] = {0xc4, 0xe4, 0xc2, 0xe2, 0xcb, 0xeb, 0xca, 0xea, 0xcf, 0xef, 0xce, 0xee, 0xd6, 0xf6, 0xd4, 0xe4, 'R', 'r', 'R', 'r', 0xdc, 0xfc, 0xdb, 0xfb, 0x15e, 0x15f, 0x162, 0x163};
 		return u200map[code - 0x200];
 	}
+	else if (code == 0x201d)
+	{
+		// Map the typographic upper quotation mark to the generic form
+		code = '"';
+	}
 	
 	// skip the rest of Latin characters because none of them are relevant for modern languages.
 	
@@ -863,7 +869,8 @@ int stripaccent(int code)
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
-	if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	if (!stricmp(name, "DBIGFONT")) name = "BigFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	else if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	FFont *font = FFont::FindFont (name);
 	if (font == NULL)
 	{
@@ -1488,6 +1495,32 @@ void V_InitFonts()
 	InitLowerUpper();
 	V_InitCustomFonts();
 
+	// hack for fake fonts
+	if (!(NewSmallFont = V_GetFont("NewSmallFont", "SMALLFNT")))
+	{
+		if (Wads.CheckNumForName ("FONTA_S") >= 0)
+		{
+			NewSmallFont = new FFont("NewSmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
+			SmallFont->SetCursor('[');
+		}
+		else if (Wads.CheckNumForName ("STCFN033", ns_graphics) >= 0)
+		{
+			NewSmallFont = new FFont("NewSmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
+		}
+	}
+
+	if (!(NewConsoleFont = V_GetFont("NewConsoleFont", "CONFONT")))
+	{
+		NewConsoleFont = ConFont;
+	}
+
+	if (NewSmallFont == nullptr)
+	{
+		NewSmallFont = SmallFont;
+	}
+
+	CurrentConsoleFont = NewConsoleFont;
+
 	// load the heads-up font
 	if (!(SmallFont = V_GetFont("SmallFont", "SMALLFNT")))
 	{
@@ -1573,6 +1606,6 @@ void V_ClearFonts()
 		delete FFont::FirstFont;
 	}
 	FFont::FirstFont = nullptr;
-	SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
+	CurrentConsoleFont = NewSmallFont = NewConsoleFont = SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
 }
 

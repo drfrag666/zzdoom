@@ -74,10 +74,10 @@ private:
 	int LastAccessed = -1;
 	TArray<char> SavePicData;
 	FTexture *SavePic = nullptr;
-	TArray<FBrokenLines> SaveComment;
 
 public:
 	int WindowSize = 0;
+	FString SaveCommentString;
 	FSaveGameNode *quickSaveSlot = nullptr;
 	~FSavegameManager();
 
@@ -347,7 +347,7 @@ void M_PreviousMenu ();
 void M_ParseMenuDefs();
 void M_StartupEpisodeMenu(FGameStartup *gs);
 void M_StartupSkillMenu(FGameStartup *gs);
-void M_StartControlPanel (bool makeSound);
+void M_StartControlPanel (bool makeSound, bool scaleoverride = false);
 void M_SetMenu(FName menu, int param = -1);
 void M_StartMessage(const char *message, int messagemode, FName action = NAME_None);
 DMenu *StartPickerMenu(DMenu *parent, const char *name, FColorCVar *cvar);
