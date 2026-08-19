@@ -240,68 +240,26 @@ public:
 		}
 	}
 
-	unsigned CalcCellSize(unsigned length)
-	{
-		unsigned cellcount = 0;
-		for (unsigned i = 0; i < length; i++)
-		{
-			int w;
-			NewConsoleFont->GetChar(Text[i], &w);
-			cellcount += w / 9;
-		}
-		return cellcount;
-
-	}
-
-	unsigned CharsForCells(unsigned cellin, bool *overflow)
-	{
-		unsigned chars = 0;
-		int cells = cellin;
-		while (cells > 0)
-		{
-			int w;
-			NewConsoleFont->GetChar(Text[chars++], &w);
-			cells -= w / 9;
-		}
-		*overflow = (cells < 0);
-		return chars;
-	}
-
-
 	void MakeStartPosGood()
 	{
-		// Make sure both values point to something valid.
-		if (CursorPos > Text.length()) CursorPos = (unsigned)Text.length();
-		if (StartPos > Text.length()) StartPos = (unsigned)Text.length();
-
-		CursorPosCells = CalcCellSize(CursorPos);
-		StartPosCells = CalcCellSize(StartPos);
-		unsigned LengthCells = CalcCellSize((unsigned)Text.length());
-
-		int n = StartPosCells;
+		int n = StartPos;
 		unsigned cols = ConCols / active_con_scale();
 
-		if (StartPosCells >= LengthCells)
+		if (StartPos >= Text.length())
 		{ // Start of visible line is beyond end of line
-			n = CursorPosCells - cols + 2;
+			n = CursorPos - cols + 2;
 		}
-		if ((CursorPosCells - StartPosCells) >= cols - 2)
+		if ((CursorPos - StartPos) >= cols - 2)
 		{ // The cursor is beyond the visible part of the line
-			n = CursorPosCells - cols + 2;
+			n = CursorPos - cols + 2;
 		}
-		if (StartPosCells > CursorPosCells)
+		if (StartPos > CursorPos)
 		{ // The cursor is in front of the visible part of the line
-			n = CursorPosCells;
+			n = CursorPos;
 		}
-		StartPosCells = MAX(0, n);
-		bool overflow;
-		StartPos = CharsForCells(StartPosCells, &overflow);
-		if (overflow)
-		{
-			// We ended up in the middle of a double cell character, so set the start to the following character.
-			StartPosCells++;
-			StartPos = CharsForCells(StartPosCells, &overflow);
-		}
+		StartPos = MAX(0, n);
+		CursorPosCells = CursorPos;
+		StartPosCells = StartPos;
 	}
 
 	void CursorStart()
