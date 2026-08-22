@@ -74,6 +74,7 @@
 #include "gi.h"
 #include "a_dynlight.h"
 #include "i_system.h"
+#include "p_conversation.h"
 
 #include "g_hub.h"
 #include "g_levellocals.h"
@@ -349,7 +350,7 @@ CCMD (weapnext)
 	// [BC] Option to display the name of the weapon being cycled to.
 	if ((displaynametags & 2) && StatusBar && SmallFont && SendItemUse)
 	{
-		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(SmallFont, SendItemUse->GetTag(),
+		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(nullptr, SendItemUse->GetTag(),
 			1.5f, 0.90f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID( 'W', 'E', 'P', 'N' ));
 	}
 	if (SendItemUse != players[consoleplayer].ReadyWeapon)
@@ -375,7 +376,7 @@ CCMD (weapprev)
 	// [BC] Option to display the name of the weapon being cycled to.
 	if ((displaynametags & 2) && StatusBar && SmallFont && SendItemUse)
 	{
-		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(SmallFont, SendItemUse->GetTag(),
+		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(nullptr, SendItemUse->GetTag(),
 			1.5f, 0.90f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID( 'W', 'E', 'P', 'N' ));
 	}
 	if (SendItemUse != players[consoleplayer].ReadyWeapon)
@@ -388,7 +389,7 @@ static void DisplayNameTag(AActor *actor)
 {
 	auto tag = actor->GetTag();
 	if ((displaynametags & 1) && StatusBar && SmallFont)
-		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(SmallFont, tag,
+		StatusBar->AttachMessage(Create<DHUDMessageFadeOut>(nullptr, tag,
 			1.5f, 0.80f, 0, 0, (EColorRange)*nametagcolor, 2.f, 0.35f), MAKE_ID('S', 'I', 'N', 'V'));
 
 }
@@ -1093,6 +1094,10 @@ void G_Ticker ()
 			break;
 		case ga_togglemap:
 			AM_ToggleMap ();
+			gameaction = ga_nothing;
+			break;
+		case ga_resumeconversation:
+			P_ResumeConversation ();
 			gameaction = ga_nothing;
 			break;
 		default:

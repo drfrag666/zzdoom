@@ -38,6 +38,8 @@
 #include "g_game.h"
 #include "gstrings.h"
 #include "i_system.h"
+#include "v_font.h"
+#include "utf8.h"
 
 CVAR (Bool, cl_spreaddecals, true, CVAR_ARCHIVE)
 CVAR(Bool, var_pushers, true, CVAR_SERVERINFO);
@@ -132,6 +134,48 @@ CUSTOM_CVAR(Float, teamdamage, 0.f, CVAR_SERVERINFO | CVAR_NOINITCALL)
 	}
 }
 
+bool generic_ui;
+
+bool CheckFontComplete(FFont *font)
+{
+	// Also check if the SmallFont contains all characters this language needs.
+	// If not, switch back to the original one.
+	return font->CanPrint(GStrings["REQUIRED_CHARACTERS"]);
+}
+
+void UpdateGenericUI(bool cvar)
+{
+	auto switchstr = GStrings["USE_GENERIC_FONT"];
+	generic_ui = (cvar && (switchstr && false));
+	if (!generic_ui)
+	{
+		// Use the mod's SmallFont if it is complete.
+		// Otherwise use the stock Smallfont if it is complete.
+		// If none is complete, fall back to the VGA font.
+		// The font being set here will be used in 3 places: Notifications, centered messages and menu confirmations.
+		if (CheckFontComplete(SmallFont))
+		{
+			AlternativeSmallFont = SmallFont;
+		}
+		else if (OriginalSmallFont && CheckFontComplete(OriginalSmallFont))
+		{
+			AlternativeSmallFont = OriginalSmallFont;
+		}
+		else
+		{
+			AlternativeSmallFont = NewSmallFont;
+		}
+
+		// Todo: Do the same for the BigFont
+	}
+}
+
+CUSTOM_CVAR(Bool, ui_generic, false, CVAR_NOINITCALL) // This is for allowing to test the generic font system with all languages
+{
+	UpdateGenericUI(self);
+}
+
+
 CUSTOM_CVAR(String, language, "auto", CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 {
 	GStrings.UpdateLanguage();
@@ -140,4 +184,5 @@ CUSTOM_CVAR(String, language, "auto", CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOB
 		// does this even make sense on secondary levels...?
 		if (Level->info != nullptr) Level->LevelName = Level->info->LookupLevelName();
 	}
+	UpdateGenericUI(ui_generic);
 }

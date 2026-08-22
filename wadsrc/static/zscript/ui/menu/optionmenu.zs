@@ -225,9 +225,10 @@ class OptionMenu : Menu
 
 					if (y <= 0)
 					{
-						if (mDesc.mFont && mDesc.mTitle.Length() > 0)
+						let font = generic_ui || !mDesc.mFont? NewSmallFont : mDesc.mFont;
+						if (font && mDesc.mTitle.Length() > 0)
 						{
-							y = -y + mDesc.mFont.GetHeight();
+							y = -y + font.GetHeight();
 						}
 						else
 						{
@@ -410,19 +411,36 @@ class OptionMenu : Menu
 	//
 	//=============================================================================
 
+	virtual int GetIndent()
+	{
+		int indent;
+		if (screen.GetWidth() < 400)
+		{
+			indent = mDesc.mIndent;
+			indent = (indent - 110) * CleanXfac_1 + screen.GetWidth() / 2;
+		}
+		else
+		{
+			indent = max(0, (mDesc.mIndent + 40) - CleanWidth_1 / 2);
+			indent = screen.GetWidth() / 2 + indent * CleanXfac_1;
+		}
+		return indent;
+	}
+
 	override void Drawer ()
 	{
 		int y = mDesc.mPosition;
 
 		if (y <= 0)
 		{
-			if (mDesc.mFont && mDesc.mTitle.Length() > 0)
+			let font = generic_ui || !mDesc.mFont? NewSmallFont : mDesc.mFont;
+			if (font && mDesc.mTitle.Length() > 0)
 			{
 				let tt = Stringtable.Localize(mDesc.mTitle);
-				screen.DrawText (mDesc.mFont, OptionMenuSettings.mTitleColor,
-					(screen.GetWidth() - mDesc.mFont.StringWidth(tt) * CleanXfac_1) / 2, 10*CleanYfac_1,
+				screen.DrawText (font, OptionMenuSettings.mTitleColor,
+					(screen.GetWidth() - font.StringWidth(tt) * CleanXfac_1) / 2, 10*CleanYfac_1,
 					tt, DTA_CleanNoMove_1, true);
-				y = -y + mDesc.mFont.GetHeight();
+				y = -y + font.GetHeight();
 			}
 			else
 			{
@@ -433,8 +451,7 @@ class OptionMenu : Menu
 		int fontheight = OptionMenuSettings.mLinespacing * CleanYfac_1;
 		y *= CleanYfac_1;
 
-		int indent = max(0, (mDesc.mIndent + 40) - CleanWidth_1 / 2);
-		indent = screen.GetWidth() / 2 + indent * CleanXfac_1;
+		int indent = GetIndent();
 
 		int ytop = y + mDesc.mScrollTop * 8 * CleanYfac_1;
 		int lastrow = screen.GetHeight() - OptionHeight() * CleanYfac_1;

@@ -1357,6 +1357,7 @@ void P_PredictPlayer (player_t *player)
 
 	act->flags &= ~MF_PICKUP;
 	act->flags2 &= ~MF2_PUSHWALL;
+	act->renderflags &= ~RF_NOINTERPOLATEVIEW;
 	player->cheats |= CF_PREDICTING;
 
 	BackupNodeList(act, act->touching_sectorlist, &sector_t::touching_thinglist, PredictionTouchingSectors_sprev_Backup, PredictionTouchingSectorsBackup);

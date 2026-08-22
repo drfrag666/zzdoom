@@ -156,8 +156,6 @@ namespace swrenderer
 		CameraLight::Instance()->SetCamera(MainThread()->Viewport->viewpoint, MainThread()->Viewport->RenderTarget, actor);
 		MainThread()->Viewport->SetupFreelook();
 
-		NetUpdate();
-
 		this->dontmaplines = dontmaplines;
 
 		R_UpdateFuzzPosFrameStart();
@@ -297,9 +295,6 @@ namespace swrenderer
 		thread->OpaquePass->RenderScene();
 		thread->Clip3D->ResetClip(); // reset clips (floor/ceiling)
 
-		if (thread->MainThread)
-			NetUpdate();
-
 		if (viewactive)
 		{
 			thread->PlaneList->Render();
@@ -307,13 +302,7 @@ namespace swrenderer
 			thread->Portal->RenderPlanePortals();
 			thread->Portal->RenderLinePortals();
 
-			if (thread->MainThread)
-				NetUpdate();
-
 			thread->TranslucentPass->Render();
-
-			if (thread->MainThread)
-				NetUpdate();
 		}
 
 		DrawerThreads::Execute(thread->DrawQueue);

@@ -144,7 +144,7 @@ const FTexture::Span FPaletteTester::DummySpan[2] = { { 0, 16 }, { 0, 0 } };
 
 int DisplayWidth, DisplayHeight, DisplayBits;
 
-FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont;
+FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont, *OriginalSmallFont, *AlternativeSmallFont;
 
 uint32_t Col2RGB8[65][256];
 uint32_t *Col2RGB8_LessPrecision[65];
@@ -1315,6 +1315,14 @@ void V_UpdateModeSize (int width, int height)
 	// The optimal scale will always be to fit a virtual 640 pixel wide display onto the screen.
 	// Exceptions are made for a few ranges where the available virtual width is > 480.
 
+	// This reference size is being used so that on 800x450 (small 16:9) a scale of 2 gets used.
+
+	CleanXfac = std::max(std::min(screen->GetWidth() / 400, screen->GetHeight() / 240), 1);
+	if (CleanXfac >= 4) CleanXfac--;	// Otherwise we do not have enough space for the episode/skill menus in some languages.
+	CleanYfac = CleanXfac;
+	CleanWidth = screen->GetWidth() / CleanXfac;
+	CleanHeight = screen->GetHeight() / CleanYfac;
+
 	int w = screen->GetWidth();
 	int factor;
 	if (w < 640) factor = 1;
@@ -1322,11 +1330,7 @@ void V_UpdateModeSize (int width, int height)
 	else if (w >= 1600 && w < 1920) factor = 3; 
 	else  factor = w / 640;
 
-	CleanXfac = CleanYfac = factor;
-	CleanWidth = width / CleanXfac;
-	CleanHeight = height / CleanYfac;
-
-	CleanYfac_1 = CleanXfac_1 = MAX(1, int (CleanXfac * 0.7));
+	CleanYfac_1 = CleanXfac_1 = MAX(1, int (factor * 0.7));
 	CleanWidth_1 = width / CleanXfac_1;
 	CleanHeight_1 = height / CleanYfac_1;
 
@@ -1716,6 +1720,8 @@ DEFINE_GLOBAL(BigFont)
 DEFINE_GLOBAL(ConFont)
 DEFINE_GLOBAL(NewConsoleFont)
 DEFINE_GLOBAL(NewSmallFont)
+DEFINE_GLOBAL(AlternativeSmallFont)
+DEFINE_GLOBAL(OriginalSmallFont)
 DEFINE_GLOBAL(IntermissionFont)
 DEFINE_GLOBAL(CleanXfac)
 DEFINE_GLOBAL(CleanYfac)
@@ -1725,3 +1731,4 @@ DEFINE_GLOBAL(CleanXfac_1)
 DEFINE_GLOBAL(CleanYfac_1)
 DEFINE_GLOBAL(CleanWidth_1)
 DEFINE_GLOBAL(CleanHeight_1)
+DEFINE_GLOBAL(generic_ui)

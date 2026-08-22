@@ -102,7 +102,7 @@ int GetUIScale(int altval)
 int GetConScale(int altval)
 {
 	int scaleval;
-	if (altval > 0) scaleval = altval;
+	if (altval > 0) scaleval = (altval+1) / 2;
 	else if (uiscale == 0)
 	{
 		// Default should try to scale to 640x400
@@ -110,7 +110,7 @@ int GetConScale(int altval)
 		int hscale = screen->GetWidth() / 1280;
 		scaleval = clamp(vscale, 1, hscale);
 	}
-	else scaleval = uiscale / 2;
+	else scaleval = (uiscale+1) / 2;
 
 	// block scales that result in something larger than the current screen.
 	int vmax = screen->GetHeight() / 400;
@@ -552,6 +552,8 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 	parms->srcy = 0.;
 	parms->srcwidth = 1.;
 	parms->srcheight = 1.;
+	parms->monospace = EMonospacing::Mono_Off;
+	parms->spacing = 0;
 
 	// Parse the tag list for attributes. (For floating point attributes,
 	// consider that the C ABI dictates that all floats be promoted to
@@ -906,6 +908,14 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 
 		case DTA_CellY:
 			parms->celly = ListGetInt(tags);
+			break;
+
+		case DTA_Monospace:
+			parms->monospace = ListGetInt(tags);
+			break;
+
+		case DTA_Spacing:
+			parms->spacing = ListGetInt(tags);
 			break;
 
 		}

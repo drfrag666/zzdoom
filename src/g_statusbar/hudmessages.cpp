@@ -39,6 +39,7 @@
 #include "v_video.h"
 #include "cmdlib.h"
 #include "serializer.h"
+#include "doomstat.h"
 #include "vm.h"
 
 EXTERN_CVAR(Int, con_scaletext)
@@ -128,7 +129,7 @@ void DHUDMessageBase::CallDraw(int bottom, int visibility)
 //============================================================================
 
 DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int hudwidth, int hudheight,
-						  EColorRange textColor, float holdTime, bool altscale)
+						  EColorRange textColor, float holdTime)
 {
 	if (hudwidth == 0 || hudheight == 0)
 	{
@@ -139,7 +140,6 @@ DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int h
 		// for x range [0.0, 1.0]: Positions center of box
 		// for x range [1.0, 2.0]: Positions center of box, and centers text inside it
 		HUDWidth = HUDHeight = 0;
-		AltScale = altscale;
 		if (fabs (x) > 2.f)
 		{
 			CenterX = true;
@@ -197,10 +197,17 @@ DHUDMessage::DHUDMessage (FFont *font, const char *text, float x, float y, int h
 	Top = y;
 	HoldTics = (int)(holdTime * TICRATE);
 	Tics = -1;	// -1 to compensate for one additional Tick the message will receive.
+
+	// Try to find the optimal font if none is specified. Prefer SmallFont, but if that cannot handle this text use the IWAD's SmallFont and if that doesn't work either, use the VGA font.
+	if (font) Font = font;
+	else if (generic_ui) Font = NewSmallFont;
+	else if (SmallFont->CanPrint(text)) Font = SmallFont;
+	else if (OriginalSmallFont->CanPrint(text)) Font = OriginalSmallFont;
+	else Font = NewSmallFont;
+
 	TextColor = textColor;
 	State = 0;
 	SourceText = copystring (text);
-	Font = font;
 	VisibilityFlags = 0;
 	Style = STYLE_Translucent;
 	Alpha = 1.;
@@ -320,7 +327,7 @@ void DHUDMessage::ResetText (const char *text)
 	}
 	else
 	{
-		width = SCREENWIDTH / active_con_scaletext(AltScale);
+		width = SCREENWIDTH / active_con_scaletext();
 	}
 
 	Lines = V_BreakLines (Font, NoWrap ? INT_MAX : width, (uint8_t *)text);
@@ -380,7 +387,7 @@ void DHUDMessage::Draw (int bottom, int visibility)
 	xscale = yscale = 1;
 	if (HUDWidth == 0)
 	{
-		int scale = active_con_scaletext(AltScale);
+		int scale = active_con_scaletext();
 		screen_width /= scale;
 		screen_height /= scale;
 		bottom /= scale;
@@ -484,7 +491,7 @@ void DHUDMessage::DoDraw (int linenum, int x, int y, bool clean, int hudheight)
 {
 	if (hudheight == 0)
 	{
-		int scale = active_con_scaletext(AltScale);
+		int scale = active_con_scaletext();
 		screen->DrawText (Font, TextColor, x, y, Lines[linenum].Text,
 			DTA_VirtualWidth, SCREENWIDTH / scale,
 			DTA_VirtualHeight, SCREENHEIGHT / scale,
@@ -577,7 +584,7 @@ void DHUDMessageFadeOut::DoDraw (int linenum, int x, int y, bool clean, int hudh
 		float trans = float(Alpha * -(Tics - FadeOutTics) / FadeOutTics);
 		if (hudheight == 0)
 		{
-			int scale = active_con_scaletext(AltScale);
+			int scale = active_con_scaletext();
 			screen->DrawText (Font, TextColor, x, y, Lines[linenum].Text,
 				DTA_VirtualWidth, SCREENWIDTH / scale,
 				DTA_VirtualHeight, SCREENHEIGHT / scale,
@@ -667,7 +674,7 @@ void DHUDMessageFadeInOut::DoDraw (int linenum, int x, int y, bool clean, int hu
 		float trans = float(Alpha * Tics / FadeInTics);
 		if (hudheight == 0)
 		{
-			int scale = active_con_scaletext(AltScale);
+			int scale = active_con_scaletext();
 			screen->DrawText (Font, TextColor, x, y, Lines[linenum].Text,
 				DTA_VirtualWidth, SCREENWIDTH / scale,
 				DTA_VirtualHeight, SCREENHEIGHT / scale,
@@ -839,7 +846,7 @@ void DHUDMessageTypeOnFadeOut::DoDraw (int linenum, int x, int y, bool clean, in
 		{
 			if (hudheight == 0)
 			{
-				int scale = active_con_scaletext(AltScale);
+				int scale = active_con_scaletext();
 				screen->DrawText (Font, TextColor, x, y, Lines[linenum].Text,
 					DTA_VirtualWidth, SCREENWIDTH / scale,
 					DTA_VirtualHeight, SCREENHEIGHT / scale,

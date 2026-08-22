@@ -93,7 +93,7 @@ public:
 		Custom
 	};
 
-	FFont (const char *fontname, const char *nametemplate, const char *filetemplate, int first, int count, int base, int fdlump, int spacewidth=-1, bool notranslate = false);
+	FFont (const char *fontname, const char *nametemplate, const char *filetemplate, int first, int count, int base, int fdlump, int spacewidth=-1, bool notranslate = false, bool iwadonly = false);
 	virtual ~FFont ();
 
 	virtual FTexture *GetChar (int code, int *const width) const;
@@ -115,11 +115,17 @@ public:
 	inline int StringWidth (const char *str) const { return StringWidth ((const uint8_t *)str); }
 	inline int StringWidth (const FString &str) const { return StringWidth ((const uint8_t *)str.GetChars()); }
 
+	// Checks if the font contains all characters to print this text.
+	bool CanPrint(const uint8_t *str) const;
+	inline bool CanPrint(const char *str) const { return CanPrint((const uint8_t *)str); }
+	inline bool CanPrint(const FString &str) const { return CanPrint((const uint8_t *)str.GetChars()); }
+
 	int GetCharCode(int code, bool needpic) const;
 	char GetCursor() const { return Cursor; }
 	void SetCursor(char c) { Cursor = c; }
 	void SetKerning(int c) { GlobalKerning = c; }
 	bool NoTranslate() const { return noTranslate; }
+	void CheckCase();
 
 protected:
 	FFont (int lump);
@@ -161,7 +167,7 @@ protected:
 };
 
 
-extern FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont;
+extern FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont, *OriginalSmallFont, *AlternativeSmallFont;
 
 void V_InitFonts();
 void V_ClearFonts();
@@ -170,5 +176,8 @@ PalEntry V_LogColorFromColorRange (EColorRange range);
 EColorRange V_ParseFontColor (const uint8_t *&color_value, int normalcolor, int boldcolor);
 FFont *V_GetFont(const char *fontname, const char *fontlumpname = nullptr);
 void V_InitFontColors();
+
+FFont * C_GetDefaultHUDFont();
+
 
 #endif //__V_FONT_H__

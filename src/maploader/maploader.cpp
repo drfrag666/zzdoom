@@ -3002,11 +3002,6 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 
 	if (!map->HasBehavior && !map->isText)
 	{
-		// set compatibility flags
-		if (gameinfo.gametype == GAME_Strife)
-		{
-			Level->flags2 |= LEVEL2_RAILINGHACK;
-		}
 		Level->flags2 |= LEVEL2_DUMMYSWITCHES;
 	}
 

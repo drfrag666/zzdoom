@@ -68,7 +68,7 @@
 //
 //==========================================================================
 
-FFont::FFont (const char *name, const char *nametemplate, const char *filetemplate, int lfirst, int lcount, int start, int fdlump, int spacewidth, bool notranslate)
+FFont::FFont (const char *name, const char *nametemplate, const char *filetemplate, int lfirst, int lcount, int start, int fdlump, int spacewidth, bool notranslate, bool iwadonly)
 {
 	int i;
 	FTextureID lump;
@@ -80,7 +80,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 	noTranslate = notranslate;
 	Lump = fdlump;
 	PatchRemap = new uint8_t[256];
-	FontHeight = 0;
 	GlobalKerning = false;
 	FontName = name;
 	Next = FirstFont;
@@ -108,9 +107,8 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 		// For anything else, each folder is being treated as an atomic, self-contained unit and mixing from different glyph sets is blocked.
 		Wads.GetLumpsInFolder(path, folderdata, nametemplate == nullptr);
 		
-		if (nametemplate == nullptr)
+		//if (nametemplate == nullptr)
 		{
-			// Only take font.inf from the actual folder we are processing but not from an older folder that may have been superseded.
 			FStringf infpath("fonts/%s/font.inf", filetemplate);
 			
 			unsigned index = folderdata.FindEx([=](const FolderEntry &entry)
@@ -183,31 +181,75 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 	{
 		if (nametemplate != nullptr)
 		{
-			for (i = 0; i < lcount; i++)
+			if (!iwadonly)
 			{
-				int position = '!' + i;
-				mysnprintf(buffer, countof(buffer), nametemplate, i + start);
+				for (i = 0; i < lcount; i++)
+				{
+					int position = '!' + i;
+					mysnprintf(buffer, countof(buffer), nametemplate, i + start);
 
-				lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
-				if (doomtemplate && lump.isValid() && i + start == 121)
-				{ // HACKHACK: Don't load STCFN121 in doom(2), because
-				  // it's not really a lower-case 'y' but a '|'.
-				  // Because a lot of wads with their own font seem to foolishly
-				  // copy STCFN121 and make it a '|' themselves, wads must
-				  // provide STCFN120 (x) and STCFN122 (z) for STCFN121 to load as a 'y'.
-					if (!TexMan.CheckForTexture("STCFN120", ETextureType::MiscPatch).isValid() ||
-						!TexMan.CheckForTexture("STCFN122", ETextureType::MiscPatch).isValid())
+					lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
+					if (doomtemplate && lump.isValid() && i + start == 121)
+					{ // HACKHACK: Don't load STCFN121 in doom(2), because
+					  // it's not really a lower-case 'y' but a '|'.
+					  // Because a lot of wads with their own font seem to foolishly
+					  // copy STCFN121 and make it a '|' themselves, wads must
+					  // provide STCFN120 (x) and STCFN122 (z) for STCFN121 to load as a 'y'.
+						if (!TexMan.CheckForTexture("STCFN120", ETextureType::MiscPatch).isValid() ||
+							!TexMan.CheckForTexture("STCFN122", ETextureType::MiscPatch).isValid())
+						{
+							// insert the incorrectly named '|' graphic in its correct position.
+							position = 124;
+						}
+					}
+					if (lump.isValid())
 					{
-						// insert the incorrectly named '|' graphic in its correct position.
-						position = 124;
+						Type = Multilump;
+						if (position < minchar) minchar = position;
+						if (position > maxchar) maxchar = position;
+						charMap.Insert(position, TexMan[lump]);
 					}
 				}
-				if (lump.isValid())
+			}
+			else
+			{
+				FTexture *texs[256] = {};
+				if (lcount > 256 - start) lcount = 256 - start;
+				for (i = 0; i < lcount; i++)
 				{
-					Type = Multilump;
-					if (position < minchar) minchar = position;
-					if (position > maxchar) maxchar = position;
-					charMap.Insert(position, TexMan[lump]);
+					TArray<FTextureID> array;
+					mysnprintf(buffer, countof(buffer), nametemplate, i + start);
+
+					TexMan.ListTextures(buffer, array, true);
+					for (auto entry : array)
+					{
+						FTexture *tex = TexMan[entry];
+						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetIwadNum() && tex->UseType == ETextureType::MiscPatch)
+						{
+							texs[i] = tex;
+						}
+					}
+				}
+				if (doomtemplate)
+				{
+					// Handle the misplaced '|'.
+					if (texs[121 - '!'] && !texs[120 - '!'] && !texs[122 - '!'] && !texs[124 - '!'])
+					{
+						texs[124 - '!'] = texs[121 - '!'];
+						texs[121 - '!'] = nullptr;
+					}
+				}
+
+				for (i = 0; i < lcount; i++)
+				{
+					if (texs[i])
+					{
+						int position = '!' + i;
+						Type = Multilump;
+						if (position < minchar) minchar = position;
+						if (position > maxchar) maxchar = position;
+						charMap.Insert(position, texs[i]);
+					}
 				}
 			}
 		}
@@ -343,6 +385,52 @@ FFont::~FFont ()
 	}
 }
 
+
+//==========================================================================
+//
+// FFont :: CheckCase
+//
+//==========================================================================
+
+void FFont::CheckCase()
+{
+	int lowercount = 0, uppercount = 0;
+	unsigned count = LastChar - FirstChar + 1;
+	for (unsigned i = 0; i < count; i++)
+	{
+		unsigned chr = i + FirstChar;
+		if (lowerforupper[chr] == chr && upperforlower[chr] == chr)
+		{
+			continue;	// not a letter;
+		}
+		if (myislower(chr))
+		{
+			if (Chars[i].Pic != nullptr) lowercount++;
+		}
+		else
+		{
+			if (Chars[i].Pic != nullptr) uppercount++;
+		}
+	}
+	if (lowercount == 0) return;	// This is an uppercase-only font and we are done.
+
+	// The ß needs special treatment because it is far more likely to be supplied lowercase only, even in an uppercase font.
+/*	if (Chars[0xdf - FirstChar].Pic != nullptr)
+	{
+		if (LastChar < 0x1e9e)
+		{
+			Chars.Resize(0x1e9f - FirstChar);
+			LastChar = 0x1e9e;
+		}
+		if (Chars[0x1e9e - FirstChar].Pic == nullptr)
+		{
+			std::swap(Chars[0xdf - FirstChar], Chars[0x1e9e - FirstChar]);
+			lowercount--;
+			uppercount++;
+			if (lowercount == 0) return;
+		}
+	}*/
+}
 
 //==========================================================================
 //
@@ -625,7 +713,7 @@ int FFont::GetCharCode(int code, bool needpic) const
 	{
 		return code;
 	}
-
+	
 	// Use different substitution logic based on the fonts content:
 	// In a font which has both upper and lower case, prefer unaccented small characters over capital ones.
 	// In a pure upper-case font, do not check for lower case replacements.
@@ -697,23 +785,15 @@ int FFont::GetCharCode(int code, bool needpic) const
 
 FTexture *FFont::GetChar (int code, int *const width) const
 {
-	code = GetCharCode(code, false);
+	code = GetCharCode(code, true);
 	int xmove = SpaceWidth;
 
 	if (code >= 0)
 	{
 		code -= FirstChar;
 		xmove = Chars[code].XMove;
-		if (Chars[code].Pic == nullptr)
-		{
-			code = GetCharCode(code + FirstChar, true);
-			if (code >= 0)
-			{
-				code -= FirstChar;
-				xmove = Chars[code].XMove;
-			}
-		}
 	}
+	
 	if (width != nullptr)
 	{
 		*width = xmove;
@@ -729,8 +809,9 @@ FTexture *FFont::GetChar (int code, int *const width) const
 
 int FFont::GetCharWidth (int code) const
 {
-	code = GetCharCode(code, false);
-	return (code < 0) ? SpaceWidth : Chars[code - FirstChar].XMove;
+	code = GetCharCode(code, true);
+	if (code >= 0) return Chars[code - FirstChar].XMove;
+	return SpaceWidth;
 }
 
 //==========================================================================
@@ -748,6 +829,48 @@ double GetBottomAlignOffset(FFont *font, int c)
 	if (texc) offset += texc->GetScaledTopOffsetDouble(0);
 	if (tex_zero) offset += -tex_zero->GetScaledTopOffsetDouble(0) + tex_zero->GetScaledHeightDouble();
 	return offset;
+}
+
+//==========================================================================
+//
+// Checks if the font contains proper glyphs for all characters in the string
+//
+//==========================================================================
+
+bool FFont::CanPrint(const uint8_t *string) const
+{
+	if (!string) return true;
+	while (*string)
+	{
+		auto chr = GetCharFromString(string);
+		if (!MixedCase) chr = upperforlower[chr];	// For uppercase-only fonts we shouldn't check lowercase characters.
+		if (chr == TEXTCOLOR_ESCAPE)
+		{
+			// We do not need to check for UTF-8 in here.
+			if (*string == '[')
+			{
+				while (*string != '\0' && *string != ']')
+				{
+					++string;
+				}
+			}
+			if (*string != '\0')
+			{
+				++string;
+			}
+			continue;
+		}
+		else if (chr != '\n')
+		{
+			int cc = GetCharCode(chr, true);
+			if (chr != cc && iswalpha(chr))
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 //==========================================================================

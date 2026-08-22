@@ -67,8 +67,8 @@ void FStringTable::LoadStrings ()
 	{
 		auto lumpdata = Wads.ReadLumpIntoArray(lump);
 
-		if (!ParseLanguageCSV(lumpdata))
- 			LoadLanguage (lumpdata);
+		if (!ParseLanguageCSV(lump, lumpdata))
+ 			LoadLanguage (lump, lumpdata);
 	}
 	UpdateLanguage();
 	allMacros.Clear();
@@ -97,7 +97,7 @@ TArray<TArray<FString>> FStringTable::parseCSV(const TArray<uint8_t> &buffer)
 			while (vend > vcopy && myisspace((unsigned char)vend[-1])) *--vend = 0;	// skip over trailing whitespace
 	*/
 
-	for (int i = 0; i < bufLength; ++i)
+	for (size_t i = 0; i < bufLength; ++i)
 	{
 		if (buffer[i] == '"')
 		{
@@ -191,7 +191,7 @@ bool FStringTable::readMacros(int lumpnum)
 //
 //==========================================================================
 
-bool FStringTable::ParseLanguageCSV(const TArray<uint8_t> &buffer)
+bool FStringTable::ParseLanguageCSV(int lumpnum, const TArray<uint8_t> &buffer)
 {
 	if (memcmp(buffer.Data(), "default,", 8)) return false;
 	auto data = parseCSV(buffer);
@@ -199,6 +199,7 @@ bool FStringTable::ParseLanguageCSV(const TArray<uint8_t> &buffer)
 	int labelcol = -1;
 	int filtercol = -1;
 	TArray<std::pair<int, unsigned>> langrows;
+	bool hasDefaultEntry = false;
 
 	if (data.Size() > 0)
 	{
@@ -221,6 +222,7 @@ bool FStringTable::ParseLanguageCSV(const TArray<uint8_t> &buffer)
 					if (lang.CompareNoCase("default") == 0)
 					{
 						langrows.Push(std::make_pair(column, default_table));
+						hasDefaultEntry = true;
 					}
 					else if (lang.Len() < 4)
 					{
@@ -243,12 +245,20 @@ bool FStringTable::ParseLanguageCSV(const TArray<uint8_t> &buffer)
 			}
 
 			FName strName = row[labelcol];
+			if (hasDefaultEntry)
+			{
+				DeleteForLabel(lumpnum, strName);
+			}
 			for (auto &langentry : langrows)
 			{
 				auto str = row[langentry.first];
 				if (str.Len() > 0)
 				{
-					InsertString(langentry.second, strName, str);
+					InsertString(lumpnum, langentry.second, strName, str);
+				}
+				else
+				{
+					DeleteString(langentry.second, strName);
 				}
 			}
 		}
@@ -262,11 +272,13 @@ bool FStringTable::ParseLanguageCSV(const TArray<uint8_t> &buffer)
 //
 //==========================================================================
 
-void FStringTable::LoadLanguage (const TArray<uint8_t> &buffer)
+void FStringTable::LoadLanguage (int lumpnum, const TArray<uint8_t> &buffer)
 {
 	bool errordone = false;
 	TArray<uint32_t> activeMaps;
 	FScanner sc;
+	bool hasDefaultEntry = false;
+
 	sc.OpenMem("LANGUAGE", buffer);
 	sc.SetCMode (true);
 	while (sc.GetString ())
@@ -289,11 +301,14 @@ void FStringTable::LoadLanguage (const TArray<uint8_t> &buffer)
 					}
 					if (len == 1 && sc.String[0] == '*')
 					{
+						activeMaps.Clear();
 						activeMaps.Push(global_table);
 					}
 					else if (len == 7 && stricmp (sc.String, "default") == 0)
 					{
+						activeMaps.Clear();
 						activeMaps.Push(default_table);
+						hasDefaultEntry = true;
 					}
 					else
 					{
@@ -303,7 +318,8 @@ void FStringTable::LoadLanguage (const TArray<uint8_t> &buffer)
 				}
 				else
 				{
-					activeMaps.Push(MAKE_ID(tolower(sc.String[0]), tolower(sc.String[1]), tolower(sc.String[2]), 0));
+					if (activeMaps.Size() != 1 || (activeMaps[0] != default_table && activeMaps[0] != global_table))
+						activeMaps.Push(MAKE_ID(tolower(sc.String[0]), tolower(sc.String[1]), tolower(sc.String[2]), 0));
 				}
 				sc.MustGetString ();
 			} while (!sc.Compare ("]"));
@@ -356,10 +372,14 @@ void FStringTable::LoadLanguage (const TArray<uint8_t> &buffer)
 			}
 			if (!skip)
 			{
+				if (hasDefaultEntry)
+				{
+					DeleteForLabel(lumpnum, strName);
+				}
 				// Insert the string into all relevant tables.
 				for (auto map : activeMaps)
 				{
-					InsertString(map, strName, strText);
+					InsertString(lumpnum, map, strName, strText);
 				}
 			}
 		}
@@ -372,10 +392,45 @@ void FStringTable::LoadLanguage (const TArray<uint8_t> &buffer)
 //
 //==========================================================================
 
-void FStringTable::InsertString(int langid, FName label, const FString &string)
+void FStringTable::DeleteString(int langid, FName label)
+{
+	allStrings[langid].Remove(label);
+}
+
+//==========================================================================
+//
+// This deletes all older entries for a given label. This gets called
+// when a string in the default table gets updated. 
+//
+//==========================================================================
+
+void FStringTable::DeleteForLabel(int lumpnum, FName label)
+{
+	decltype(allStrings)::Iterator it(allStrings);
+	decltype(allStrings)::Pair *pair;
+	auto filenum = Wads.GetLumpFile(lumpnum);
+
+	while (it.NextPair(pair))
+	{
+		auto entry = pair->Value.CheckKey(label);
+		if (entry && entry->filenum < filenum)
+		{
+			pair->Value.Remove(label);
+		}
+	}
+
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+void FStringTable::InsertString(int lumpnum, int langid, FName label, const FString &string)
 {
 	const char *strlangid = (const char *)&langid;
-	TableElement te = { string, string, string, string };
+	TableElement te = { Wads.GetLumpFile(lumpnum), { string, string, string, string } };
 	long index;
 	while ((index = te.strings[0].IndexOf("@[")) >= 0)
 	{
@@ -386,7 +441,7 @@ void FStringTable::InsertString(int langid, FName label, const FString &string)
 			break;
 		}
 		FString macroname(te.strings[0].GetChars() + index + 2, endindex - index - 2);
- 		FStringf lookupstr("%s/%s", strlangid, macroname.GetChars());
+		FStringf lookupstr("%s/%s", strlangid, macroname.GetChars());
 		FStringf replacee("@[%s]", macroname.GetChars());
 		FName lookupname(lookupstr, true);
 		auto replace = allMacros.CheckKey(lookupname);
@@ -548,6 +603,20 @@ const char *FStringTable::GetLanguageString(const char *name, uint32_t langtable
 		}
 	}
 	return nullptr;
+}
+
+bool FStringTable::MatchDefaultString(const char *name, const char *content) const
+{
+	// This only compares the first line to avoid problems with bad linefeeds. For the few cases where this feature is needed it is sufficient.
+	auto c = GetLanguageString(name, FStringTable::default_table);
+	if (!c) return false;
+	
+	// Check a secondary key, in case the text comparison cannot be done due to needed orthographic fixes (see Harmony's exit text)
+	FStringf checkkey("%s_CHECK", name);
+	auto cc = GetLanguageString(checkkey, FStringTable::default_table);
+	if (cc) c = cc;
+
+	return (c && !strnicmp(c, content, strcspn(content, "\n\r\t")));
 }
 
 //==========================================================================

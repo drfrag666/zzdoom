@@ -80,6 +80,7 @@ class OptionMenuItem : MenuItemBase
 	override int GetIndent()
 	{
 		if (mCentered) return 0;
+		if (screen.GetWidth() < 640) return screen.GetWidth() / 2;
 		return Menu.OptionWidth(Stringtable.Localize(mLabel));
 	}
 	
@@ -179,7 +180,7 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 
 	override bool Activate()
 	{
-		// This needs to perform a few checks to prevent abuse  by malicious modders.
+		// This needs to perform a few checks to prevent abuse by malicious modders.
 		if (GetClass() != "OptionMenuItemSafeCommand")
 		{
 			let m = OptionMenu(Menu.GetCurrentMenu());
@@ -188,6 +189,7 @@ class OptionMenuItemCommand : OptionMenuItemSubmenu
 			// don't execute if this item cannot be found in the current menu.
 			if (m.GetItem(mAction) != self) return false;
 		}
+		else mUnsafe = false;
 		Menu.MenuSound("menu/choose");
 		DoCommand(ccmd, mUnsafe);
 		if (mCloseOnSelect)
@@ -812,7 +814,7 @@ class OptionMenuSliderBase : OptionMenuItem
 		}
 
 		int slide_left = mDrawX+8*CleanXfac_1;
-		int slide_right = slide_left + (10*8*CleanXfac_1 >> mSliderShort);	// 12 char cells with 8 pixels each.
+		int slide_right = slide_left + (10*8*CleanXfac_1 >> mSliderShort);	// 10 char cells with 8 pixels each.
 
 		if (type == Menu.MOUSE_Click)
 		{
@@ -1168,7 +1170,13 @@ class OptionMenuItemTextField : OptionMenuFieldBase
 	override String Represent()
 	{
 		if (mEnter) return mEnter.GetText() .. Menu.OptionFont().GetCursor();
-		else return GetCVarString();
+		else 
+		{
+			bool b;
+			String s;
+			[b, s] = GetString(0);
+			return s;
+		}
 	}
 
 	override int Draw(OptionMenuDescriptor desc, int y, int indent, bool selected)
@@ -1188,14 +1196,17 @@ class OptionMenuItemTextField : OptionMenuFieldBase
 	{
 		if (mkey == Menu.MKEY_Enter)
 		{
+			bool b;
+			String s;
+			[b, s] = GetString(0);
 			Menu.MenuSound("menu/choose");
-			mEnter = TextEnterMenu.OpenTextEnter(Menu.GetCurrentMenu(), Menu.OptionFont(), GetCVarString(), -1, fromcontroller);
+			mEnter = TextEnterMenu.OpenTextEnter(Menu.GetCurrentMenu(), Menu.OptionFont(), s, -1, fromcontroller);
 			mEnter.ActivateMenu();
 			return true;
 		}
 		else if (mkey == Menu.MKEY_Input)
 		{
-			if (mCVar) mCVar.SetString(mEnter.GetText());
+			SetString(0, mEnter.GetText());
 			mEnter = null;
 			return true;
 		}

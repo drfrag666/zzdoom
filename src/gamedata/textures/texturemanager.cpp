@@ -394,6 +394,7 @@ bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitut
 	
 	uint32_t langtable = 0;
 	if (*substitute == '$') substitute = GStrings.GetString(substitute+1, &langtable);
+	else return true;	// String literals from the source data should never override graphics from the same definition.
 	if (substitute == nullptr) return true;	// The text does not exist.
 	
 	// Modes 2, 3 and 4 must not replace localized textures.
@@ -913,6 +914,7 @@ void FTextureManager::AddTexturesForWad(int wadnum)
 {
 	int firsttexture = Textures.Size();
 	int lumpcount = Wads.GetNumLumps();
+	bool iwad = wadnum == Wads.GetIwadNum();
 
 	FirstTextureForFile.Push(firsttexture);
 
@@ -965,16 +967,33 @@ void FTextureManager::AddTexturesForWad(int wadnum)
 			if (Wads.CheckLumpName(i, "BLOCKMAP")) continue;
 			if (Wads.CheckLumpName(i, "BEHAVIOR")) continue;
 
+			bool force = false;
 			// Don't bother looking at this lump if something later overrides it.
-			if (Wads.CheckNumForName(Name, ns_graphics) != i) continue;
+			if (Wads.CheckNumForName(Name, ns_graphics) != i)
+			{
+				if (iwad)
+				{ 
+					// We need to make an exception for font characters of the SmallFont coming from the IWAD to be able to construct the original font.
+					if (Name.IndexOf("STCFN") != 0 && Name.IndexOf("FONTA") != 0) continue;
+					force = true;
+				}
+				else continue;
+			}
 
 			// skip this if it has already been added as a wall patch.
-			if (CheckForTexture(Name, ETextureType::WallPatch, 0).Exists()) continue;
+			if (!force && CheckForTexture(Name, ETextureType::WallPatch, 0).Exists()) continue;
 		}
 		else if (ns == ns_graphics)
 		{
-			// Don't bother looking this lump if something later overrides it.
-			if (Wads.CheckNumForName(Name, ns_graphics) != i) continue;
+			if (Wads.CheckNumForName(Name, ns_graphics) != i)
+			{
+				if (iwad)
+				{
+					// We need to make an exception for font characters of the SmallFont coming from the IWAD to be able to construct the original font.
+					if (Name.IndexOf("STCFN") != 0 && Name.IndexOf("FONTA") != 0) continue;
+				}
+				else continue;
+			}
 		}
 		else if (ns >= ns_firstskin)
 		{

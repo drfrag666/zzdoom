@@ -24,7 +24,7 @@ class os_SearchField : OptionMenuItemTextField
 		if (mkey == Menu.MKEY_Enter)
 		{
 			Menu.MenuSound("menu/choose");
-			mEnter = TextEnterMenu.OpenTextEnter(Menu.GetCurrentMenu(), SmallFont, mText, -1, fromcontroller);
+			mEnter = TextEnterMenu.OpenTextEnter(Menu.GetCurrentMenu(), Menu.OptionFont(), mText, -1, fromcontroller);
 			mEnter.ActivateMenu();
 			return true;
 		}
@@ -41,7 +41,7 @@ class os_SearchField : OptionMenuItemTextField
 	override String Represent()
 	{
 		return mEnter
-			? mEnter.GetText() .. SmallFont.GetCursor()
+			? mEnter.GetText() .. NewSmallFont.GetCursor()
 			: mText;
 	}
 

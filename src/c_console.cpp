@@ -80,9 +80,6 @@ CUSTOM_CVAR(Int, con_buffersize, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 	if (self >= 0 && self < 128) self = 128;
 }
 
-CVAR(Bool, con_consolefont, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-CVAR(Bool, con_midconsolefont, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
-
 FConsoleBuffer *conbuffer;
 
 static void C_TabComplete (bool goForward);
@@ -568,10 +565,9 @@ static void maybedrawnow (bool tick, bool force)
 	}
 }
 
-EColorRange C_GetDefaultFontColor()
+FFont * C_GetDefaultHUDFont()
 {
-	// Ideally this should analyze the SmallFont and pick a matching color.
-	return gameinfo.gametype == GAME_Doom ? CR_RED : gameinfo.gametype == GAME_Chex ? CR_GREEN : gameinfo.gametype == GAME_Strife ? CR_GOLD : CR_GRAY;
+	return generic_ui? NewSmallFont : SmallFont;
 }
 
 void C_InitConback()
@@ -766,9 +762,10 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 		con_notifylines == 0)
 		return;
 
-	width = DisplayWidth / active_con_scaletext(con_consolefont);
+	width = DisplayWidth / active_con_scaletext(generic_ui);
 
-	FFont *font = *con_consolefont ? NewSmallFont : SmallFont;
+	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
+	if (font == nullptr) return;	// Without an initialized font we cannot handle the message (this is for those which come here before the font system is ready.)
 
 	if (AddType == APPENDLINE && Text.Size() > 0 && Text[Text.Size() - 1].PrintLevel == printlevel)
 	{
@@ -881,7 +878,7 @@ int PrintString (int iprintlevel, const char *outline)
 			I_PrintStr(outline);
 
 			conbuffer->AddText(printlevel, outline);
-			if (vidactive && screen && SmallFont && !(iprintlevel & PRINT_NONOTIFY))
+			if (vidactive && screen && !(iprintlevel & PRINT_NONOTIFY))
 			{
 				NotifyStrings.AddString(printlevel, outline);
 			}
@@ -1052,7 +1049,7 @@ void FNotifyBuffer::Draw()
 	line = Top;
 	canskip = true;
 
-	FFont *font = *con_consolefont ? NewSmallFont : SmallFont;
+	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
 	lineadv = font->GetHeight ();
 
 	BorderTopRefresh = screen->GetPageCount ();
@@ -1077,11 +1074,7 @@ void FNotifyBuffer::Draw()
 			else
 				color = PrintColors[notify.PrintLevel];
 
-			if (color == CR_UNTRANSLATED && *con_consolefont)
-			{
-				color = C_GetDefaultFontColor();
-			}
-			int scale = active_con_scaletext(con_consolefont);
+			int scale = active_con_scaletext(generic_ui);
 			if (!center)
 				screen->DrawText (font, color, 0, line, notify.Text,
 					DTA_VirtualWidth, screen->GetWidth() / scale,
@@ -1090,7 +1083,7 @@ void FNotifyBuffer::Draw()
 					DTA_Alpha, alpha, TAG_DONE);
 			else
 				screen->DrawText (font, color, (screen->GetWidth() -
-					SmallFont->StringWidth (notify.Text) * scale) / 2 / scale,
+					font->StringWidth (notify.Text) * scale) / 2 / scale,
 					line, notify.Text,
 					DTA_VirtualWidth, screen->GetWidth() / scale,
 					DTA_VirtualHeight, screen->GetHeight() / scale,
@@ -1774,16 +1767,7 @@ void C_MidPrint (FFont *font, const char *msg, bool bold)
 		AddToConsole (-1, msg);
 		AddToConsole (-1, bar3);
 
-		bool altscale = false;
-		if (font == nullptr)
-		{
-			altscale = con_midconsolefont;
-			font = altscale ? NewSmallFont : SmallFont;
-			if (altscale && color == CR_UNTRANSLATED) color = C_GetDefaultFontColor();
-		}
-
-		StatusBar->AttachMessage (Create<DHUDMessage>(font, msg, 1.5f, 0.375f, 0, 0,
-			color, con_midtime, altscale), MAKE_ID('C','N','T','R'));
+		StatusBar->AttachMessage (Create<DHUDMessage>(font, msg, 1.5f, 0.375f, 0, 0, color, con_midtime), MAKE_ID('C','N','T','R'));
 	}
 	else
 	{

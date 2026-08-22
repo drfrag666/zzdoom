@@ -42,6 +42,9 @@
 #include "r_data/renderstyle.h"
 #include "c_cvars.h"
 
+static const int VID_MIN_WIDTH = 320;
+static const int VID_MIN_HEIGHT = 200;
+
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;
 extern int DisplayWidth, DisplayHeight, DisplayBits;
@@ -137,6 +140,16 @@ enum
 	DTA_SrcHeight,
 	DTA_LegacyRenderStyle,	// takes an old-style STYLE_* constant instead of an FRenderStyle
 
+	DTA_Spacing,			// Strings only: Additional spacing between characters
+	DTA_Monospace,			// Fonts only: Use a fixed distance between characters.
+};
+
+enum EMonospacing : int
+{
+	Mono_Off = 0,
+	CellLeft = 1,
+	CellCenter = 2,
+	CellRight = 3
 };
 
 enum
@@ -188,6 +201,8 @@ struct DrawParms
 	int desaturate;
 	int scalex, scaley;
 	int cellx, celly;
+	int monospace;
+	int spacing;
 	int maxstrlen;
 	bool fortext;
 	bool virtBottom;

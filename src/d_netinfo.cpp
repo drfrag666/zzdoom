@@ -137,14 +137,13 @@ FString D_UnescapeUserInfo (const char *str, size_t len)
 
 int D_GenderToInt (const char *gender)
 {
-	if (gender[0] == 'f')
-		return GENDER_FEMALE;
-	else if (gender[0] == 'n')
-		return GENDER_NEUTER;
-	else if (gender[0] == 'o')
-		return GENDER_OBJECT;
-	else
-		return GENDER_MALE;
+	if (!stricmp(gender, "female")) return GENDER_FEMALE;
+	if (!stricmp(gender, "neutral")) return GENDER_NEUTER;
+	if (!stricmp(gender, "neuter")) return GENDER_NEUTER;
+	if (!stricmp(gender, "other")) return GENDER_OBJECT;
+	if (!stricmp(gender, "object")) return GENDER_OBJECT;
+	if (!stricmp(gender, "cyborg")) return GENDER_OBJECT;
+	return GENDER_MALE;
 }
 
 int D_PlayerClassToInt (const char *classname)
@@ -486,12 +485,6 @@ int userinfo_t::GenderChanged(const char *gendername)
 int userinfo_t::PlayerClassChanged(const char *classname)
 {
 	int classnum = D_PlayerClassToInt(classname);
-	*static_cast<FIntCVar *>((*this)[NAME_PlayerClass]) = classnum;
-	return classnum;
-}
-
-int userinfo_t::PlayerClassNumChanged(int classnum)
-{
 	*static_cast<FIntCVar *>((*this)[NAME_PlayerClass]) = classnum;
 	return classnum;
 }

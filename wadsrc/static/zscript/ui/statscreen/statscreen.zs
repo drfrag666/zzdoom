@@ -17,7 +17,19 @@ struct PatchInfo play version("2.5")
 
 	void Init(GIFont gifont)
 	{
-		mFont = Font.GetFont(gifont.fontname);
+		// Replace with the VGA-Unicode font if needed.
+		// The default settings for this are marked with a *.
+		// If some mod changes this it is assumed that it doesn't provide any localization for the map name in a language not supported by the font.
+		String s = gifont.fontname;
+		if (s.CharAt(0) != "*")
+			mFont = Font.GetFont(gifont.fontname);
+		else if (generic_ui)
+			mFont = NewSmallFont;
+		else
+		{
+			s = s.Mid(1);
+			mFont = Font.GetFont(s);
+		}
 		mColor = Font.FindFontColor(gifont.color);
 		if (mFont == NULL)
 		{
@@ -294,7 +306,7 @@ class StatusScreen abstract play version("2.5")
 		{
 			// Digits are centered in a box the width of the '3' character.
 			// Other characters (specifically, '-') are right-aligned in their cell.
-			int c = text.CharCodeAt(text_p);
+			int c = text.ByteAt(text_p);
 			if (c >= "0" && c <= "9")
 			{
 				x -= fntwidth;

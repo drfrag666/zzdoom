@@ -239,7 +239,8 @@ public:
 
 	void ToUpper ();
 	void ToLower ();
-	void SwapCase ();
+	FString MakeUpper() const;
+	FString MakeLower() const;
 
 	void StripLeft ();
 	void StripLeft (const FString &charset);

@@ -24,6 +24,8 @@ struct _ native	// These are the global variables, the struct is only here to av
 	native readonly Font confont;
 	native readonly Font NewConsoleFont;
 	native readonly Font NewSmallFont;
+	native readonly Font AlternativeSmallFont;
+	native readonly Font OriginalSmallFont;
 	native readonly Font intermissionfont;
 	native readonly int CleanXFac;
 	native readonly int CleanYFac;
@@ -45,6 +47,7 @@ struct _ native	// These are the global variables, the struct is only here to av
 	deprecated("3.8") native readonly bool globalfreeze;
 	native int LocalViewPitch;
 	native readonly @MusPlayingInfo musplaying;
+	native readonly bool generic_ui;
 
 // sandbox state in multi-level setups:
 
@@ -185,6 +188,8 @@ enum DrawTextureTags
 	DTA_SrcWidth,
 	DTA_SrcHeight,
 	DTA_LegacyRenderStyle,	// takes an old-style STYLE_* constant instead of an FRenderStyle
+	DTA_Spacing,			// Strings only: Additional spacing between characters
+	DTA_Monospace,			// Strings only: Use a fixed distance between characters.
 };
 
 class Shape2D : Object native
@@ -304,6 +309,7 @@ struct Font native
 
 	native int GetCharWidth(int code);
 	native int StringWidth(String code);
+	native bool CanPrint(String code);
 	native int GetHeight();
 	native String GetCursor();
 
@@ -897,19 +903,26 @@ struct StringStruct native
 	native String Mid(int pos = 0, int len = 2147483647) const;
 	native void Truncate(int newlen);
 	native void Remove(int index, int remlen);
-	native String CharAt(int pos) const;
-	native int CharCodeAt(int pos) const;
+	deprecated("4.1") native String CharAt(int pos) const;
+	deprecated("4.1") native int CharCodeAt(int pos) const;
+	native int ByteAt(int pos) const;
 	native String Filter();
 	native int IndexOf(String substr, int startIndex = 0) const;
 	deprecated("3.5.1") native int LastIndexOf(String substr, int endIndex = 2147483647) const;
 	native int RightIndexOf(String substr, int endIndex = 2147483647) const;
-	native void ToUpper();
-	native void ToLower();
+	deprecated("4.1") native void ToUpper();
+	deprecated("4.1") native void ToLower();
+	native String MakeUpper() const;
+	native String MakeLower() const;
+	native static int CharUpper(int ch);
+	native static int CharLower(int ch);
 	native int ToInt(int base = 0) const;
 	native double ToDouble() const;
 	native void Split(out Array<String> tokens, String delimiter, EmptyTokenType keepEmpty = TOK_KEEPEMPTY) const;
 	native void AppendCharacter(int c);
 	native void DeleteLastCharacter();
+	native int CodePointCount() const;
+	native int, int GetNextCodePoint(int position) const;
 }
 
 class SectorEffect : Thinker native

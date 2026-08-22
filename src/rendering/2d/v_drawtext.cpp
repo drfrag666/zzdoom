@@ -170,6 +170,11 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 	cx = x;
 	cy = y;
 
+	if (parms.monospace == EMonospacing::CellCenter)
+		cx += parms.spacing / 2;
+	else if (parms.monospace == EMonospacing::CellRight)
+		cx += parms.spacing;
+
 
 	while (ch - string < parms.maxstrlen)
 	{
@@ -205,9 +210,24 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 				parms.destwidth = parms.cellx;
 				parms.destheight = parms.celly;
 			}
+			if (parms.monospace == EMonospacing::CellLeft)
+				parms.left = 0;
+			else if (parms.monospace == EMonospacing::CellCenter)
+				parms.left = w / 2.;
+			else if (parms.monospace == EMonospacing::CellRight)
+				parms.left = w;
+
 			DrawTextureParms(pic, parms);
 		}
-		cx += (w + kerning) * parms.scalex;
+		if (parms.monospace == EMonospacing::Mono_Off)
+		{
+			cx += (w + kerning + parms.spacing) * parms.scalex;
+		}
+		else
+		{
+			cx += (parms.spacing) * parms.scalex;
+		}
+
 	}
 }
 

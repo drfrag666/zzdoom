@@ -367,7 +367,7 @@ OptionMenu "OptionsMenu" protected
 	Submenu "$OPTMNU_MOUSE",			"MouseOptions"
 	Submenu "$OPTMNU_JOYSTICK",			"JoystickOptions"
 	StaticText " "
-	Submenu "$OPTMNU_PLAYER",			"PlayerMenu"
+	Submenu "$OPTMNU_PLAYER",			"NewPlayerMenu"
 	Submenu "$OPTMNU_GAMEPLAY",			"GameplayOptions"
 	Submenu "$OPTMNU_COMPATIBILITY",	"CompatibilityOptions"
 	Submenu "$OPTMNU_AUTOMAP",			"AutomapOptions"
@@ -400,6 +400,58 @@ OptionValue "Gender"
 	3, "$OPTVAL_OTHER"
 }
 
+OptionValue "PlayerTeam"
+{
+	// Filled in programmatically
+}
+
+OptionValue "PlayerColors"
+{
+	// Filled in programmatically
+}
+
+OptionValue "PlayerClass"
+{
+	// Filled in programmatically
+}
+
+OptionValue "PlayerSkin"
+{
+	// Filled in programmatically
+}
+
+/*
+	IfGame(Doom, Heretic, Strife, Chex)
+	{
+		MouseWindow 0, 220
+		PlayerDisplay 220, 48, "20 00 00", "80 00 40", 1, "PlayerDisplay"
+	}
+	IfGame(Hexen)
+	{
+		MouseWindow 0, 220
+		PlayerDisplay 220, 48, "00 07 00", "40 53 40", 1, "PlayerDisplay"
+	}
+*/
+
+OptionMenu "NewPlayerMenu"
+{
+	Title "$MNU_PLAYERSETUP"
+	PlayerNameField "$PLYRMNU_NAME"
+	PlayerTeamItem "$PLYRMNU_TEAM", "PlayerTeam"
+	PlayerColorItem "$PLYRMNU_PLAYERCOLOR", "PlayerColors"
+	PlayerColorSlider "$PLYRMNU_RED", 0
+	PlayerColorSlider "$PLYRMNU_GREEN", 1
+	PlayerColorSlider "$PLYRMNU_BLUE", 2
+	PlayerClassItem "$PLYRMNU_PLAYERCLASS", "PlayerClass"
+	PlayerSkinItem "$PLYRMNU_PLAYERSKIN", "PlayerSkin"
+	PlayerGenderItem "$PLYRMNU_PLAYERGENDER", "Gender"
+	AutoaimSlider "$PLYRMNU_AUTOAIM"
+	PlayerSwitchOnPickupItem "$PLYRMNU_SWITCHONPICKUP", "OffOn"
+	Option "$PLYRMNU_ALWAYSRUN", cl_run, "OnOff"
+	Class "NewPlayerMenu"
+}
+
+// The old player menu is kept for mods that redefine it.
 ListMenu "PlayerMenu"
 {
 	StaticTextCentered 160, 6, "$MNU_PLAYERSETUP"
@@ -806,7 +858,7 @@ OptionValue Contrast
 {
 	0.0, "$OPTVAL_OFF"
 	1.0, "$OPTVAL_ON"
-	2.0, "$OPTVAL_SMOOTH"
+	2.0, "$OPTVAL_SMOOTH_1"
 }
 
 OptionValue Fuzziness
@@ -853,24 +905,10 @@ OptionMenu "VideoOptions" protected
 
 	Submenu "$DSPLYMNU_SWOPT", 			"SWROptions"
 	Submenu "$GLMNU_DYNLIGHT",			"GLLightOptions"
-	Submenu "$DSPLYMNU_SCOREBOARD", 			"ScoreboardOptions"
 	StaticText " "
 	Slider "$DSPLYMNU_SCREENSIZE",				"screenblocks", 				3.0, 12.0, 1.0, 0
 	Slider "$DSPLYMNU_BRIGHTNESS",				"Gamma", 0.75, 3.0, 0.05, 2
-	Option "$DSPLYMNU_VSYNC",					"vid_vsync", "OnOff"
-	Option "$DSPLYMNU_CAPFPS",					"cl_capfps", "OffOn"
-	Slider "$DSPLYMNU_BLOODFADE",				"blood_fade_scalar", 0.0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_PICKUPFADE",				"pickup_fade_scalar", 0.0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_WATERFADE",				"underwater_fade_scalar", 0.0, 1.0, 0.05, 2
-
-	StaticText " "
 	Option "$DSPLYMNU_WIPETYPE",				"wipetype", "Wipes"
-
-	IfOption(Windows)
-	{
-		Option	"$DSPLYMNU_SHOWENDOOM",			"showendoom", "Endoom"
-	}
-
 	Option "$DSPLYMNU_DRAWFUZZ",				"r_drawfuzz", "Fuzziness"
 	Option "$DSPLYMNU_OLDTRANS",				"r_vanillatrans", "VanillaTrans"
 	Slider "$DSPLYMNU_TRANSSOUL",				"transsouls", 0.25, 1.0, 0.05, 2
@@ -885,10 +923,8 @@ OptionMenu "VideoOptions" protected
 	Option "$DSPLYMNU_TELEZOOM",				"telezoom", "OnOff"
 	Slider "$DSPLYMNU_QUAKEINTENSITY",			"r_quakeintensity", 0.0, 1.0, 0.05, 2
 	Option "$DSPLYMNU_NOMONSTERINTERPOLATION",	"nomonsterinterpolation", "NoYes"
-	Slider "$DSPLYMNU_MENUDIM",					"dimamount", 0, 1.0, 0.05, 2
-	ColorPicker "$DSPLYMNU_DIMCOLOR",			"dimcolor"
-
 }
+
 
 //-------------------------------------------------------------------------------------------
 //
@@ -957,6 +993,8 @@ OptionMenu "HUDOptions" protected
 	Submenu "$HUDMNU_SCALEOPT",				"ScalingOptions"
 	Submenu "$HUDMNU_ALTHUD",				"AltHudOptions"
 	Submenu "$HUDMNU_MESSAGE", 				"MessageOptions"
+	Submenu "$HUDMNU_FLASH", 				"FlashOptions"
+	Submenu "$DSPLYMNU_SCOREBOARD", 		"ScoreboardOptions"
 	StaticText " "
 	Option "$HUDMNU_CROSSHAIR",				"crosshair", "Crosshairs"
 	Option "$HUDMNU_FORCECROSSHAIR",		"crosshairforce", "OnOff"
@@ -969,15 +1007,26 @@ OptionMenu "HUDOptions" protected
 	Option "$HUDMNU_NAMETAGCOLOR",			"nametagcolor", "TextColors", "displaynametags"
 	Option "$HUDMNU_OLDOUCH",				"st_oldouch", "OnOff"
 	StaticText " "
+	Slider "$DSPLYMNU_MOVEBOB",				"movebob", 0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_STILLBOB",			"stillbob", 0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_BOBSPEED",			"wbobspeed", 0, 2.0, 0.1
+	StaticText " "
+	Slider "$DSPLYMNU_MENUDIM",					"dimamount", 0, 1.0, 0.05, 2
+	ColorPicker "$DSPLYMNU_DIMCOLOR",			"dimcolor"
+
+}
+
+OptionMenu "FlashOptions" protected
+{
+	Title "$HUDMNU_FLASH"
 	Option "$HUDMNU_HEXENFLASHES",			"pf_hexenweaps", "ZDoomHexen"
 	Option "$HUDMNU_POISONFLASHES",			"pf_poison", "ZDoomHexen"
 	Option "$HUDMNU_ICEFLASHES",			"pf_ice", "ZDoomHexen"
 	Option "$HUDMNU_HAZARDFLASHES",			"pf_hazard", "ZDoomStrife"
 	StaticText " "
-	Slider "$DSPLYMNU_MOVEBOB",				"movebob", 0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_STILLBOB",			"stillbob", 0, 1.0, 0.05, 2
-	Slider "$DSPLYMNU_BOBSPEED",			"wbobspeed", 0, 2.0, 0.1
-	
+	Slider "$DSPLYMNU_BLOODFADE",				"blood_fade_scalar", 0.0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_PICKUPFADE",				"pickup_fade_scalar", 0.0, 1.0, 0.05, 2
+	Slider "$DSPLYMNU_WATERFADE",				"underwater_fade_scalar", 0.0, 1.0, 0.05, 2
 }
 
 OptionMenu "ScalingOptions" protected
@@ -1125,6 +1174,13 @@ OptionMenu "MiscOptions" protected
 	SafeCommand "$MISCMNU_CLEARNODECACHE",		"clearnodecache"
 	StaticText " "
 	Option "$OPTMNU_LANGUAGE", "language", "LanguageOptions"
+	IfOption(Windows)
+	{
+		StaticText " "
+		Option	"$DSPLYMNU_SHOWENDOOM",			"showendoom", "Endoom"
+	}
+
+	
 }
 
 //-------------------------------------------------------------------------------------------
@@ -1626,6 +1682,7 @@ OptionMenu "CompatMapMenu" protected
 	Option "$CMPTMNU_TELEPORT",						"compat_teleport", "YesNo"
 	Option "$CMPTMNU_PUSHWINDOW",					"compat_pushwindow", "YesNo"
 	Option "$CMPTMNU_CHECKSWITCHRANGE",				"compat_checkswitchrange", "YesNo"
+	Option "$CMPTMNU_RAILINGHACK",					"compat_railing", "YesNo"
 	Class "CompatibilityMenu"
 }
 
@@ -1796,7 +1853,7 @@ OptionValue MidiDevices
 OptionMenu SoundOptions protected
 {
 	Title "$SNDMNU_TITLE"
-	Slider "$SNDMNU_MASTERVOLUME",		"snd_mastervolume", 0, 1, 0.05, 2
+	Slider "$MODMNU_MASTERVOLUME",		"snd_mastervolume", 0, 1, 0.05, 2
 	StaticText " "
 	Slider "$SNDMNU_SFXVOLUME",			"snd_sfxvolume", 0, 1, 0.05, 2
 	Slider "$SNDMNU_MUSICVOLUME",		"snd_musicvolume", 0, 1, 0.05, 2
@@ -2289,12 +2346,15 @@ OptionMenu "ReverbSave" protected
 OptionString "LanguageOptions"
 {
 	"auto", "Auto"
+	"default", "English (US)"
 	"eng", "English (UK)"
-	"enu", "English (US)"
-	"fr", "Français (FR)"
-	"ita", "Italiano (ITA)"
-	"ptb", "Português do Brasil (PTB)"
-	"rus", "Русский (RU)"
+	"de", "Deutsch"
+	"es", "Español (España)"
+	"esm", "Español (Latino)"
+	"fr", "Français"
+	"it", "Italiano"
+	"pt", "Portugues do Brasil"
+	"ru", "Русский (Russian)"
 }
 
 /*=======================================

@@ -529,8 +529,10 @@ LRESULT CALLBACK WndProc (HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
-				mmi->ptMinTrackSize.x = 320;
-				mmi->ptMinTrackSize.y = 200;
+				RECT rect = { 0, 0, VID_MIN_WIDTH, VID_MIN_HEIGHT };
+				AdjustWindowRectEx(&rect, GetWindowLongW(hWnd, GWL_STYLE), FALSE, GetWindowLongW(hWnd, GWL_EXSTYLE));
+				mmi->ptMinTrackSize.x = rect.right - rect.left;
+				mmi->ptMinTrackSize.y = rect.bottom - rect.top;
 			}
 			return 0;
 		}
