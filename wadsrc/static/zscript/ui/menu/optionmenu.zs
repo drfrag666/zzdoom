@@ -471,7 +471,7 @@ class OptionMenu : Menu
 			{
 				if (((MenuTime() % 8) < 6) || GetCurrentMenu() != self)
 				{
-					DrawConText(OptionMenuSettings.mFontColorSelection, cur_indent + 3 * CleanXfac_1, y+fontheight-9*CleanYfac_1, "\xd");
+					DrawConTextScaled(OptionMenuSettings.mFontColorSelection, cur_indent + 3 * CleanXfac_1, y+fontheight-9*CleanYfac_1, "\xd");
 				}
 			}
 			y += fontheight;
@@ -483,11 +483,11 @@ class OptionMenu : Menu
 
 		if (CanScrollUp)
 		{
-			DrawConText(Font.CR_ORANGE, 3 * CleanXfac_1, ytop, "\x1a");
+			DrawConTextScaled(OptionMenuSettings.mFontColorSelection, 3 * CleanXfac_1, ytop, "\x1a");
 		}
 		if (CanScrollDown)
 		{
-			DrawConText(Font.CR_ORANGE, 3 * CleanXfac_1, y - 8*CleanYfac_1, "\x1b");
+			DrawConTextScaled(OptionMenuSettings.mFontColorSelection, 3 * CleanXfac_1, y - 8*CleanYfac_1, "\x1b");
 		}
 		Super.Drawer();
 	}
