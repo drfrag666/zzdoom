@@ -777,7 +777,7 @@ void InitLowerUpper()
 	{
 		auto lower = loweruppercase[i];
 		auto upper = loweruppercase[i + 1];
-		if (upperforlower[upper] == upper) lowerforupper[upper] = lower;	// This mapping is ambiguous (see 0x0131 -> 0x0049, (small Turkish 'i' without dot.) so only pick the first match.
+		if (lowerforupper[upper] == upper) lowerforupper[upper] = lower;	// This mapping is ambiguous (see 0x0131 -> 0x0049, (small Turkish 'i' without dot.) so only pick the first match.
 		if (upperforlower[lower] == lower) upperforlower[lower] = upper;
 		isuppermap[upper] = islowermap[lower] = true;
 	}
@@ -868,6 +868,9 @@ int stripaccent(int code)
 		case 0x201e:
 			return '"';	// typographic quotation marks
 			
+		case 0x3c2:
+			return 0x3c3;	// Lowercase Sigma character in Greek, which changes depending on its positioning in a word; if the font is uppercase only or features a smallcaps style, the second variant of the letter will remain unused
+			
 			// Cyrillic characters with equivalents in the Latin alphabet.
 		case 0x400:
 			return 0xc8;
@@ -914,7 +917,7 @@ int stripaccent(int code)
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
-	if (!stricmp(name, "DBIGFONT")) name = "BigFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	if (!stricmp(name, "DBIGFONT")) name = "BigFont";
 	else if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	FFont *font = FFont::FindFont (name);
 	if (font == NULL)
@@ -1570,15 +1573,14 @@ void V_InitFonts()
 				// The font has been replaced, so we need to create a copy of the original as well.
 				SmallFont = new FFont("SmallFont", "FONTA%02u", nullptr, HU_FONTSTART, HU_FONTSIZE, 1, -1);
 				SmallFont->SetCursor('[');
-
-				OriginalSmallFont = new FFont("SmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
-				OriginalSmallFont->SetCursor('[');
 			}
 			else
 			{
 				SmallFont = new FFont("SmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
 				SmallFont->SetCursor('[');
 			}
+			OriginalSmallFont = new FFont("OriginalSmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
+			OriginalSmallFont->SetCursor('[');
 		}
 		else if (Wads.CheckNumForName("STCFN033", ns_graphics) >= 0)
 		{
@@ -1589,12 +1591,12 @@ void V_InitFonts()
 			{
 				// The font has been replaced, so we need to create a copy of the original as well.
 				SmallFont = new FFont("SmallFont", "STCFN%.3d", nullptr, HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
-				OriginalSmallFont = new FFont("SmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1, -1, false, true);
 			}
 			else
 			{
 				SmallFont = new FFont("SmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
 			}
+			OriginalSmallFont = new FFont("OriginalSmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1, -1, false, true);
 		}
 	}
 	if (!(SmallFont2 = V_GetFont("SmallFont2")))	// Only used by Strife
@@ -1614,6 +1616,15 @@ void V_InitFonts()
 		{
 			BigFont = new FFont("BigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
 		}
+	}
+
+	if (gameinfo.gametype & GAME_Raven)
+	{
+		OriginalBigFont = new FFont("OriginalBigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
+	}
+	else
+	{
+		OriginalBigFont = new FFont("OriginalBigFont", nullptr, "bigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
 	}
 
 	// let PWAD BIGFONTs override the stock BIGUPPER font. (This check needs to be made smarter.)
@@ -1650,7 +1661,7 @@ void V_InitFonts()
 	// SmallFont and SmallFont2 have no default provided by the engine. BigFont only has in non-Raven games.
 	if (SmallFont == nullptr)
 	{
-		SmallFont = ConFont;
+		SmallFont = OriginalSmallFont;
 	}
 	if (SmallFont2 == nullptr)
 	{
@@ -1658,11 +1669,7 @@ void V_InitFonts()
 	}
 	if (BigFont == nullptr)
 	{
-		BigFont = NewSmallFont;
-	}
-	if (OriginalSmallFont == nullptr)
-	{
-		OriginalSmallFont = SmallFont;
+		BigFont = OriginalBigFont;
 	}
 	AlternativeSmallFont = OriginalSmallFont;
 	UpdateGenericUI(false);

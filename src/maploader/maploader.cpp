@@ -111,8 +111,7 @@ void MapLoader::TranslateTeleportThings ()
 	{
 		if (!Level->SectorHasTags(dest->Sector))
 		{
-			dest->tid = 1;
-			dest->AddToHash ();
+			dest->SetTID(1);
 			foundSomething = true;
 		}
 	}

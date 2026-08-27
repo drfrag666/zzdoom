@@ -433,7 +433,7 @@ OptionValue "PlayerSkin"
 	}
 */
 
-OptionMenu "NewPlayerMenu"
+OptionMenu "NewPlayerMenu" protected
 {
 	Title "$MNU_PLAYERSETUP"
 	PlayerNameField "$PLYRMNU_NAME"
@@ -2348,12 +2348,12 @@ OptionString "LanguageOptions"
 	"auto", "Auto"
 	"default", "English (US)"
 	"eng", "English (UK)"
-	"de", "Deutsch"
-	"es", "Español (España)"
-	"esm", "Español (Latino)"
-	"fr", "Français"
-	"it", "Italiano"
-	"pt", "Portugues do Brasil"
+	"de", "Deutsch (German)"
+	"es", "Español (España) (Castilian Spanish)"
+	"esm", "Español (Latino) (Latin American Spanish)"
+	"fr", "Français (French)"
+	"it", "Italiano (Italian)"
+	"pt", "Português do Brasil (Brazilian Portuguese)"
 	"ru", "Русский (Russian)"
 }
 

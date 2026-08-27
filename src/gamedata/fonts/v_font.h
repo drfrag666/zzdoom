@@ -127,6 +127,8 @@ public:
 	bool NoTranslate() const { return noTranslate; }
 	void CheckCase();
 
+
+
 protected:
 	FFont (int lump);
 
@@ -168,7 +170,7 @@ protected:
 };
 
 
-extern FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont, *OriginalSmallFont, *AlternativeSmallFont;
+extern FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont, *OriginalSmallFont, *AlternativeSmallFont, *OriginalBigFont;
 
 void V_InitFonts();
 void V_ClearFonts();

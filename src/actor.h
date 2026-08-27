@@ -1181,12 +1181,14 @@ public:
 
 
 	// ThingIDs
+	void SetTID (int newTID);
+
+private:
 	void AddToHash ();
 	void RemoveFromHash ();
 
-
-private:
 	static inline int TIDHASH (int key) { return key & 127; }
+
 public:
 	static FSharedStringArena mStringPropertyData;
 private:
