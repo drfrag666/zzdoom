@@ -1046,10 +1046,11 @@ void FNotifyBuffer::Draw()
 	if (gamestate == GS_FULLCONSOLE || gamestate == GS_DEMOSCREEN/* || menuactive != MENU_Off*/)
 		return;
 
-	line = Top;
+	FFont* font = generic_ui ? NewSmallFont : AlternativeSmallFont;
+
+	line = Top + font->GetDisplacement();
 	canskip = true;
 
-	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
 	lineadv = font->GetHeight ();
 
 	BorderTopRefresh = screen->GetPageCount ();

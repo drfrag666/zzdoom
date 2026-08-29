@@ -51,6 +51,7 @@
 #include "r_renderer.h"
 #include "doomerrors.h"
 #include "swrenderer/r_swrenderer.h"
+#include "atterm.h"
 
 EXTERN_CVAR (Bool, ticker)
 EXTERN_CVAR (Bool, fullscreen)

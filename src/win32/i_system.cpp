@@ -86,6 +86,7 @@
 #include "i_system.h"
 #include "textures/bitmap.h"
 #include "textures/textures.h"
+#include "atterm.h"
 
 #include "optwin32.h"
 
@@ -117,7 +118,6 @@ static void DestroyCustomCursor();
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
-EXTERN_CVAR(String, language);
 EXTERN_CVAR (Bool, queryiwad);
 
 extern HWND Window, ConWindow, GameTitleWindow;
@@ -134,7 +134,6 @@ CVAR (String, queryiwad_key, "shift", CVAR_GLOBALCONFIG|CVAR_ARCHIVE);
 CVAR (Bool, con_debugoutput, false, 0);
 
 double PerfToSec, PerfToMillisec;
-uint32_t LanguageIDs[4];
 
 UINT TimerPeriod;
 

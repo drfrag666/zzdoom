@@ -54,6 +54,7 @@
 #include "version.h"
 #include "videomodes.h"
 #include "doomerrors.h"
+#include "atterm.h"
 
 
 @implementation NSWindow(ExitAppOnClose)

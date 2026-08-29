@@ -127,6 +127,7 @@ public:
 	bool NoTranslate() const { return noTranslate; }
 	void CheckCase();
 
+	int GetDisplacement() const { return Displacement; }
 
 
 protected:
@@ -143,8 +144,10 @@ protected:
 	int FirstChar, LastChar;
 	int SpaceWidth;
 	int FontHeight;
+	int AsciiHeight = 0;
 	int GlobalKerning;
 	int TranslationType = 0;
+	int Displacement = 0;
 	char Cursor;
 	bool noTranslate;
 	bool MixedCase = false;

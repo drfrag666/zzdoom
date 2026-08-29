@@ -57,6 +57,7 @@ struct FDynamicLight;
 struct FSection;
 struct FLevelLocals;
 struct FDynamicLight;
+
 //
 // NOTES: AActor
 //
@@ -1174,6 +1175,7 @@ public:
 	DRotator PrevAngles;
 	int PrevPortalGroup;
 	TArray<FDynamicLight *> AttachedLights;
+	TDeletingArray<FLightDefaults *> UserLights;
 
 	// When was this actor spawned?
 	int SpawnTime;

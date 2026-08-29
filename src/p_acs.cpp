@@ -5788,7 +5788,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_GetCVarString:
 			if (argCount == 1)
 			{
-				return DoGetCVar(GetCVar(activator, Level->Behaviors.LookupString(args[0])), true);
+				return DoGetCVar(GetCVar(activator && activator->player ? int(activator->player - players) : -1, Level->Behaviors.LookupString(args[0])), true);
 			}
 			break;
 
@@ -9105,7 +9105,7 @@ scriptwait:
 			break;
 
 		case PCD_CLEARINVENTORY:
-			ScriptUtil::Exec(NAME_ClearInventory, ScriptUtil::Pointer, activator, ScriptUtil::End);
+			ScriptUtil::Exec(NAME_ClearInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::End);
 			break;
 
 		case PCD_CLEARACTORINVENTORY:
@@ -9128,7 +9128,7 @@ scriptwait:
 		case PCD_GIVEINVENTORY:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(STACK(2))).GetIndex();
-			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 		}
@@ -9157,7 +9157,7 @@ scriptwait:
 		case PCD_GIVEINVENTORYDIRECT:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
-			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
 		}
@@ -9165,7 +9165,7 @@ scriptwait:
 		case PCD_TAKEINVENTORY:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(STACK(2))).GetIndex();
-			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 		}
@@ -9194,7 +9194,7 @@ scriptwait:
 		case PCD_TAKEINVENTORYDIRECT:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
-			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
 		}
@@ -9626,16 +9626,16 @@ scriptwait:
             break;
 
 		case PCD_SETWEAPON:
-			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator, ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
+			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			break;
 
 		case PCD_SETMARINEWEAPON:
-			ScriptUtil::Exec(NAME_SetMarineWeapon, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_SetMarineWeapon, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, STACK(2), ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 
 		case PCD_SETMARINESPRITE:
-			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, STACK(2), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			sp -= 2;
 			break;
 
@@ -9742,7 +9742,8 @@ scriptwait:
 			break;
 
 		case PCD_GETCVAR:
-			STACK(1) = DoGetCVar(GetCVar(activator, Level->Behaviors.LookupString(STACK(1))), false);
+			// This should not use Level->PlayerNum!
+			STACK(1) = DoGetCVar(GetCVar(activator && activator->player? int(activator->player - players) : -1, Level->Behaviors.LookupString(STACK(1))), false);
 			break;
 
 		case PCD_SETHUDSIZE:

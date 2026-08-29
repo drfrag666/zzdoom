@@ -185,7 +185,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			{
 				for (i = 0; i < lcount; i++)
 				{
-					int position = '!' + i;
+					int position = lfirst + i;
 					mysnprintf(buffer, countof(buffer), nametemplate, i + start);
 
 					lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
@@ -244,7 +244,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 				{
 					if (texs[i])
 					{
-						int position = '!' + i;
+						int position = lfirst + i;
 						Type = Multilump;
 						if (position < minchar) minchar = position;
 						if (position > maxchar) maxchar = position;
@@ -281,6 +281,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 		auto count = maxchar - minchar + 1;
 		Chars.Resize(count);
 		int fontheight = 0;
+		int asciiheight = 0;
 
 		for (i = 0; i < count; i++)
 		{
@@ -301,6 +302,10 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					if (height > fontheight)
 					{
 						fontheight = height;
+					}
+					if (height > asciiheight && FirstChar + 1 < 128)
+					{
+						asciiheight = height;
 					}
 				}
 
@@ -331,11 +336,14 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			}
 		}
 		if (FontHeight == 0) FontHeight = fontheight;
+		if (AsciiHeight == 0) AsciiHeight = asciiheight;
 
 		FixXMoves();
 	}
 
 	if (!noTranslate) LoadTranslations();
+
+
 }
 
 //==========================================================================
@@ -838,7 +846,7 @@ bool FFont::CanPrint(const uint8_t *string) const
 		else if (chr != '\n')
 		{
 			int cc = GetCharCode(chr, true);
-			if (chr != cc && iswalpha(chr))
+			if (chr != cc && iswalpha(chr) && cc != getAlternative(chr))
 			{
 				return false;
 			}
@@ -979,6 +987,11 @@ void FFont::FixXMoves()
 				}
 			}
 			Chars[i].XMove = SpaceWidth;
+		}
+		if (Chars[i].Pic)
+		{
+			int ofs = Chars[i].Pic->GetScaledTopOffset(0);
+			if (ofs > Displacement) Displacement = ofs;
 		}
 	}
 }

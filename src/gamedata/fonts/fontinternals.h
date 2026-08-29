@@ -39,4 +39,6 @@ extern uint16_t upperforlower[65536];
 
 void RecordTextureColors (FTexture *pic, uint32_t *colorsused);
 bool myislower(int code);
+bool myisupper(int code);
 int stripaccent(int code);
+int getAlternative(int code);

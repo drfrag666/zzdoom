@@ -195,7 +195,7 @@ if( MSVC )
 	# String pooling
 	# Function-level linking
 	# Disable run-time type information
-	set( ALL_C_FLAGS "/GF /Gy /GR-" )
+	set( ALL_C_FLAGS "/GF /Gy /GR- /permissive-" )
 
 	# Use SSE 2 as minimum always as the true color drawers needs it for __vectorcall
 	#set( ALL_C_FLAGS "${ALL_C_FLAGS} /arch:SSE2") # This is already the default
@@ -245,6 +245,20 @@ if( MSVC )
 else()
 	set( REL_LINKER_FLAGS "" )
 	set( ALL_C_FLAGS "-ffp-contract=off" )
+	if ( UNIX )
+		include(CheckSymbolExists)
+		check_symbol_exists( "fts_set" "fts.h" HAVE_FTS )
+		if ( NOT HAVE_FTS )
+			include ( FindPkgConfig )
+			pkg_check_modules( MUSL_FTS musl-fts )
+			if ( MUSL_FTS_FOUND )
+				set ( ALL_C_FLAGS "${ALL_C_FLAGS} ${MUSL_FTS_LDFLAGS}" )
+			else ( MUSL_FTS_FOUND )
+				message (ERROR "fts_* functions not found in the system" )
+			endif ( MUSL_FTS_FOUND )
+		endif ( NOT HAVE_FTS )
+	endif ( UNIX )
+
 	set( REL_C_FLAGS "" )
 	set( DEB_C_FLAGS "" )
 
@@ -308,6 +322,19 @@ else()
 	set( ZLIB_LIBRARIES z )
 	set( ZLIB_LIBRARY z )
 endif()
+
+if( HAVE_VM_JIT AND UNIX )
+	check_symbol_exists( "backtrace" "execinfo.h" HAVE_BACKTRACE )
+	if( NOT HAVE_BACKTRACE )
+		set( CMAKE_REQUIRED_FLAGS "-lexecinfo" )
+		check_symbol_exists( "backtrace" "execinfo.h" HAVE_LIBEXECINFO )
+		if( HAVE_LIBEXECINFO )
+			set( ALL_C_FLAGS "${ALL_C_FLAGS} -lexecinfo" )
+		else( HAVE_LIBEXECINFO )
+			set( HAVE_VM_JIT NO )
+		endif( HAVE_LIBEXECINFO )
+	endif( NOT HAVE_BACKTRACE )
+endif( HAVE_VM_JIT AND UNIX )
 
 if( ${HAVE_VM_JIT} )
 	if( ASMJIT_FOUND AND NOT FORCE_INTERNAL_ASMJIT )
@@ -379,6 +406,7 @@ add_subdirectory( gdtoa )
 add_subdirectory( wadsrc )
 add_subdirectory( wadsrc_lights )
 add_subdirectory( wadsrc_extra )
+add_subdirectory( wadsrc_hacxextra )
 add_subdirectory( src )
 
 if( NOT CMAKE_CROSSCOMPILING )

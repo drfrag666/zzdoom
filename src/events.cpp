@@ -491,6 +491,14 @@ void EventManager::RenderOverlay(EHudState state)
 		handler->RenderOverlay(state);
 }
 
+void EventManager::RenderUnderlay(EHudState state)
+{
+	if (ShouldCallStatic(false)) staticEventManager.RenderUnderlay(state);
+
+	for (DStaticEventHandler* handler = FirstEventHandler; handler; handler = handler->next)
+		handler->RenderUnderlay(state);
+}
+
 bool EventManager::CheckUiProcessors()
 {
 	if (ShouldCallStatic(false))
@@ -960,6 +968,19 @@ void DStaticEventHandler::RenderOverlay(EHudState state)
 	}
 }
 
+void DStaticEventHandler::RenderUnderlay(EHudState state)
+{
+	IFVIRTUAL(DStaticEventHandler, RenderUnderlay)
+	{
+		// don't create excessive DObjects if not going to be processed anyway
+		if (isEmpty(func)) return;
+		FRenderEvent e = owner->SetupRenderEvent();
+		e.HudState = int(state);
+		VMValue params[2] = { (DStaticEventHandler*)this, &e };
+		VMCall(func, params, 2, nullptr, 0);
+	}
+}
+
 void DStaticEventHandler::PlayerEntered(int num, bool fromhub)
 {
 	IFVIRTUAL(DStaticEventHandler, PlayerEntered)
@@ -1251,7 +1272,7 @@ CCMD(netevent)
 {
 	if (gamestate != GS_LEVEL/* && gamestate != GS_TITLELEVEL*/) // not sure if this should work in title level, but probably not, because this is for actual playing
 	{
-		Printf("netevent cannot be used outside of a map.\n");
+		DPrintf(DMSG_SPAMMY, "netevent cannot be used outside of a map.\n");
 		return;
 	}
 

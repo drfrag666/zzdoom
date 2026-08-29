@@ -186,6 +186,8 @@ AActor::~AActor ()
 //
 //==========================================================================
 
+
+
 #define A(a,b) ((a), (b), def->b)
 
 void AActor::Serialize(FSerializer &arc)
@@ -364,7 +366,8 @@ void AActor::Serialize(FSerializer &arc)
 		A("friendlyseeblocks", friendlyseeblocks)
 		A("spawntime", SpawnTime)
 		A("spawnorder", SpawnOrder)
-		A("friction", Friction);
+		A("friction", Friction)
+		A("userlights", UserLights);
 }
 
 #undef A
@@ -4262,11 +4265,12 @@ void AActor::SplashCheck()
 
 bool AActor::UpdateWaterLevel(bool dosplash)
 {
+	int oldlevel = waterlevel;
+
 	if (dosplash) SplashCheck();
 
 	double fh = -FLT_MAX;
 	bool reset = false;
-	int oldlevel = waterlevel;
 
 	waterlevel = 0;
 
@@ -4822,7 +4826,10 @@ void AActor::OnDestroy ()
 	//      note that this differs from ThingSpawned in that you can actually override OnDestroy to avoid calling the hook.
 	//      but you can't really do that without utterly breaking the game, so it's ok.
 	//      note: if OnDestroy is ever made optional, E_WorldThingDestroyed should still be called for ANY thing.
-	Level->localEventManager->WorldThingDestroyed(this);
+	if (Level != nullptr)
+	{
+		Level->localEventManager->WorldThingDestroyed(this);
+	}
 
 	DeleteAttachedLights();
 	ClearRenderSectorList();
@@ -7418,6 +7425,6 @@ void PrintMiscActorInfo(AActor *query)
 		Printf("Target: %s\n", query->target ? query->target->GetClass()->TypeName.GetChars() : "-");
 		Printf("Last enemy: %s\n", query->lastenemy ? query->lastenemy->GetClass()->TypeName.GetChars() : "-");
 		auto sn = FState::StaticGetStateName(query->state);
-		Printf("State:%s, Tics: %d", sn.GetChars(), query->tics);
+		Printf("State:%s, Tics: %d\n", sn.GetChars(), query->tics);
 	}
 }
