@@ -38,7 +38,6 @@
 #define DIRECTDRAW_VERSION 0x0300
 #define DIRECT3D_VERSION 0x0900
 
-#define _WIN32_WINNT 0x0501
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mmsystem.h>

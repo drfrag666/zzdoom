@@ -320,6 +320,7 @@ struct Font native
 
 	native int GetCharWidth(int code);
 	native int StringWidth(String code);
+	native int GetMaxAscender(String code);
 	native bool CanPrint(String code);
 	native int GetHeight();
 	native int GetDisplacement();
@@ -403,6 +404,7 @@ struct GameInfoStruct native
 	native GIFont mStatscreenEnteringFont;
 	native GIFont mStatscreenFinishedFont;
 	native GIFont mStatscreenContentFont;
+	native GIFont mStatscreenAuthorFont;
 	native double gibfactor;
 	native bool intermissioncounter;
 	native Name mSliderColor;
@@ -442,7 +444,7 @@ class Object native
 	{
 		return level.PickPlayerStart(pnum, flags);
 	}
-	native static void S_Sound (Sound sound_id, int channel, float volume = 1, float attenuation = ATTN_NORM);
+	native static void S_Sound (Sound sound_id, int channel, float volume = 1, float attenuation = ATTN_NORM, float pitch = 0.0);
 	native static void S_PauseSound (bool notmusic, bool notsfx);
 	native static void S_ResumeSound (bool notsfx);
 	native static bool S_ChangeMusic(String music_name, int order = 0, bool looping = true, bool force = false);
@@ -684,6 +686,7 @@ struct LevelLocals native
 	native String NextSecretMap;
 	native readonly String F1Pic;
 	native readonly int maptype;
+	native readonly String AuthorName;
 	native readonly String Music;
 	native readonly int musicorder;
 	native readonly TextureID skytexture1;

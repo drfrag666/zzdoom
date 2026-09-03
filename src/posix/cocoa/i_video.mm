@@ -42,7 +42,7 @@
 #include "i_system.h"
 #include "m_argv.h"
 #include "m_png.h"
-#include "r_renderer.h"
+#include "swrenderer/r_renderer.h"
 #include "swrenderer/r_swrenderer.h"
 #include "st_console.h"
 #include "stats.h"

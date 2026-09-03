@@ -48,7 +48,7 @@
 #include "v_text.h"
 #include "doomstat.h"
 #include "m_argv.h"
-#include "r_renderer.h"
+#include "swrenderer/r_renderer.h"
 #include "doomerrors.h"
 #include "swrenderer/r_swrenderer.h"
 #include "atterm.h"

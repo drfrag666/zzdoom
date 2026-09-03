@@ -42,7 +42,6 @@
 #include "m_swap.h"
 #include "r_defs.h"
 #include "r_utility.h"
-#include "r_renderer.h"
 #ifndef NO_SWRENDER
 #include "swrenderer/r_swcanvas.h"
 #endif

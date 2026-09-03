@@ -224,7 +224,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					for (auto entry : array)
 					{
 						FTexture *tex = TexMan[entry];
-						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetIwadNum() && tex->UseType == ETextureType::MiscPatch)
+						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetMaxIwadNum() && tex->UseType == ETextureType::MiscPatch)
 						{
 							texs[i] = tex;
 						}
@@ -899,6 +899,53 @@ int FFont::StringWidth(const uint8_t *string) const
 	}
 
 	return MAX(maxw, w);
+}
+
+//==========================================================================
+//
+// Get the largest ascender in the first line of this text.
+//
+//==========================================================================
+
+int FFont::GetMaxAscender(const uint8_t* string) const
+{
+	int retval = 0;
+
+	while (*string)
+	{
+		auto chr = GetCharFromString(string);
+		if (chr == TEXTCOLOR_ESCAPE)
+		{
+			// We do not need to check for UTF-8 in here.
+			if (*string == '[')
+			{
+				while (*string != '\0' && *string != ']')
+				{
+					++string;
+				}
+			}
+			if (*string != '\0')
+			{
+				++string;
+			}
+			continue;
+		}
+		else if (chr == '\n')
+		{
+			break;
+		}
+		else
+		{
+			auto ctex = GetChar(chr, nullptr);
+			if (ctex)
+			{
+				auto offs = int(ctex->GetScaledTopOffset(0));
+				if (offs > retval) retval = offs;
+			}
+		}
+	}
+
+	return retval;
 }
 
 //==========================================================================

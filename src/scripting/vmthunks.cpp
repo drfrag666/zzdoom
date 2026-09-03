@@ -2019,6 +2019,19 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, StringWidth, StringWidth)
 	ACTION_RETURN_INT(StringWidth(self, str));
 }
 
+static int GetMaxAscender(FFont* font, const FString& str)
+{
+	const char* txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
+	return font->GetMaxAscender(txt);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetMaxAscender, GetMaxAscender)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_STRING(str);
+	ACTION_RETURN_INT(GetMaxAscender(self, str));
+}
+
 static int CanPrint(FFont *font, const FString &str)
 {
 	const char *txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
@@ -3035,6 +3048,7 @@ DEFINE_FIELD(FLevelLocals, MapName)
 DEFINE_FIELD(FLevelLocals, NextMap)
 DEFINE_FIELD(FLevelLocals, NextSecretMap)
 DEFINE_FIELD(FLevelLocals, F1Pic)
+DEFINE_FIELD(FLevelLocals, AuthorName)
 DEFINE_FIELD(FLevelLocals, maptype)
 DEFINE_FIELD(FLevelLocals, Music)
 DEFINE_FIELD(FLevelLocals, musicorder)

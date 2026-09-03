@@ -262,9 +262,9 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 //
 //==========================================================================
 
-FIWadManager::FIWadManager(const char *fn)
+FIWadManager::FIWadManager(const char *fn, const char *optfn)
 {
-	FResourceFile *resfile = FResourceFile::OpenResourceFile(fn, true);
+	FResourceFile *resfile = FResourceFile::OpenResourceFile(optfn, true);
 	if (resfile != NULL)
 	{
 		uint32_t cnt = resfile->LumpCount();
@@ -280,10 +280,10 @@ FIWadManager::FIWadManager(const char *fn)
 			}
 		}
 		delete resfile;
-	}
-	if (mIWadNames.Size() == 0 || mIWadInfos.Size() == 0)
-	{
-		I_FatalError("No IWAD definitions found");
+		if (mIWadNames.Size() == 0 || mIWadInfos.Size() == 0)
+		{
+			I_FatalError("No IWAD definitions found");
+		}
 	}
 }
 
@@ -738,16 +738,20 @@ int FIWadManager::IdentifyVersion (TArray<FString> &wadfiles, const char *iwad, 
 	D_AddFile (wadfiles, zdoom_wad);
 
 	// [SP] Load non-free assets if available. This must be done before the IWAD.
+	int iwadnum;
 	if (D_AddFile(wadfiles, optional_wad))
-		Wads.SetIwadNum(2);
+		iwadnum = 2;
 	else
-		Wads.SetIwadNum(1);
+		iwadnum = 1;
 
+	Wads.SetIwadNum(iwadnum);
 	if (picks[pick].mRequiredPath.IsNotEmpty())
 	{
 		D_AddFile (wadfiles, picks[pick].mRequiredPath);
+		iwadnum++;
 	}
 	D_AddFile (wadfiles, picks[pick].mFullPath);
+	Wads.SetMaxIwadNum(iwadnum);
 
 	auto info = mIWadInfos[picks[pick].mInfoIndex];
 	// Load additional resources from the same directory as the IWAD itself.
