@@ -26,3 +26,5 @@
 /build2
 /build_vc2019-64
 /build_vc2019-32
+.kdev4
+*.kdev4

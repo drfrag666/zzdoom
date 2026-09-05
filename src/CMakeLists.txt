@@ -801,7 +801,7 @@ set( FASTMATH_SOURCES
 	sound/timiditypp/fft4g.cpp
 	sound/timiditypp/reverb.cpp
 	r_data/models/models.cpp
-	r_data/matrix.cpp
+	utility/matrix.cpp
 	sound/adlmidi/adldata.cpp
 	sound/adlmidi/adlmidi.cpp
 	sound/adlmidi/adlmidi_load.cpp
@@ -895,6 +895,7 @@ set (PCH_SOURCES
 	sound/s_environment.cpp
 	sound/s_sndseq.cpp
 	sound/s_sound.cpp
+	sound/s_music.cpp
 	serializer.cpp
 	scriptutil.cpp
 	st_stuff.cpp
@@ -1137,8 +1138,9 @@ set (PCH_SOURCES
 	sound/wildmidi/wm_error.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	events.cpp
-	GuillotineBinPack.cpp
-	SkylineBinPack.cpp
+	utility/GuillotineBinPack.cpp
+	utility/SkylineBinPack.cpp
+	utility/palette.cpp
 	utility/files.cpp
 	utility/files_decompress.cpp
 	utility/m_png.cpp
@@ -1155,7 +1157,6 @@ set (PCH_SOURCES
 	utility/stats.cpp
 	utility/atterm.cpp
 	utility/cmdlib.cpp
-	utility/colormatcher.cpp
 	utility/configfile.cpp
 	utility/i_module.cpp
 	utility/i_time.cpp
@@ -1175,7 +1176,12 @@ else()
 	set( NOT_COMPILED_SOURCE_FILES ${NOT_COMPILED_SOURCE_FILES} ${VM_JIT_SOURCES} )
 endif()
 
-enable_precompiled_headers( g_pch.h PCH_SOURCES )
+if( MSVC )
+	enable_precompiled_headers( g_pch.h PCH_SOURCES )
+else()
+	# Temporary solution for compilers other than MSVC
+	set_source_files_properties( ${PCH_SOURCES} PROPERTIES COMPILE_FLAGS "-include g_pch.h" )
+endif()
 
 add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${HEADER_FILES}

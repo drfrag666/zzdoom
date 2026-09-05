@@ -65,6 +65,7 @@
 #include "vm.h"
 #include "i_time.h"
 #include "utf8.h"
+#include "s_music.h"
 
 
 #include "gi.h"
@@ -757,6 +758,19 @@ void FNotifyBuffer::AddString(int printlevel, FString source)
 		con_notifylines == 0)
 		return;
 
+	// [MK] allow the status bar to take over notify printing
+	if (StatusBar != nullptr)
+	{
+		IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessNotify)
+		{
+			VMValue params[] = { (DObject*)StatusBar, printlevel, &source };
+			int rv;
+			VMReturn ret(&rv);
+			VMCall(func, params, countof(params), &ret, 1);
+			if (!!rv) return;
+		}
+	}
+
 	width = DisplayWidth / active_con_scaletext(generic_ui);
 
 	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
@@ -945,6 +959,12 @@ int DPrintf (int level, const char *format, ...)
 void C_FlushDisplay ()
 {
 	NotifyStrings.Clear();
+	if (StatusBar == nullptr) return;
+	IFVIRTUALPTR(StatusBar, DBaseStatusBar, FlushNotify)
+	{
+		VMValue params[] = { (DObject*)StatusBar };
+		VMCall(func, params, countof(params), nullptr, 1);
+	}
 }
 
 void C_AdjustBottom ()
@@ -1259,6 +1279,7 @@ void C_FullConsole ()
 		gamestate = GS_FULLCONSOLE;
 		primaryLevel->Music = "";
 		S_Start ();
+		S_StartMusic();
 		P_FreeLevelData ();
 		V_SetBlend (0,0,0,0);
 	}
@@ -1756,6 +1777,17 @@ void C_MidPrint (FFont *font, const char *msg, bool bold)
 	if (StatusBar == nullptr || screen == nullptr)
 		return;
 
+	// [MK] allow the status bar to take over MidPrint
+	IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessMidPrint)
+	{
+		FString msgstr = msg;
+		VMValue params[] = { (DObject*)StatusBar, font, &msgstr, bold };
+		int rv;
+		VMReturn ret(&rv);
+		VMCall(func, params, countof(params), &ret, 1);
+		if (!!rv) return;
+	}
+
 	if (msg != nullptr)
 	{
 		auto color = (EColorRange)PrintColors[bold? PRINTLEVELS+1 : PRINTLEVELS];
@@ -1800,10 +1832,7 @@ struct TabData
 	{
 	}
 
-	TabData(const TabData &other)
-	: UseCount(other.UseCount), TabName(other.TabName)
-	{
-	}
+	TabData(const TabData &other) = default;
 };
 
 static TArray<TabData> TabCommands (TArray<TabData>::NoInit);

@@ -384,6 +384,7 @@ OptionMenu "OptionsMenu" protected
 	SafeCommand "$OPTMNU_DEFAULTS",	"reset2defaults"
 	SafeCommand	"$OPTMNU_RESETTOSAVED",	"reset2saved"
 	Command "$OPTMNU_CONSOLE",			"menuconsole"
+	StaticText " "
 }
 
 //-------------------------------------------------------------------------------------------
@@ -934,7 +935,7 @@ OptionMenu "VideoOptions" protected
 
 OptionValue CrosshairHealthTypes
 {
-	0.0, "$OPTVAL_NO"
+	0.0, "$TXT_NO"
 	1.0, "$OPTVAL_YES_STANDARD"
 	2.0, "$OPTVAL_YES_ENHANCED"
 }
@@ -2366,6 +2367,7 @@ OptionString "LanguageOptions"
 	"fi", "Suomi (Finnish)"
 	"fr", "Français (French)"
 	"it", "Italiano (Italian)"
+	"nl", "Nederlands (Dutch)"
 	"pl", "Polski (Polish)"
 	"ptg", "Português (European Portuguese)"
 	"pt", "Português do Brasil (Brazilian Portuguese)"

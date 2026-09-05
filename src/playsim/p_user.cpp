@@ -92,6 +92,7 @@
 #include "g_game.h"
 #include "v_video.h"
 #include "gstrings.h"
+#include "s_music.h"
 
 static FRandom pr_skullpop ("SkullPop");
 

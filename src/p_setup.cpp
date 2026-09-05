@@ -89,6 +89,7 @@
 #include "v_video.h"
 #include "fragglescript/t_script.h"
 #include "atterm.h"
+#include "s_music.h"
 
 extern AActor *SpawnMapThing (int index, FMapThing *mthing, int position);
 
@@ -252,6 +253,8 @@ void FLevelLocals::ClearLevelData()
 	total_monsters = total_items = total_secrets =
 	killed_monsters = found_items = found_secrets = 0;
 
+	max_velocity = avg_velocity = 0;
+
 	for (int i = 0; i < 4; i++)
 	{
 		UDMFKeys[i].Clear();
@@ -398,6 +401,7 @@ void P_SetupLevel(FLevelLocals *Level, int position, bool newGame)
 
 	// Make sure all sounds are stopped before Z_FreeTags.
 	S_Start();
+	S_StartMusic();
 
 	// [RH] clear out the mid-screen message
 	C_MidPrint(nullptr, nullptr);

@@ -423,11 +423,8 @@ public:
 		return thinker;
 	}
 	
-	void SetMusic()
-	{
-		if (cdtrack == 0 || !S_ChangeCDMusic(cdtrack, cdid))
-			S_ChangeMusic(Music, musicorder);
-	}
+	void SetMusic();
+
 
 	TArray<vertex_t> vertexes;
 	TArray<sector_t> sectors;
@@ -609,6 +606,9 @@ public:
 
 	int			total_monsters;
 	int			killed_monsters;
+
+	double      max_velocity;
+	double      avg_velocity;
 
 	double		gravity;
 	double		aircontrol;
