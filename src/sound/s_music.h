@@ -51,8 +51,7 @@ bool S_ChangeMusic (const char *music_name, int order=0, bool looping=true, bool
 bool S_ChangeCDMusic (int track, unsigned int id=0, bool looping=true);
 
 void S_RestartMusic ();
-
-void S_MIDIDeviceChanged();
+void S_MIDIDeviceChanged(int newdev, bool force);
 
 int S_GetMusic (const char **name);
 
@@ -72,11 +71,6 @@ struct MidiDeviceSetting
 {
 	int device;
 	FString args;
-
-	MidiDeviceSetting()
-	{
-		device = MDEV_DEFAULT;
-	}
 };
 
 typedef TMap<FName, FName> MusicAliasMap;
@@ -84,5 +78,17 @@ typedef TMap<FName, MidiDeviceSetting> MidiDeviceMap;
 
 extern MusicAliasMap MusicAliases;
 extern MidiDeviceMap MidiDevices;
+
+class MusInfo;
+struct MusPlayingInfo
+{
+	FString name;
+	MusInfo* handle;
+	int   baseorder;
+	bool  loop;
+};
+
+extern float relative_volume, saved_relative_volume;
+
 
 #endif

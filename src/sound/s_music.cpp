@@ -57,12 +57,13 @@
 #include <stdlib.h>
 #ifdef _WIN32
 #include <io.h>
+#include "musicformats/win32/i_cd.h"
 #endif
 
 #include "i_system.h"
 #include "i_sound.h"
 #include "i_music.h"
-#include "i_cd.h"
+
 #include "s_sound.h"
 #include "s_sndseq.h"
 #include "s_playlist.h"
@@ -85,6 +86,9 @@
 #include "g_game.h"
 #include "atterm.h"
 #include "s_music.h"
+#include "filereadermusicinterface.h"
+#include "zmusic/musinfo.h"
+#include "zmusic/zmusic.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -101,6 +105,8 @@ static bool		MusicPaused;		// whether music is paused
 MusPlayingInfo mus_playing;	// music currently being played
 static FString	 LastSong;			// last music that was played
 static FPlayList *PlayList;
+float	relative_volume = 1.f;
+float	saved_relative_volume = 1.0f;	// this could be used to implement an ACS FadeMusic function
 
 DEFINE_GLOBAL_NAMED(mus_playing, musplaying);
 DEFINE_FIELD_X(MusPlayingInfo, MusPlayingInfo, name);
@@ -151,6 +157,79 @@ void S_ShutdownMusic ()
 
 //==========================================================================
 //
+// 
+//
+// Create a sound system stream for the currently playing song 
+//==========================================================================
+
+static std::unique_ptr<SoundStream> musicStream;
+
+static bool FillStream(SoundStream* stream, void* buff, int len, void* userdata)
+{
+	bool written = mus_playing.handle? mus_playing.handle->ServiceStream(buff, len) : 0;
+	if (!written)
+	{
+		memset((char*)buff, 0, len);
+		return false;
+	}
+	return true;
+}
+
+
+void S_CreateStream()
+{
+	if (!mus_playing.handle) return;
+	auto fmt = mus_playing.handle->GetStreamInfo();
+	if (fmt.mBufferSize > 0)
+	{
+		int flags = fmt.mNumChannels < 0 ? 0 : SoundStream::Float;
+		if (abs(fmt.mNumChannels) < 2) flags |= SoundStream::Mono;
+
+		musicStream.reset(GSnd->CreateStream(FillStream, fmt.mBufferSize, flags, fmt.mSampleRate, nullptr));
+		if (musicStream) musicStream->Play(true, 1);
+	}
+}
+
+void S_PauseStream(bool paused)
+{
+	if (musicStream) musicStream->SetPaused(paused);
+}
+
+void S_StopStream()
+{
+	if (musicStream)
+	{
+		musicStream->Stop();
+		musicStream.reset();
+	}
+}
+
+
+//==========================================================================
+//
+// starts playing this song
+//
+//==========================================================================
+
+static void S_StartMusicPlaying(MusInfo* song, bool loop, float rel_vol, int subsong)
+{
+	if (rel_vol > 0.f)
+	{
+		float factor = relative_volume / saved_relative_volume;
+		saved_relative_volume = rel_vol;
+		I_SetRelativeVolume(saved_relative_volume * factor);
+	}
+	song->Stop();
+	song->Play(loop, subsong);
+	song->m_NotStartedYet = false;
+
+	// Notify the sound system of the changed relative volume
+	snd_musicvolume.Callback();
+}
+
+
+//==========================================================================
+//
 // S_PauseSound
 //
 // Stop music and sound effects, during game PAUSE.
@@ -161,6 +240,7 @@ void S_PauseMusic ()
 	if (mus_playing.handle && !MusicPaused)
 	{
 		mus_playing.handle->Pause();
+		S_PauseStream(true);
 		MusicPaused = true;
 	}
 }
@@ -177,6 +257,7 @@ void S_ResumeMusic ()
 	if (mus_playing.handle && MusicPaused)
 	{
 		mus_playing.handle->Resume();
+		S_PauseStream(false);
 		MusicPaused = false;
 	}
 }
@@ -189,17 +270,25 @@ void S_ResumeMusic ()
 
 void S_UpdateMusic ()
 {
-	I_UpdateMusic();
-	
-	// [RH] Update music and/or playlist. IsPlaying() must be called
-	// to attempt to reconnect to broken net streams and to advance the
-	// playlist when the current song finishes.
-	if (mus_playing.handle != nullptr &&
-		!mus_playing.handle->IsPlaying() &&
-		PlayList)
+	if (mus_playing.handle != nullptr)
 	{
-		PlayList->Advance();
-		S_ActivatePlayList(false);
+		mus_playing.handle->Update();
+		
+		// [RH] Update music and/or playlist. IsPlaying() must be called
+		// to attempt to reconnect to broken net streams and to advance the
+		// playlist when the current song finishes.
+		if (!mus_playing.handle->IsPlaying())
+		{
+			if (PlayList)
+			{
+				PlayList->Advance();
+				S_ActivatePlayList(false);
+			}
+			else
+			{
+				S_StopMusic(true);
+			}
+		}
 	}
 }
 
@@ -304,6 +393,7 @@ bool S_StartMusic (const char *m_id)
 
 bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 {
+	if (nomusic) return false;	// skip the entire procedure if music is globally disabled.
 	if (!force && PlayList)
 	{ // Don't change if a playlist is active
 		return false;
@@ -370,7 +460,16 @@ bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 		}
 		else if (!mus_playing.handle->IsPlaying())
 		{
-			mus_playing.handle->Play(looping, order);
+			try
+			{
+				mus_playing.handle->Play(looping, order);
+				S_CreateStream();
+			}
+			catch (const std::runtime_error& err)
+			{
+				Printf("Unable to start %s: %s\n", mus_playing.name.GetChars(), err.what());
+			}
+
 		}
 		return true;
 	}
@@ -386,7 +485,7 @@ bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 			id = strtoul (more+1, nullptr, 16);
 		}
 		S_StopMusic (true);
-		mus_playing.handle = I_RegisterCDSong (track, id);
+		mus_playing.handle = ZMusic_OpenCDSong (track, id);
 	}
 	else
 	{
@@ -447,7 +546,15 @@ bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 		}
 		else
 		{
-			mus_playing.handle = I_RegisterSong (reader, devp);
+			try
+			{
+				auto mreader = new FileReaderMusicInterface(reader);
+				mus_playing.handle = ZMusic_OpenSong(mreader, devp? (EMidiDevice)devp->device : MDEV_DEFAULT, devp? devp->args.GetChars() : "");
+			}
+			catch (const std::runtime_error& err)
+			{
+				Printf("Unable to load %s: %s\n", mus_playing.name.GetChars(), err.what());
+			}
 		}
 	}
 
@@ -458,8 +565,16 @@ bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 
 	if (mus_playing.handle != 0)
 	{ // play it
-		mus_playing.handle->Start(looping, S_GetMusicVolume (musicname), order);
-		mus_playing.baseorder = order;
+		try
+		{
+			S_StartMusicPlaying(mus_playing.handle, looping, S_GetMusicVolume(musicname), order);
+			S_CreateStream();
+			mus_playing.baseorder = order;
+		}
+		catch (const std::runtime_error& err)
+		{
+			Printf("Unable to start %s: %s\n", mus_playing.name.GetChars(), err.what());
+		}
 		return true;
 	}
 	return false;
@@ -499,13 +614,36 @@ void S_RestartMusic ()
 //
 //==========================================================================
 
-void S_MIDIDeviceChanged()
+
+void S_MIDIDeviceChanged(int newdev, bool force)
 {
-	if (mus_playing.handle != nullptr && mus_playing.handle->IsMIDI())
+	static int oldmididev = INT_MIN;
+
+	// If a song is playing, move it to the new device.
+	if (oldmididev != newdev || force)
 	{
-		mus_playing.handle->Stop();
-		mus_playing.handle->Start(mus_playing.loop, -1, mus_playing.baseorder);
+		if (mus_playing.handle != nullptr && mus_playing.handle->IsMIDI())
+		{
+			MusInfo* song = mus_playing.handle;
+			if (song->m_Status == MusInfo::STATE_Playing)
+			{
+				if (song->GetDeviceType() == MDEV_FLUIDSYNTH && force)
+				{
+					// FluidSynth must reload the song to change the patch set.
+					auto mi = mus_playing;
+					S_StopMusic(true);
+					S_ChangeMusic(mi.name, mi.baseorder, mi.loop);
+				}
+				else
+				{
+					song->Stop();
+					S_StartMusicPlaying(song, song->m_Looping, -1, 0);
+				}
+			}
+		}
 	}
+	// 'force' 
+	if (!force) oldmididev = newdev;
 }
 
 //==========================================================================
@@ -539,19 +677,31 @@ int S_GetMusic (const char **name)
 
 void S_StopMusic (bool force)
 {
-	// [RH] Don't stop if a playlist is active.
-	if ((force || PlayList == nullptr) && !mus_playing.name.IsEmpty())
+	try
 	{
+		// [RH] Don't stop if a playlist is active.
+		if ((force || PlayList == nullptr) && !mus_playing.name.IsEmpty())
+		{
+			if (mus_playing.handle != nullptr)
+			{
+				S_ResumeMusic();
+				S_StopStream();
+				mus_playing.handle->Stop();
+				delete mus_playing.handle;
+				mus_playing.handle = nullptr;
+			}
+			LastSong = mus_playing.name;
+			mus_playing.name = "";
+		}
+	}
+	catch (const std::runtime_error& )
+	{
+		//Printf("Unable to stop %s: %s\n", mus_playing.name.GetChars(), err.what());
 		if (mus_playing.handle != nullptr)
 		{
-			if (MusicPaused)
-				mus_playing.handle->Resume();
-
-			mus_playing.handle->Stop();
 			delete mus_playing.handle;
 			mus_playing.handle = nullptr;
 		}
-		LastSong = mus_playing.name;
 		mus_playing.name = "";
 	}
 }
@@ -604,6 +754,10 @@ CCMD (idmus)
 			}
 		}
 	}
+	else
+	{
+		Printf("Music is disabled\n");
+	}
 }
 
 //==========================================================================
@@ -637,6 +791,10 @@ CCMD (changemus)
 				Printf ("no music playing\n");
 			}
 		}
+	}
+	else
+	{
+		Printf("Music is disabled\n");
 	}
 }
 
@@ -679,6 +837,7 @@ CCMD (cd_play)
 	S_ChangeMusic (musname, 0, true);
 }
 
+#ifdef _WIN32
 //==========================================================================
 //
 // CCMD cd_stop
@@ -733,7 +892,7 @@ CCMD (cd_resume)
 {
 	CD_Resume ();
 }
-
+#endif
 //==========================================================================
 //
 // CCMD playlist
