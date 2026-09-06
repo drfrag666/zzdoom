@@ -104,11 +104,12 @@
 #include "i_system.h"
 #include "g_cvars.h"
 #include "r_data/r_vanillatrans.h"
-#include "atterm.h"
 #include "s_music.h"
+#include "swrenderer/r_swcolormaps.h"
 
 EXTERN_CVAR(Bool, hud_althud)
 void DrawHUD();
+void I_DetectOS();
 
 
 // MACROS ------------------------------------------------------------------
@@ -124,11 +125,21 @@ extern void M_SetDefaultMode ();
 extern void G_NewInit ();
 extern void SetupPlayerClasses ();
 void DeinitMenus();
+void CloseNetwork();
+void P_Shutdown();
+void M_SaveDefaultsFinal();
+void R_Shutdown();
+void I_ShutdownInput();
+#ifdef _WIN32
+void StopFPSLimit();
+#endif
+void I_DeleteRenderer();
+
 const FIWADInfo *D_FindIWAD(TArray<FString> &wadfiles, const char *iwad, const char *basewad);
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
 
-void D_CheckNetGame ();
+bool D_CheckNetGame ();
 void D_ProcessEvents ();
 void G_BuildTiccmd (ticcmd_t* cmd);
 void D_DoAdvanceDemo ();
@@ -136,6 +147,8 @@ void D_AddWildFile (TArray<FString> &wadfiles, const char *pattern);
 void D_LoadWadSettings ();
 void ParseGLDefs();
 void DrawFullscreenSubtitle(const char *text);
+void D_Cleanup();
+void FreeSBarInfoScript();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
@@ -162,6 +175,7 @@ extern bool gameisdead;
 extern bool demorecording;
 extern bool M_DemoNoPlay;	// [RH] if true, then skip any demos in the loop
 extern bool insave;
+extern TDeletingArray<FLightDefaults *> LightDefaults;
 
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
@@ -1026,6 +1040,7 @@ void D_ErrorCleanup ()
 	}
 	if (gamestate == GS_INTERMISSION) gamestate = GS_DEMOSCREEN;
 	insave = false;
+	ClearGlobalVMStack();
 }
 
 //==========================================================================
@@ -2038,23 +2053,6 @@ static void SetMapxxFlag()
 
 //==========================================================================
 //
-// FinalGC
-//
-// If this doesn't free everything, the debug CRT will let us know.
-//
-//==========================================================================
-
-static void FinalGC()
-{
-	delete Args;
-	Args = nullptr;
-	GC::FinalGC = true;
-	GC::FullGC();
-	GC::DelSoftRootHead();	// the soft root head will not be collected by a GC so we have to do it explicitly
-}
-
-//==========================================================================
-//
 // Initialize
 //
 //==========================================================================
@@ -2080,8 +2078,6 @@ static void D_DoomInit()
 
 	// Check response files before coalescing file parameters.
 	M_FindResponseFile ();
-
-	atterm(FinalGC);
 
 	// Combine different file parameters with their pre-switch bits.
 	Args->CollectFiles("-deh", ".deh");
@@ -2314,11 +2310,74 @@ static void CheckCmdLine()
 
 //==========================================================================
 //
+// I_Error
+//
+// Throw an error that will send us to the console if we are far enough
+// along in the startup process.
+//
+//==========================================================================
+
+void I_Error(const char *error, ...)
+{
+	va_list argptr;
+	char errortext[MAX_ERRORTEXT];
+
+	va_start(argptr, error);
+	myvsnprintf(errortext, MAX_ERRORTEXT, error, argptr);
+	va_end(argptr);
+	I_DebugPrint(errortext);
+
+	throw CRecoverableError(errortext);
+}
+
+//==========================================================================
+//
+// I_FatalError
+//
+// Throw an error that will end the game.
+//
+//==========================================================================
+extern FILE *Logfile;
+
+void I_FatalError(const char *error, ...)
+{
+	static bool alreadyThrown = false;
+	gameisdead = true;
+
+	if (!alreadyThrown)		// ignore all but the first message -- killough
+	{
+		alreadyThrown = true;
+		char errortext[MAX_ERRORTEXT];
+		va_list argptr;
+		va_start(argptr, error);
+		myvsnprintf(errortext, MAX_ERRORTEXT, error, argptr);
+		va_end(argptr);
+		I_DebugPrint(errortext);
+
+		// Record error to log (if logging)
+		if (Logfile)
+		{
+			fprintf(Logfile, "\n**** DIED WITH FATAL ERROR:\n%s\n", errortext);
+			fflush(Logfile);
+		}
+
+		throw CFatalError(errortext);
+	}
+	std::terminate(); // recursive I_FatalErrors must immediately terminate.
+}
+
+static void NewFailure ()
+{
+    I_FatalError ("Failed to allocate memory from system heap");
+}
+
+//==========================================================================
+//
 // D_DoomMain
 //
 //==========================================================================
 
-void D_DoomMain (void)
+static int D_DoomMain_Internal (void)
 {
 	int p;
 	const char *v;
@@ -2327,7 +2386,12 @@ void D_DoomMain (void)
 	FString *args;
 	int argcount;	
 	FIWadManager *iwad_man;
+	
+	std::set_new_handler(NewFailure);
 	const char *batchout = Args->CheckValue("-errorlog");
+	
+	C_InitConsole(80*8, 25*8, false);
+	I_DetectOS();
 
 	// +logfile gets checked too late to catch the full startup log in the logfile so do some extra check for it here.
 	FString logfile = Args->TakeValue("+logfile");
@@ -2415,6 +2479,7 @@ void D_DoomMain (void)
 			iwad_man = new FIWadManager(basewad, optionalwad);
 		}
 		const FIWADInfo *iwad_info = iwad_man->FindIWAD(allwads, iwad, basewad, optionalwad);
+		if (!iwad_info) return 0;	// user exited the selection popup via cancel button.
 		gameinfo.gametype = iwad_info->gametype;
 		gameinfo.flags = iwad_info->flags;
 		gameinfo.ConfigName = iwad_info->Configname;
@@ -2496,15 +2561,35 @@ void D_DoomMain (void)
 			I_CreateRenderer();
 		}
 
+		// [RH] Initialize palette management
+		InitPalette ();
+		
 		if (!batchrun) Printf ("V_Init: allocate screen.\n");
-		V_Init (!!restart);
+		if (!restart)
+		{
+			V_InitScreenSize();
+		}
+		
+		if (!restart)
+		{
+			// This allocates a dummy framebuffer as a stand-in until V_Init2 is called.
+			V_InitScreen ();
+		}
+		
+		if (restart)
+		{
+			// Update screen palette when restarting
+			PalEntry *palette = screen->GetPalette ();
+			for (int i = 0; i < 256; ++i)
+				*palette++ = GPalette.BaseColors[i];
+			screen->UpdatePalette();
+		}
 
 		// Base systems have been inited; enable cvar callbacks
 		FBaseCVar::EnableCallbacks ();
 
 		if (!batchrun) Printf ("S_Init: Setting up sound.\n");
 		S_Init ();
-		S_InitMusic();
 
 		if (!batchrun) Printf ("ST_Init: Init startup screen.\n");
 		if (!restart)
@@ -2650,7 +2735,10 @@ void D_DoomMain (void)
 		{
 			if (!batchrun) Printf ("D_CheckNetGame: Checking network game status.\n");
 			StartScreen->LoadingStatus ("Checking network game status.", 0x3f);
-			D_CheckNetGame ();
+			if (!D_CheckNetGame ())
+			{
+				return 0;
+			}
 		}
 
 		// [SP] Force vanilla transparency auto-detection to re-detect our game lumps now
@@ -2686,7 +2774,7 @@ void D_DoomMain (void)
 
 			if (Args->CheckParm("-norun") || batchrun)
 			{
-				throw CNoRunExit();
+				return 1337; // special exit
 			}
 
 			V_Init2();
@@ -2746,8 +2834,6 @@ void D_DoomMain (void)
 					{
 						G_BeginRecording(NULL);
 					}
-
-					atterm(D_QuitNetGame);		// killough
 				}
 			}
 		}
@@ -2771,69 +2857,125 @@ void D_DoomMain (void)
 		// Clean up after a restart
 		//
 
-		// Music and sound should be stopped first
-		S_StopMusic(true);
-		S_StopAllChannels ();
-
-		M_ClearMenus();					// close menu if open
-		F_EndFinale();					// If an intermission is active, end it now
-		AM_ClearColorsets();
-
-		// clean up game state
-		ST_Clear();
-		D_ErrorCleanup ();
-		for (auto Level : AllLevels())
-		{
-			Level->Thinkers.DestroyThinkersInList(STAT_STATIC);
-		}
-		staticEventManager.Shutdown();
-		P_FreeLevelData();
-
-		M_SaveDefaults(NULL);			// save config before the restart
-
-		// delete all data that cannot be left until reinitialization
-		V_ClearFonts();					// must clear global font pointers
-		ColorSets.Clear();
-		PainFlashes.Clear();
-		R_DeinitTranslationTables();	// some tables are initialized from outside the translation code.
-		gameinfo.~gameinfo_t();
-		new (&gameinfo) gameinfo_t;		// Reset gameinfo
-		S_ShutdownMusic();
-		S_Shutdown();					// free all channels and delete playlist
-		C_ClearAliases();				// CCMDs won't be reinitialized so these need to be deleted here
-		DestroyCVarsFlagged(CVAR_MOD);	// Delete any cvar left by mods
-		DeinitMenus();
-
-		// delete DoomStartupInfo data
-		DoomStartupInfo.Name = "";
-		DoomStartupInfo.BkColor = DoomStartupInfo.FgColor = DoomStartupInfo.Type = 0;
-		DoomStartupInfo.LoadLights = DoomStartupInfo.LoadBrightmaps = -1;
-
-		GC::FullGC();					// clean up before taking down the object list.
-
-		// Delete the reference to the VM functions here which were deleted and will be recreated after the restart.
-		FAutoSegIterator probe(ARegHead, ARegTail);
-		while (*++probe != NULL)
-		{
-			AFuncDesc *afunc = (AFuncDesc *)*probe;
-			*(afunc->VMPointer) = NULL;
-		}
-
-		GC::DelSoftRootHead();
-
-		PClass::StaticShutdown();
-
-		GC::FullGC();					// perform one final garbage collection after shutdown
-
-		assert(GC::Root == nullptr);
-
-		restart++;
-		PClass::bShutdown = false;
-		PClass::bVMOperational = false;
+		D_Cleanup();
 
 		gamestate = GS_STARTUP;
 	}
 	while (1);
+}
+
+int D_DoomMain()
+{
+	int ret = 0;
+	try
+	{
+		ret = D_DoomMain_Internal();
+	}
+	catch (const CExitEvent &exit)	// This is a regular exit initiated from deeply nested code.
+	{
+		ret = exit.Reason();
+	}
+	catch (const std::exception &error)
+	{
+		I_ShowFatalError(error.what());
+		ret = -1;
+	}
+	// Unless something really bad happened, the game should only exit through this single point in the code.
+	// No more 'exit', please.
+	// Todo: Move all engine cleanup here instead of using exit handlers and replace the scattered 'exit' calls with a special exception.
+	D_Cleanup();
+	CloseNetwork();
+	GC::FinalGC = true;
+	GC::FullGC();
+	GC::DelSoftRootHead();	// the soft root head will not be collected by a GC so we have to do it explicitly
+	C_DeinitConsole();
+	R_DeinitColormaps();
+	R_Shutdown();
+	I_DeleteRenderer();
+	I_ShutdownGraphics();
+	I_ShutdownInput();
+	M_SaveDefaultsFinal();
+	DeleteStartupScreen();
+	delete Args;
+	Args = nullptr;
+	return ret;
+}
+
+//==========================================================================
+//
+// clean up the resources
+//
+//==========================================================================
+
+void D_Cleanup()
+{
+	if (demorecording)
+	{
+		G_CheckDemoStatus();
+	}
+
+	// Music and sound should be stopped first
+	S_StopMusic(true);
+	S_StopAllChannels ();
+	S_ClearSoundData();
+	S_UnloadReverbDef();
+	G_ClearMapinfo();
+
+	M_ClearMenus();					// close menu if open
+	F_EndFinale();					// If an intermission is active, end it now
+	AM_ClearColorsets();
+	DeinitSWColorMaps();
+	FreeSBarInfoScript();
+#ifdef _WIN32
+	StopFPSLimit();
+#endif
+
+	// clean up game state
+	ST_Clear();
+	D_ErrorCleanup ();
+	P_Shutdown();
+	
+	M_SaveDefaults(NULL);			// save config before the restart
+	
+	// delete all data that cannot be left until reinitialization
+	V_ClearFonts();					// must clear global font pointers
+	ColorSets.Clear();
+	PainFlashes.Clear();
+	R_DeinitTranslationTables();	// some tables are initialized from outside the translation code.
+	gameinfo.~gameinfo_t();
+	new (&gameinfo) gameinfo_t;		// Reset gameinfo
+	S_Shutdown();					// free all channels and delete playlist
+	C_ClearAliases();				// CCMDs won't be reinitialized so these need to be deleted here
+	DestroyCVarsFlagged(CVAR_MOD);	// Delete any cvar left by mods
+	DeinitMenus();
+	LightDefaults.DeleteAndClear();			// this can leak heap memory if it isn't cleared.
+	
+	// delete DoomStartupInfo data
+	DoomStartupInfo.Name = "";
+	DoomStartupInfo.BkColor = DoomStartupInfo.FgColor = DoomStartupInfo.Type = 0;
+	DoomStartupInfo.LoadLights = DoomStartupInfo.LoadBrightmaps = -1;
+	
+	GC::FullGC();					// clean up before taking down the object list.
+	
+	// Delete the reference to the VM functions here which were deleted and will be recreated after the restart.
+	FAutoSegIterator probe(ARegHead, ARegTail);
+	while (*++probe != NULL)
+	{
+		AFuncDesc *afunc = (AFuncDesc *)*probe;
+		*(afunc->VMPointer) = NULL;
+	}
+	
+	GC::DelSoftRootHead();
+	
+	PClass::StaticShutdown();
+	
+	GC::FullGC();					// perform one final garbage collection after shutdown
+	
+	assert(GC::Root == nullptr);
+	
+	restart++;
+	PClass::bShutdown = false;
+	PClass::bVMOperational = false;
 }
 
 //==========================================================================
@@ -2914,6 +3056,24 @@ void FStartupScreen::LoadingStatus(const char *message, int colors)
 void FStartupScreen::AppendStatusLine(const char *status)
 {
 }
+
+//===========================================================================
+//
+// DeleteStartupScreen
+//
+// Makes sure the startup screen has been deleted before quitting.
+//
+//===========================================================================
+
+void DeleteStartupScreen()
+{
+	if (StartScreen != nullptr)
+	{
+		delete StartScreen;
+		StartScreen = nullptr;
+	}
+}
+
 
 
 void FStartupScreen::Progress(void) {}

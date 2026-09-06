@@ -1239,7 +1239,7 @@ void ParseGLDefs()
 	const char *defsLump = NULL;
 
 	LightAssociations.Clear();
-	LightDefaults.Clear();
+	LightDefaults.DeleteAndClear();
 	AttenuationIsSet = -1;
 	// gl_DestroyUserShaders();
 	switch (gameinfo.gametype)

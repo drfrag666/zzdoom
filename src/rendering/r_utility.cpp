@@ -64,7 +64,6 @@
 #include "actorinlines.h"
 #include "g_game.h"
 #include "i_system.h"
-#include "atterm.h"
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
@@ -154,7 +153,6 @@ DAngle viewpitch;
 DEFINE_GLOBAL(LocalViewPitch);
 
 // CODE --------------------------------------------------------------------
-static void R_Shutdown ();
 
 //==========================================================================
 //
@@ -372,8 +370,6 @@ CUSTOM_CVAR (Int, screenblocks, 10, CVAR_ARCHIVE)
 
 void R_Init ()
 {
-	atterm (R_Shutdown);
-
 	StartScreen->Progress();
 	// Colormap init moved back to InitPalette()
 	//R_InitColormaps ();
@@ -390,10 +386,8 @@ void R_Init ()
 //
 //==========================================================================
 
-static void R_Shutdown ()
+void R_Shutdown ()
 {
-	R_DeinitTranslationTables();
-	R_DeinitColormaps ();
 	FCanvasTextureInfo::EmptyList();
 }
 

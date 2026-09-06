@@ -4,7 +4,6 @@
 #include "zmusic/midiconfig.h"
 #include "zmusic/mididefs.h"
 
-void TimidityPP_Shutdown();
 typedef void(*MidiCallback)(void *);
 
 // A device that provides a WinMM-like MIDI streaming interface -------------
@@ -85,7 +84,6 @@ public:
 	SoundStreamInfo GetStreamInfo() const override;
 
 protected:
-	std::mutex CritSec;
 	double Tempo;
 	double Division;
 	double SamplesPerTick;

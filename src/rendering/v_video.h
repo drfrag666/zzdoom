@@ -605,7 +605,8 @@ extern uint32_t Col2RGB8_Inverse[65][256];
 //		--111111111111111111111111111111	= 0x3FFFFFFF
 
 // Allocates buffer screens, call before R_Init.
-void V_Init (bool restart);
+void V_InitScreenSize();
+void V_InitScreen();
 
 // Initializes graphics mode for the first time.
 void V_Init2 ();
@@ -680,9 +681,13 @@ public:
 		savedyfac = CleanYfac;
 		savedwidth = CleanWidth;
 		savedheight = CleanHeight;
-		V_CalcCleanFacs(320, 200, screen->GetWidth(), screen->GetHeight(), &CleanXfac, &CleanYfac);
-		CleanWidth = screen->GetWidth() / CleanXfac;
-		CleanHeight = screen->GetHeight() / CleanYfac;
+
+		if (screen)
+		{
+			V_CalcCleanFacs(320, 200, screen->GetWidth(), screen->GetHeight(), &CleanXfac, &CleanYfac);
+			CleanWidth = screen->GetWidth() / CleanXfac;
+			CleanHeight = screen->GetHeight() / CleanYfac;
+		}
 	}
 
 	~ScaleOverrider()

@@ -59,7 +59,6 @@
 #include "c_dispatch.h"
 #include "templates.h"
 #include "i_system.h"
-#include "atterm.h"
 #include "i_video.h"
 #include "v_video.h"
 #include "v_pfx.h"
@@ -89,13 +88,12 @@ void DoBlending (const PalEntry *from, PalEntry *to, int count, int r, int g, in
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
-static void StopFPSLimit();
+void StopFPSLimit();
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
 extern HWND Window;
 extern IVideo *Video;
-extern bool AppActive;
 extern int SessionState;
 extern bool FullscreenReset;
 extern bool VidResizing;
@@ -809,7 +807,7 @@ void I_SetFPSLimit(int limit)
 				return;
 			}
 		}
-		atterm(StopFPSLimit);
+
 		// Set timer event as close as we can to limit/sec, in milliseconds.
 		UINT period = 1000 / limit;
 		FPSLimitTimer = timeSetEvent(period, 0, (LPTIMECALLBACK)FPSLimitEvent, 0, TIME_PERIODIC | TIME_CALLBACK_EVENT_SET);
@@ -832,7 +830,7 @@ void I_SetFPSLimit(int limit)
 //
 //==========================================================================
 
-static void StopFPSLimit()
+void StopFPSLimit()
 {
 	I_SetFPSLimit(0);
 }

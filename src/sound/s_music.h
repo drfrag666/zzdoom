@@ -37,7 +37,6 @@ void S_ParseMusInfo();
 
 //
 void S_InitMusic ();
-void S_ShutdownMusic ();
 void S_StartMusic ();
 
 
@@ -51,7 +50,7 @@ bool S_ChangeMusic (const char *music_name, int order=0, bool looping=true, bool
 bool S_ChangeCDMusic (int track, unsigned int id=0, bool looping=true);
 
 void S_RestartMusic ();
-void S_MIDIDeviceChanged(int newdev, bool force);
+void S_MIDIDeviceChanged(int newdev);
 
 int S_GetMusic (const char **name);
 
@@ -86,7 +85,10 @@ struct MusPlayingInfo
 	MusInfo* handle;
 	int   baseorder;
 	bool  loop;
+	FString	 LastSong;			// last music that was played
 };
+
+extern MusPlayingInfo mus_playing;
 
 extern float relative_volume, saved_relative_volume;
 

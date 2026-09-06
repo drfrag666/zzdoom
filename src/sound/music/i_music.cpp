@@ -53,7 +53,6 @@
 #include "s_music.h"
 #include "doomstat.h"
 #include "zmusic/zmusic.h"
-#include "zmusic/musinfo.h"
 #include "streamsources/streamsource.h"
 #include "filereadermusicinterface.h"
 #include "../libraries/zmusic/midisources/midisource.h"
@@ -62,12 +61,8 @@
 
 void I_InitSoundFonts();
 
-extern MusPlayingInfo mus_playing;
-
 EXTERN_CVAR (Int, snd_samplerate)
 EXTERN_CVAR (Int, snd_mididevice)
-
-static bool MusicDown = true;
 
 static bool ungzip(uint8_t *data, int size, std::vector<uint8_t> &newdata);
 
@@ -137,7 +132,7 @@ CUSTOM_CVAR (Float, snd_musicvolume, 0.5f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 		// let them know about the change.
 		if (mus_playing.handle != nullptr)
 		{
-			mus_playing.handle->MusicVolumeChanged();
+			ZMusic_VolumeChanged(mus_playing.handle);
 		}
 		else
 		{ // If the music was stopped because volume was 0, start it now.
@@ -278,9 +273,8 @@ void I_InitMusic (void)
 #ifdef _WIN32
 	I_InitMusicWin32 ();
 #endif // _WIN32
+	snd_mididevice.Callback();
 	
-	MusicDown = false;
-
 	Callbacks callbacks;
 
 	callbacks.Fluid_MessageFunc = Printf;
@@ -297,28 +291,6 @@ void I_InitMusic (void)
 	SetupWgOpn();
 }
 
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-void I_ShutdownMusic(bool onexit)
-{
-	if (MusicDown)
-		return;
-	MusicDown = true;
-	if (mus_playing.handle)
-	{
-		S_StopMusic (true);
-		assert (mus_playing.handle == nullptr);
-	}
-	if (onexit)
-	{
-		ZMusic_Shutdown();
-	}
-}
 
 //==========================================================================
 //
@@ -370,7 +342,7 @@ ADD_STAT(music)
 {
 	if (mus_playing.handle != nullptr)
 	{
-		return FString(mus_playing.handle->GetStats().c_str());
+		return FString(ZMusic_GetStats(mus_playing.handle).c_str());
 	}
 	return "No song playing";
 }
@@ -380,7 +352,6 @@ ADD_STAT(music)
 // Common loader for the dumpers.
 //
 //==========================================================================
-extern MusPlayingInfo mus_playing;
 
 static MIDISource *GetMIDISource(const char *fn)
 {

@@ -54,7 +54,6 @@
 #include "version.h"
 #include "videomodes.h"
 #include "doomerrors.h"
-#include "atterm.h"
 
 
 @implementation NSWindow(ExitAppOnClose)
@@ -62,8 +61,8 @@
 - (void)exitAppOnClose
 {
 	NSButton* closeButton = [self standardWindowButton:NSWindowCloseButton];
-	[closeButton setAction:@selector(terminate:)];
-	[closeButton setTarget:NSApp];
+	[closeButton setAction:@selector(sendExitEvent:)];
+	[closeButton setTarget:[NSApp delegate]];
 }
 
 @end
@@ -90,7 +89,7 @@
 @end
 
 
-EXTERN_CVAR(Bool, ticker   )
+EXTERN_CVAR(Bool, ticker)
 EXTERN_CVAR(Bool, vid_vsync)
 EXTERN_CVAR(Bool, vid_hidpi)
 
@@ -949,11 +948,10 @@ void I_InitGraphics()
 	ticker.SetGenericRepDefault(val, CVAR_Bool);
 
 	Video = new CocoaVideo;
-	atterm(I_ShutdownGraphics);
 }
 
 
-static void I_DeleteRenderer()
+void I_DeleteRenderer()
 {
 	delete Renderer;
 	Renderer = NULL;
@@ -964,7 +962,6 @@ void I_CreateRenderer()
 	if (NULL == Renderer)
 	{
 		Renderer = new FSoftwareRenderer;
-		atterm(I_DeleteRenderer);
 	}
 }
 
