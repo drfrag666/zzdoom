@@ -30,6 +30,7 @@ namespace swrenderer
 		assert(mBaseColormap->Maps != nullptr);
 	}
 
+	// This one is to make r_swcanvas.cpp compile
 	void DrawerArgs::SetLight(FSWColormap *base_colormap, float light, int shade)
 	{
 		mBaseColormap = base_colormap;

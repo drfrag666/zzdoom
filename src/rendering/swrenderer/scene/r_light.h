@@ -89,6 +89,7 @@ namespace swrenderer
 
 		static fixed_t LightLevelToShade(int lightlevel, bool foggy, RenderViewport *viewport) { return LightLevelToShadeImpl(lightlevel + ActualExtraLight(foggy, viewport), foggy); }
 
+		// This one is to make r_swcanvas.cpp compile
 		static fixed_t LightLevelToShade(int lightlevel, bool foggy) 
 { return LightLevelToShadeImpl(lightlevel, foggy); }
 
