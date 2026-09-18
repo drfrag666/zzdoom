@@ -9,6 +9,8 @@ struct FLightNode;
 namespace swrenderer
 {
 	class RenderThread;
+	struct FWallCoords;
+	class ProjectedWallLight;
 	
 	class VoxelBlock
 	{
@@ -29,13 +31,11 @@ namespace swrenderer
 		bool SetStyle(RenderViewport *viewport, FRenderStyle style, fixed_t alpha, int translation, uint32_t color, const ColormapLight &light);
 		bool SetStyle(RenderViewport *viewport, FRenderStyle style, float alpha, int translation, uint32_t color, const ColormapLight &light);
 		bool SetStyle(RenderViewport *viewport, FRenderStyle style, float alpha, int translation, uint32_t color, FDynamicColormap *&basecolormap);
-		void SetDest(RenderViewport *viewport, int x, int y);
-		void SetCount(int count) { dc_count = count; }
 		void SetSolidColor(int color) { dc_color = color; dc_color_bgra = GPalette.BaseColors[color]; }
 		void SetDynamicLight(uint32_t color) { dynlightcolor = color; }
 
-		void DrawMaskedColumn(RenderThread *thread, int x, fixed_t iscale, FTexture *texture, fixed_t column, double spryscale, double sprtopscreen, bool sprflipvert, const short *mfloorclip, const short *mceilingclip, FRenderStyle style, bool unmasked = false);
-		void FillColumn(RenderThread *thread);
+		void DrawMasked(RenderThread* thread, double topZ, double scale, bool flipX, bool flipY, const FWallCoords& WallC, const ProjectedWallLight& light, FTexture* texture, const short* mfloorclip, const short* mceilingclip, FRenderStyle style);
+		void DrawMasked2D(RenderThread *thread, double x0, double x1, double y0, double y1, FTexture* texture, FRenderStyle style);
 		void DrawVoxelBlocks(RenderThread *thread, const VoxelBlock *blocks, int blockcount);
 
 		uint8_t *Dest() const { return dc_dest; }
@@ -70,9 +70,13 @@ namespace swrenderer
 		RenderViewport *Viewport() const { return dc_viewport; }
 
 	private:
+		void DrawMaskedColumn(RenderThread* thread, int x, int y1, int cliptop, int clipbottom, uint32_t texelX, uint32_t texelStepX, uint32_t texelStepY, float scaleV, bool flipY, FTexture* tex, int texwidth, int texheight, bool bgra, FRenderStyle style);
+
+		void SetDest(RenderViewport* viewport, int x, int y);
+		void SetCount(int count) { dc_count = count; }
+
 		bool SetBlendFunc(int op, fixed_t fglevel, fixed_t bglevel, int flags);
 		static fixed_t GetAlpha(int type, fixed_t alpha);
-		void DrawMaskedColumnBgra(RenderThread *thread, int x, fixed_t iscale, FTexture *tex, fixed_t column, double spryscale, double sprtopscreen, bool sprflipvert, const short *mfloorclip, const short *mceilingclip, bool unmasked);
 
 		uint8_t *dc_dest = nullptr;
 		int dc_dest_y = 0;

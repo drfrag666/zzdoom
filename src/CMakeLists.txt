@@ -857,6 +857,7 @@ set (PCH_SOURCES
 	maploader/strifedialogue.cpp
 	maploader/polyobjects.cpp
 	maploader/compatibility.cpp
+	maploader/postprocessor.cpp
 	menu/joystickmenu.cpp
 	menu/loadsavemenu.cpp
 	menu/menu.cpp

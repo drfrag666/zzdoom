@@ -78,6 +78,7 @@
 #include "fragglescript/t_fs.h"
 #include "swrenderer/r_swrenderer.h"
 #include "xlat/xlat.h"
+#include "vm.h"
 
 enum
 {
@@ -3051,7 +3052,8 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 		ParseTextMap(map, missingtex);
 	}
 
-	SetCompatibilityParams(checksum);
+	CalcIndices();
+	PostProcessLevel(checksum);
 
 	LoopSidedefs(true);
 
@@ -3262,3 +3264,4 @@ void MapLoader::LoadLevel(MapData *map, const char *lumpname, int position)
 	if (!Level->IsReentering())
 		Level->FinalizePortals();	// finalize line portals after polyobjects have been initialized. This info is needed for properly flagging them.
 }
+
