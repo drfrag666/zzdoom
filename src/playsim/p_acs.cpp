@@ -4387,11 +4387,11 @@ int DLevelScript::GetActorProperty (int tid, int property)
 								return 0;
 							}
 
-	case APROP_SeeSound:	return GlobalACSStrings.AddString(actor->SeeSound);
-	case APROP_AttackSound:	return GlobalACSStrings.AddString(actor->AttackSound);
-	case APROP_PainSound:	return GlobalACSStrings.AddString(actor->PainSound);
-	case APROP_DeathSound:	return GlobalACSStrings.AddString(actor->DeathSound);
-	case APROP_ActiveSound:	return GlobalACSStrings.AddString(actor->ActiveSound);
+	case APROP_SeeSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->SeeSound));
+	case APROP_AttackSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->AttackSound));
+	case APROP_PainSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->PainSound));
+	case APROP_DeathSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->DeathSound));
+	case APROP_ActiveSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->ActiveSound));
 	case APROP_Species:		return GlobalACSStrings.AddString(actor->GetSpecies());
 	case APROP_NameTag:		return GlobalACSStrings.AddString(actor->GetTag());
 	case APROP_StencilColor:return actor->fillcolor;
@@ -4464,11 +4464,11 @@ int DLevelScript::CheckActorProperty (int tid, int property, int value)
 
 		// Strings are covered by GetActorProperty, but they're fairly
 		// heavy-duty, so make the check here.
-		case APROP_SeeSound:	string = actor->SeeSound; break;
-		case APROP_AttackSound:	string = actor->AttackSound; break;
-		case APROP_PainSound:	string = actor->PainSound; break;
-		case APROP_DeathSound:	string = actor->DeathSound; break;
-		case APROP_ActiveSound:	string = actor->ActiveSound; break; 
+		case APROP_SeeSound:	string = S_GetSoundName(actor->SeeSound); break;
+		case APROP_AttackSound:	string = S_GetSoundName(actor->AttackSound); break;
+		case APROP_PainSound:	string = S_GetSoundName(actor->PainSound); break;
+		case APROP_DeathSound:	string = S_GetSoundName(actor->DeathSound); break;
+		case APROP_ActiveSound:	string = S_GetSoundName(actor->ActiveSound); break; 
 		case APROP_Species:		string = actor->GetSpecies(); break;
 		case APROP_NameTag:		string = actor->GetTag(); break;
 		case APROP_DamageType:	string = actor->DamageType; break;
@@ -5265,7 +5265,7 @@ int DLevelScript::SwapActorTeleFog(AActor *activator, int tid)
 				}
 				else if (rettype == TypeSound)
 				{
-					retval = GlobalACSStrings.AddString(FSoundID(retval));
+					retval = GlobalACSStrings.AddString(S_GetSoundName(FSoundID(retval)));
 				}
 			}
 			else if (rettype == TypeFloat64)
@@ -5910,13 +5910,14 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 						}
 						if (sid != 0)
 						{
+							// What a mess. I think it's a given that this was used with sound flags so it will forever be restricted to the original 8 channels.
 							if (!looping)
 							{
-								S_PlaySound(spot, chan, sid, vol, atten, !!local);
+								S_PlaySound(spot, chan&7, EChanFlags::FromInt(chan&~7), sid, vol, atten, !!local);
 							}
 							else if (!S_IsActorPlayingSomething(spot, chan & 7, sid))
 							{
-								S_PlaySound(spot, chan | CHAN_LOOP, sid, vol, atten, !!local);
+								S_PlaySound(spot, chan&7, EChanFlags::FromInt(chan & ~7)|CHANF_LOOP, sid, vol, atten, !!local);
 							}
 						}
 					}
@@ -5953,7 +5954,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 				if (args[0] == 0)
 				{
-					S_ChangeSoundVolume(activator, chan, volume);
+					S_ChangeActorSoundVolume(activator, chan, volume);
 				}
 				else
 				{
@@ -5962,7 +5963,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 					while ((spot = it.Next()) != NULL)
 					{
-						S_ChangeSoundVolume(spot, chan, volume);
+						S_ChangeActorSoundVolume(spot, chan, volume);
 					}
 				}
 			}
@@ -8830,7 +8831,7 @@ scriptwait:
 				{
 					S_Sound (
 						activationline->frontsector,
-						CHAN_AUTO,	// Not CHAN_AREA, because that'd probably break existing scripts.
+						CHAN_AUTO, 0,	// Not CHAN_AREA, because that'd probably break existing scripts.
 						lookup,
 						(float)(STACK(1)) / 127.f,
 						ATTN_NORM);
@@ -8838,7 +8839,7 @@ scriptwait:
 				else
 				{
 					S_Sound (
-						CHAN_AUTO,
+						CHAN_AUTO, 0,
 						lookup,
 						(float)(STACK(1)) / 127.f,
 						ATTN_NORM);
@@ -8851,7 +8852,7 @@ scriptwait:
 			lookup = Level->Behaviors.LookupString (STACK(2));
 			if (lookup != NULL)
 			{
-				S_Sound (CHAN_AUTO,
+				S_Sound (CHAN_AUTO, 0,
 						 lookup,
 						 (float)(STACK(1)) / 127.f, ATTN_NONE);
 			}
@@ -8862,7 +8863,7 @@ scriptwait:
 			lookup = Level->Behaviors.LookupString (STACK(2));
 			if (lookup != NULL && activator && activator->CheckLocalView())
 			{
-				S_Sound (CHAN_AUTO,
+				S_Sound (CHAN_AUTO, 0,
 						 lookup,
 						 (float)(STACK(1)) / 127.f, ATTN_NONE);
 			}
@@ -8875,13 +8876,13 @@ scriptwait:
 			{
 				if (activator != NULL)
 				{
-					S_Sound (activator, CHAN_AUTO,
+					S_Sound (activator, CHAN_AUTO, 0,
 							 lookup,
 							 (float)(STACK(1)) / 127.f, ATTN_NORM);
 				}
 				else
 				{
-					S_Sound (CHAN_AUTO,
+					S_Sound (CHAN_AUTO, 0,
 							 lookup,
 							 (float)(STACK(1)) / 127.f, ATTN_NONE);
 				}
@@ -9049,7 +9050,7 @@ scriptwait:
 
 				while ( (spot = iterator.Next ()) )
 				{
-					S_Sound (spot, CHAN_AUTO,
+					S_Sound (spot, CHAN_AUTO, 0,
 							 lookup,
 							 (float)(STACK(1))/127.f, ATTN_NORM);
 				}

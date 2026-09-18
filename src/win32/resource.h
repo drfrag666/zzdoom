@@ -164,5 +164,3 @@
 // [SP] This is our's.
 #define IDC_WELCOME_NOAUTOLOAD			4023
 #define IDC_WELCOME_LIGHTS              4024
-#define IDC_WELCOME_BRIGHTMAPS          4025
-#define IDC_WELCOME_VULKAN				4026
