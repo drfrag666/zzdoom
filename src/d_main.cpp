@@ -150,6 +150,8 @@ void ParseGLDefs();
 void DrawFullscreenSubtitle(const char *text);
 void D_Cleanup();
 void FreeSBarInfoScript();
+void I_UpdateWindowTitle();
+void C_GrabCVarDefaults ();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
@@ -167,7 +169,6 @@ EXTERN_CVAR (Bool, lookstrafe)
 EXTERN_CVAR (Int, screenblocks)
 EXTERN_CVAR (Bool, sv_cheats)
 EXTERN_CVAR (Bool, sv_unlimited_pickup)
-EXTERN_CVAR (Bool, I_FriendlyWindowTitle)
 
 extern int testingmode;
 extern bool setmodeneeded;
@@ -2533,6 +2534,8 @@ static int D_DoomMain_Internal (void)
 		allwads.ShrinkToFit();
 		SetMapxxFlag();
 
+		C_GrabCVarDefaults(); //parse DEFCVARS
+
 		GameConfig->DoKeySetup(gameinfo.ConfigName);
 
 		// Now that wads are loaded, define mod-specific cvars.
@@ -2855,8 +2858,7 @@ static int D_DoomMain_Internal (void)
 			setmodeneeded = false;			// This may be set to true here, but isn't needed for a restart
 		}
 
-		if (I_FriendlyWindowTitle)
-			I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
+		I_UpdateWindowTitle();
 
 		D_DoomLoop ();		// this only returns if a 'restart' CCMD is given.
 		// 
@@ -3096,11 +3098,27 @@ DEFINE_FIELD_X(InputEventData, event_t, data3)
 DEFINE_FIELD_X(InputEventData, event_t, x)
 DEFINE_FIELD_X(InputEventData, event_t, y)
 
-
-CUSTOM_CVAR(Bool, I_FriendlyWindowTitle, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE|CVAR_NOINITCALL)
+CUSTOM_CVAR(Int, I_FriendlyWindowTitle, 1, CVAR_GLOBALCONFIG|CVAR_ARCHIVE|CVAR_NOINITCALL)
 {
-	if (self)
+	I_UpdateWindowTitle();
+}
+
+void I_UpdateWindowTitle()
+{
+	switch (I_FriendlyWindowTitle)
+	{
+	case 1:
+		if (level.LevelName && level.LevelName.GetChars()[0])
+		{
+			FString titlestr;
+			titlestr.Format("%s - %s", level.LevelName.GetChars(), DoomStartupInfo.Name.GetChars());
+			I_SetWindowTitle(titlestr.GetChars());
+			break;
+		}
+	case 2:
 		I_SetWindowTitle(DoomStartupInfo.Name.GetChars());
-	else
+		break;
+	default:
 		I_SetWindowTitle(NULL);
+	}
 }

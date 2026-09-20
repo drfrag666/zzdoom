@@ -48,6 +48,8 @@
 #include "menu/menu.h"
 #include "vm.h"
 
+#include "version.h"
+
 struct FLatchedValue
 {
 	FBaseCVar *Variable;
@@ -1742,6 +1744,62 @@ CCMD (archivecvar)
 		if (var != NULL && (var->GetFlags() & CVAR_AUTO))
 		{
 			var->SetArchiveBit ();
+		}
+	}
+}
+
+void C_GrabCVarDefaults ()
+{
+	int lump, lastlump = 0;
+	int lumpversion, gamelastrunversion;
+	gamelastrunversion = atoi(LASTRUNVERSION);
+
+	while ((lump = Wads.FindLump("DEFCVARS", &lastlump)) != -1)
+	{
+		// don't parse from wads
+		if (lastlump > Wads.GetLastLump(Wads.GetMaxIwadNum()))
+			I_FatalError("Cannot load DEFCVARS from a wadfile!\n");
+
+		FScanner sc(lump);
+
+		sc.MustGetString();
+		if (!sc.Compare("version"))
+			sc.ScriptError("Must declare version for defcvars! (currently: %i)", gamelastrunversion);
+		sc.MustGetNumber();
+		lumpversion = sc.Number;
+		if (lumpversion > gamelastrunversion)
+			sc.ScriptError("Unsupported version %i (%i supported)", lumpversion, gamelastrunversion);
+		if (lumpversion < 219)
+			sc.ScriptError("Version must be at least 219 (current version %i)", gamelastrunversion);
+
+		FBaseCVar *var;
+
+		while (sc.GetString())
+		{
+			if (sc.Compare("set"))
+			{
+				sc.MustGetString();
+			}
+			var = FindCVar (sc.String, NULL);
+			if (var != NULL)
+			{
+				if (var->GetFlags() & CVAR_ARCHIVE)
+				{
+					UCVarValue val;
+
+					sc.MustGetString();
+					val.String = const_cast<char *>(sc.String);
+					var->SetGenericRepDefault(val, CVAR_String);
+				}
+				else
+				{
+					sc.ScriptError("Cannot set cvar default for non-config cvar '%s'", sc.String);
+				}
+			}
+			else
+			{
+				sc.ScriptError("Unknown cvar '%s'", sc.String);
+			}
 		}
 	}
 }

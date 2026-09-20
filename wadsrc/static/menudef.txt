@@ -2160,11 +2160,11 @@ OptionValue Ratios
 OptionValue ScaleModes
 {
 	0, "$OPTVAL_SCALENEAREST"
-	1, "$OPTVAL_SCALELINEAR"
 	2, "320x200"
 	3, "640x400"
 	4, "1280x800"
 	5, "$OPTVAL_CUSTOM"
+	1, "$OPTVAL_LOWEST"
 }
 OptionValue CropAspect
 {
@@ -2344,6 +2344,7 @@ OptionString "LanguageOptions"
 	"de", "Deutsch (German)"
 	"es", "Español (España) (Castilian Spanish)"
 	"esm", "Español (Latino) (Latin American Spanish)"
+	"eo", "Esperanto"
 	"fi", "Suomi (Finnish)"
 	"fr", "Français (French)"
 	"it", "Italiano (Italian)"

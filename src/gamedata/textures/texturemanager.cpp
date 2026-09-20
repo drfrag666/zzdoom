@@ -137,6 +137,7 @@ void FTextureManager::DeleteAll()
 	}
 	mAnimatedDoors.Clear();
 	BuildTileData.Clear();
+	tmanips.Clear();
 }
 
 //==========================================================================
@@ -673,6 +674,69 @@ void FTextureManager::AddHiresTextures (int wadnum)
 //
 //==========================================================================
 
+void FTextureManager::ParseColorization(FScanner& sc)
+{
+	TextureManipulation tm = {};
+	tm.ModulateColor = 0x01ffffff;
+	sc.MustGetString();
+	FName cname = sc.String;
+	sc.MustGetToken('{');
+	while (!sc.CheckToken('}'))
+	{
+		sc.MustGetString();
+		if (sc.Compare("DesaturationFactor"))
+		{
+			sc.MustGetFloat();
+			tm.DesaturationFactor = (float)sc.Float;
+		}
+		else if (sc.Compare("AddColor"))
+		{
+			sc.MustGetString();
+			tm.AddColor = (tm.AddColor & 0xff000000) | (V_GetColor(NULL, sc) & 0xffffff);
+		}
+		else if (sc.Compare("ModulateColor"))
+		{
+			sc.MustGetString();
+			tm.ModulateColor = V_GetColor(NULL, sc) & 0xffffff;
+			if (sc.CheckToken(','))
+			{
+				sc.MustGetNumber();
+				tm.ModulateColor.a = sc.Number;
+			}
+			else tm.ModulateColor.a = 1;
+		}
+		else if (sc.Compare("BlendColor"))
+		{
+			sc.MustGetString();
+			tm.BlendColor = V_GetColor(NULL, sc) & 0xffffff;
+			sc.MustGetToken(',');
+			sc.MustGetString();
+			static const char* opts[] = { "none", "alpha", "screen", "overlay", "hardlight", nullptr };
+			tm.AddColor.a = (tm.AddColor.a & ~TextureManipulation::BlendMask) | sc.MustMatchString(opts);
+			if (sc.Compare("alpha"))
+			{
+				sc.MustGetToken(',');
+				sc.MustGetFloat();
+				tm.BlendColor.a = (uint8_t)(clamp(sc.Float, 0., 1.) * 255);
+			}
+		}
+		else if (sc.Compare("invert"))
+		{
+			tm.AddColor.a |= TextureManipulation::InvertBit;
+		}
+		else sc.ScriptError("Unknown token '%s'", sc.String);
+	}
+	if (tm.CheckIfEnabled())
+	{
+		tmanips.Insert(cname, tm);
+	}
+	else
+	{
+		tmanips.Remove(cname);
+	}
+
+}
+
 void FTextureManager::LoadTextureDefs(int wadnum, const char *lumpname)
 {
 	int remapLump, lastLump;
@@ -823,6 +887,10 @@ void FTextureManager::ParseTextureDef(int lump)
 		else if (sc.Compare("graphic"))
 		{
 			ParseXTexture(sc, ETextureType::MiscPatch);
+		}
+		else if (sc.Compare("colorization"))
+		{
+			ParseColorization(sc);
 		}
 		else if (sc.Compare("#include"))
 		{
