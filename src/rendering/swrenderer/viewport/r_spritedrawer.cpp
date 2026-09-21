@@ -243,7 +243,7 @@ namespace swrenderer
 		}
 	}
 
-	void SpriteDrawerArgs::DrawMasked(RenderThread* thread, double topZ, double scale, bool flipX, bool flipY, const FWallCoords& WallC, const ProjectedWallLight& light, FTexture* tex, const short* mfloorclip, const short* mceilingclip, FRenderStyle style)
+	void SpriteDrawerArgs::DrawMasked(RenderThread* thread, double topZ, double scale, bool flipX, bool flipY, const FWallCoords& WallC, int clipx1, int clipx2, const ProjectedWallLight& light, FTexture* tex, const short* mfloorclip, const short* mceilingclip, FRenderStyle style)
 	{
 		auto viewport = thread->Viewport.get();
 		auto cameraLight = CameraLight::Instance();
@@ -273,8 +273,10 @@ namespace swrenderer
 		wpos += wstepX * 0.5f;
 		upos += ustepX * 0.5f;
 
-		int x1 = WallC.sx1;
-		int x2 = WallC.sx2;
+		int x1 = MAX<int>(WallC.sx1, clipx1);
+		int x2 = MIN<int>(WallC.sx2, clipx2);
+		if (x1 >= x2)
+			return;
 
 		float centerY = thread->Viewport->CenterY;
 		topZ -= thread->Viewport->viewpoint.Pos.Z;
@@ -287,6 +289,14 @@ namespace swrenderer
 
 		float lightpos = light.GetLightPos(x1);
 		float lightstep = light.GetLightStep();
+
+		if (x1 > WallC.sx1)
+		{
+			int dx = x1 - WallC.sx1;
+			upos += ustepX * dx;
+			wpos += wstepX * dx;
+			lightpos += lightstep * dx;
+		}
 
 		dc_viewport = viewport;
 		dc_textureheight = texheight;

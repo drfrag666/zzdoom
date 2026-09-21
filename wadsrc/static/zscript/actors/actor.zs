@@ -46,19 +46,19 @@ struct FLineTraceData
 		TRACE_HasHitSky
 	};
 
-	Actor HitActor;
-	Line HitLine;
-	Sector HitSector;
-	F3DFloor Hit3DFloor;
-	TextureID HitTexture;
-	Vector3 HitLocation;
-	Vector3 HitDir;
-	double Distance;
-	int NumPortals;
-	int LineSide;
-	int LinePart;
-	int SectorPlane;
-	int HitType;
+	native Actor HitActor;
+	native Line HitLine;
+	native Sector HitSector;
+	native F3DFloor Hit3DFloor;
+	native TextureID HitTexture;
+	native Vector3 HitLocation;
+	native Vector3 HitDir;
+	native double Distance;
+	native int NumPortals;
+	native int LineSide;
+	native int LinePart;
+	native int SectorPlane;
+	native int HitType;
 }
 
 struct LinkContext
@@ -1055,11 +1055,13 @@ class Actor : Thinker native
 	deprecated("2.3") native void A_BulletAttack();
 	native void A_WolfAttack(int flags = 0, sound whattoplay = "weapons/pistol", double snipe = 1.0, int maxdamage = 64, int blocksize = 128, int pointblank = 2, int longrange = 4, double runspeed = 160.0, class<Actor> pufftype = "BulletPuff");
 	deprecated("4.3") native clearscope void A_PlaySound(sound whattoplay = "weapons/pistol", int slot = CHAN_BODY, double volume = 1.0, bool looping = false, double attenuation = ATTN_NORM, bool local = false, double pitch = 0.0);
-	native clearscope void A_StartSound(sound whattoplay, int slot = CHAN_BODY, int flags = 0, double volume = 1.0, double attenuation = ATTN_NORM, double pitch = 0.0);
+	native clearscope void A_StartSound(sound whattoplay, int slot = CHAN_BODY, int flags = 0, double volume = 1.0, double attenuation = ATTN_NORM, double pitch = 0.0, double startTime = 0.0);
 	native void A_SoundVolume(int slot, double volume);
 	native void A_SoundPitch(int slot, double pitch);
 	deprecated("2.3") void A_PlayWeaponSound(sound whattoplay) { A_StartSound(whattoplay, CHAN_WEAPON); }
 	native void A_StopSound(int slot = CHAN_VOICE);	// Bad default but that's what is originally was...
+	void A_StopAllSounds()	{	A_StopSounds(0,0);	}
+	native void A_StopSounds(int chanmin, int chanmax);
 	deprecated("2.3") native void A_PlaySoundEx(sound whattoplay, name slot, bool looping = false, int attenuation = 0);
 	deprecated("2.3") native void A_StopSoundEx(name slot);
 	native clearscope bool IsActorPlayingSound(int channel, Sound snd = 0);

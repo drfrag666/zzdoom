@@ -1489,17 +1489,32 @@ void ParseCVarInfo()
 				{
 					cvarflags |= CVAR_LATCH;
 				}
+				else if (stricmp(sc.String, "nosave") == 0)
+				{
+					cvarflags |= CVAR_CONFIG_ONLY;
+				}
 				else
 				{
 					sc.ScriptError("Unknown cvar attribute '%s'", sc.String);
 				}
 				sc.MustGetAnyToken();
 			}
+
+			// Possibility of defining a cvar as 'server nosave' or 'user nosave' is kept for
+			// compatibility reasons.
+			if (cvarflags & CVAR_CONFIG_ONLY)
+			{
+				cvarflags &= ~CVAR_SERVERINFO;
+				cvarflags &= ~CVAR_USERINFO;
+			}
+
 			// Do some sanity checks.
-			if ((cvarflags & (CVAR_SERVERINFO|CVAR_USERINFO)) == 0 ||
+			// No need to check server-nosave and user-nosave combinations because they
+			// are made impossible right above.
+			if ((cvarflags & (CVAR_SERVERINFO|CVAR_USERINFO|CVAR_CONFIG_ONLY)) == 0 ||
 				(cvarflags & (CVAR_SERVERINFO|CVAR_USERINFO)) == (CVAR_SERVERINFO|CVAR_USERINFO))
 			{
-				sc.ScriptError("One of 'server' or 'user' must be specified");
+				sc.ScriptError("One of 'server', 'user', or 'nosave' must be specified");
 			}
 			// The next token must be the cvar type.
 			if (sc.TokenType == TK_Bool)
@@ -2764,7 +2779,7 @@ static int D_DoomMain_Internal (void)
 
 		// enable custom invulnerability map here
 		if (cl_customizeinvulmap)
-			R_InitColormaps(true);
+			R_UpdateInvulnerabilityColormap();
 
 		if (!restart)
 		{

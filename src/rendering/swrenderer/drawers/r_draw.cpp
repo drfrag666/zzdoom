@@ -231,8 +231,6 @@ namespace swrenderer
 		WallColumnDrawerArgs& drawerargs = *thread->columndrawer.get();
 		drawerargs.wallargs = &wallargs;
 
-		bool fixed = wallargs.fixedlight;
-
 		bool haslights = r_dynlights && wallargs.lightlist;
 		if (haslights)
 		{
@@ -248,7 +246,13 @@ namespace swrenderer
 
 		float curlight = wallargs.lightpos;
 		float lightstep = wallargs.lightstep;
-		int shade = wallargs.mShade;
+		int shade = wallargs.Shade();
+
+		if (wallargs.fixedlight)
+		{
+			curlight = wallargs.FixedLight();
+			lightstep = 0;
+		}
 
 		float upos = wallargs.texcoords.upos, ustepX = wallargs.texcoords.ustepX, ustepY = wallargs.texcoords.ustepY;
 		float vpos = wallargs.texcoords.vpos, vstepX = wallargs.texcoords.vstepX, vstepY = wallargs.texcoords.vstepY;
@@ -273,7 +277,7 @@ namespace swrenderer
 			int y2 = dwal[x];
 			if (y2 > y1)
 			{
-				if (!fixed) drawerargs.SetLight(curlight, shade);
+				drawerargs.SetLight(curlight, shade);
 				if (haslights)
 					SetLights(drawerargs, x, y1);
 				else

@@ -35,10 +35,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef _WIN32
-#include <io.h>
-#endif
 
+#include "templates.h"
 #include "s_soundinternal.h"
 #include "m_swap.h"
 #include "superfasthash.h"
@@ -171,10 +169,7 @@ void SoundEngine::CacheSound (sfxinfo_t *sfx)
 		}
 		else
 		{
-			// Since we do not know in what format the sound will be used, we have to cache both.
-			FSoundLoadBuffer SoundBuffer;
-			LoadSound(sfx, &SoundBuffer);
-			LoadSound3D(sfx, &SoundBuffer);
+			LoadSound(sfx);
 			sfx->bUsed = true;
 		}
 	}
@@ -188,12 +183,9 @@ void SoundEngine::CacheSound (sfxinfo_t *sfx)
 
 void SoundEngine::UnloadSound (sfxinfo_t *sfx)
 {
-	if (sfx->data3d.isValid() && sfx->data != sfx->data3d)
-		GSnd->UnloadSound(sfx->data3d);
 	if (sfx->data.isValid())
 		GSnd->UnloadSound(sfx->data);
 	sfx->data.Clear();
-	sfx->data3d.Clear();
 }
 
 //==========================================================================
@@ -377,7 +369,7 @@ FSoundID SoundEngine::ResolveSound(const void *, int, FSoundID soundid, float &a
 
 FSoundChan *SoundEngine::StartSound(int type, const void *source,
 	const FVector3 *pt, int channel, EChanFlags flags, FSoundID sound_id, float volume, float attenuation,
-	FRolloffInfo *forcedrolloff, float spitch)
+	FRolloffInfo *forcedrolloff, float spitch, float startTime)
 {
 	sfxinfo_t *sfx;
 	EChanFlags chanflags = flags;
@@ -387,7 +379,6 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 	FSoundChan *chan;
 	FVector3 pos, vel;
 	FRolloffInfo *rolloff;
-	FSoundLoadBuffer SoundBuffer;
 
 	if (sound_id <= 0 || volume <= 0 || nosfx || nosound )
 		return NULL;
@@ -485,7 +476,7 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 	}
 
 	// Make sure the sound is loaded.
-	sfx = LoadSound(sfx, &SoundBuffer);
+	sfx = LoadSound(sfx);
 
 	// The empty sound never plays.
 	if (sfx->lumpnum == sfx_empty)
@@ -576,14 +567,17 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 		if (chanflags & (CHANF_UI|CHANF_NOPAUSE)) startflags |= SNDF_NOPAUSE;
 		if (chanflags & CHANF_UI) startflags |= SNDF_NOREVERB;
 
+		startTime = (startflags & SNDF_LOOP)
+			? fmod(startTime, (float)GSnd->GetMSLength(sfx->data) / 1000.f)
+			: clamp<float>(startTime, 0.f, (float)GSnd->GetMSLength(sfx->data) / 1000.f);
+
 		if (attenuation > 0 && type != SOURCE_None)
 		{
-            LoadSound3D(sfx, &SoundBuffer);
-            chan = (FSoundChan*)GSnd->StartSound3D (sfx->data3d, &listener, float(volume), rolloff, float(attenuation), pitch, basepriority, pos, vel, channel, startflags, NULL);
+			chan = (FSoundChan*)GSnd->StartSound3D (sfx->data, &listener, float(volume), rolloff, float(attenuation), pitch, basepriority, pos, vel, channel, startflags, NULL, startTime);
 		}
 		else
 		{
-			chan = (FSoundChan*)GSnd->StartSound (sfx->data, float(volume), pitch, startflags, NULL);
+			chan = (FSoundChan*)GSnd->StartSound (sfx->data, float(volume), pitch, startflags, NULL, startTime);
 		}
 	}
 	if (chan == NULL && (chanflags & CHANF_LOOP))
@@ -643,13 +637,12 @@ void SoundEngine::RestartChannel(FSoundChan *chan)
 
 	FSoundChan *ochan;
 	sfxinfo_t *sfx = &S_sfx[chan->SoundID];
-	FSoundLoadBuffer SoundBuffer;
 
 	// If this is a singular sound, don't play it if it's already playing.
 	if (sfx->bSingular && CheckSingular(chan->SoundID))
 		return;
 
-	sfx = LoadSound(sfx, &SoundBuffer);
+	sfx = LoadSound(sfx);
 
 	// The empty sound never plays.
 	if (sfx->lumpnum == sfx_empty)
@@ -683,9 +676,8 @@ void SoundEngine::RestartChannel(FSoundChan *chan)
 			return;
 		}
 
-        LoadSound3D(sfx, &SoundBuffer);
 		chan->ChanFlags &= ~(CHANF_EVICTED|CHANF_ABSTIME);
-        ochan = (FSoundChan*)GSnd->StartSound3D(sfx->data3d, &listener, chan->Volume, &chan->Rolloff, chan->DistanceScale, chan->Pitch,
+        ochan = (FSoundChan*)GSnd->StartSound3D(sfx->data, &listener, chan->Volume, &chan->Rolloff, chan->DistanceScale, chan->Pitch,
             chan->Priority, pos, vel, chan->EntChannel, startflags, chan);
 	}
 	else
@@ -708,7 +700,7 @@ void SoundEngine::RestartChannel(FSoundChan *chan)
 //
 //==========================================================================
 
-sfxinfo_t *SoundEngine::LoadSound(sfxinfo_t *sfx, FSoundLoadBuffer *pBuffer)
+sfxinfo_t *SoundEngine::LoadSound(sfxinfo_t *sfx)
 {
 	if (GSnd->IsNull()) return sfx;
 
@@ -745,34 +737,29 @@ sfxinfo_t *SoundEngine::LoadSound(sfxinfo_t *sfx, FSoundLoadBuffer *pBuffer)
 		if (size > 8)
 		{
 			int32_t dmxlen = LittleLong(((int32_t *)sfxdata.Data())[1]);
-            std::pair<SoundHandle,bool> snd;
 
 			// If the sound is voc, use the custom loader.
 			if (strncmp ((const char *)sfxdata.Data(), "Creative Voice File", 19) == 0)
 			{
-				snd = GSnd->LoadSoundVoc(sfxdata.Data(), size);
+				sfx->data = GSnd->LoadSoundVoc(sfxdata.Data(), size);
 			}
 			// If the sound is raw, just load it as such.
 			else if (sfx->bLoadRAW)
 			{
-				snd = GSnd->LoadSoundRaw(sfxdata.Data(), size, sfx->RawRate, 1, 8, sfx->LoopStart);
+				sfx->data = GSnd->LoadSoundRaw(sfxdata.Data(), size, sfx->RawRate, 1, 8, sfx->LoopStart);
 			}
 			// Otherwise, try the sound as DMX format.
 			else if (((uint8_t *)sfxdata.Data())[0] == 3 && ((uint8_t *)sfxdata.Data())[1] == 0 && dmxlen <= size - 8)
 			{
 				int frequency = LittleShort(((uint16_t *)sfxdata.Data())[1]);
 				if (frequency == 0) frequency = 11025;
-				snd = GSnd->LoadSoundRaw(sfxdata.Data()+8, dmxlen, frequency, 1, 8, sfx->LoopStart);
+				sfx->data = GSnd->LoadSoundRaw(sfxdata.Data()+8, dmxlen, frequency, 1, 8, sfx->LoopStart);
 			}
 			// If that fails, let the sound system try and figure it out.
 			else
 			{
-				snd = GSnd->LoadSound(sfxdata.Data(), size, false, pBuffer);
+				sfx->data = GSnd->LoadSound(sfxdata.Data(), size);
 			}
-
-            sfx->data = snd.first;
-            if(snd.second)
-                sfx->data3d = sfx->data;
 		}
 
 		if (!sfx->data.isValid())
@@ -786,55 +773,6 @@ sfxinfo_t *SoundEngine::LoadSound(sfxinfo_t *sfx, FSoundLoadBuffer *pBuffer)
 		break;
 	}
 	return sfx;
-}
-
-void SoundEngine::LoadSound3D(sfxinfo_t *sfx, FSoundLoadBuffer *pBuffer)
-{
-    if (GSnd->IsNull()) return;
-
-    if(sfx->data3d.isValid())
-        return;
-
-    //DPrintf(DMSG_NOTIFY, "Loading monoized sound \"%s\" (%td)\n", sfx->name.GetChars(), sfx - &S_sfx[0]);
-
-	std::pair<SoundHandle, bool> snd;
-
-	if (pBuffer->mBuffer.size() > 0)
-	{
-		snd = GSnd->LoadSoundBuffered(pBuffer, true);
-	}
-	else if (sfx->lumpnum >= 0)
-	{
-		auto sfxdata = ReadSound(sfx->lumpnum);
-		int size = sfxdata.Size();
-		if (size <= 8) return;
-		int32_t dmxlen = LittleLong(((int32_t *)sfxdata.Data())[1]);
-
-		// If the sound is voc, use the custom loader.
-		if (strncmp((const char *)sfxdata.Data(), "Creative Voice File", 19) == 0)
-		{
-			snd = GSnd->LoadSoundVoc(sfxdata.Data(), size, true);
-		}
-		// If the sound is raw, just load it as such.
-		else if (sfx->bLoadRAW)
-		{
-			snd = GSnd->LoadSoundRaw(sfxdata.Data(), size, sfx->RawRate, 1, 8, sfx->LoopStart, true);
-		}
-		// Otherwise, try the sound as DMX format.
-		else if (((uint8_t *)sfxdata.Data())[0] == 3 && ((uint8_t *)sfxdata.Data())[1] == 0 && dmxlen <= size - 8)
-		{
-			int frequency = LittleShort(((uint16_t *)sfxdata.Data())[1]);
-			if (frequency == 0) frequency = 11025;
-			snd = GSnd->LoadSoundRaw(sfxdata.Data() + 8, dmxlen, frequency, 1, 8, sfx->LoopStart, -1, true);
-		}
-		// If that fails, let the sound system try and figure it out.
-		else
-		{
-			snd = GSnd->LoadSound(sfxdata.Data(), size, true, pBuffer);
-		}
-	}
-
-	sfx->data3d = snd.first;
 }
 
 //==========================================================================
@@ -882,6 +820,7 @@ bool SoundEngine::CheckSoundLimit(sfxinfo_t *sfx, const FVector3 &pos, int near_
 	
 	for (chan = Channels, count = 0; chan != NULL && count < near_limit; chan = chan->NextChan)
 	{
+		if (chan->ChanFlags & CHANF_FORGETTABLE) continue;
 		if (!(chan->ChanFlags & CHANF_EVICTED) && &S_sfx[chan->SoundID] == sfx)
 		{
 			FVector3 chanorigin;
@@ -963,6 +902,38 @@ void SoundEngine::StopSound(int sourcetype, const void* actor, int channel, int 
 		if (chan->SourceType == sourcetype &&
 			chan->Source == actor &&
 			(sound_id == -1? (chan->EntChannel == channel || channel < 0) : (chan->OrgID == sound_id)))
+		{
+			StopChannel(chan);
+		}
+		chan = next;
+	}
+}
+
+//==========================================================================
+//
+// S_StopAllActorSounds
+//
+// Stops all sounds on an actor.
+//
+//==========================================================================
+
+void SoundEngine::StopActorSounds(int sourcetype, const void* actor, int chanmin, int chanmax)
+{
+	const bool all = (chanmin == 0 && chanmax == 0);
+	if (!all && chanmax > chanmin)
+	{
+		const int temp = chanmax;
+		chanmax = chanmin;
+		chanmin = temp;
+	}
+
+	FSoundChan* chan = Channels;
+	while (chan != nullptr)
+	{
+		FSoundChan* next = chan->NextChan;
+		if (chan->SourceType == sourcetype &&
+			chan->Source == actor &&
+			(all || (chan->EntChannel >= chanmin && chan->EntChannel <= chanmax)))
 		{
 			StopChannel(chan);
 		}
@@ -1423,7 +1394,7 @@ void SoundEngine::StopChannel(FSoundChan *chan)
 				chan->Source = NULL;
 			}
 		}
-		GSnd->StopChannel(chan);
+		if (GSnd) GSnd->StopChannel(chan);
 	}
 	else
 	{
@@ -1535,7 +1506,6 @@ int SoundEngine::AddSoundLump(const char* logicalname, int lump, int CurrentPitc
 	sfxinfo_t &newsfx = S_sfx.Last();
 
 	newsfx.data.Clear();
-	newsfx.data3d.Clear();
 	newsfx.name = logicalname;
 	newsfx.lumpnum = lump;
 	newsfx.next = 0;
@@ -1661,7 +1631,7 @@ unsigned int SoundEngine::GetMSLength(FSoundID sound)
 		}
 	}
 
-	sfx = LoadSound(sfx, nullptr);
+	sfx = LoadSound(sfx);
 	if (sfx != NULL) return GSnd->GetMSLength(sfx->data);
 	else return 0;
 }

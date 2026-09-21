@@ -35,7 +35,7 @@ namespace swrenderer
 		void SetDynamicLight(uint32_t color) { dynlightcolor = color; }
 
 		void DrawMaskedColumn(RenderThread *thread, int x, fixed_t iscale, FTexture *texture, fixed_t column, double spryscale, double sprtopscreen, bool sprflipvert, const short *mfloorclip, const short *mceilingclip, FRenderStyle style, bool unmasked = false);
-		void DrawMasked(RenderThread* thread, double topZ, double scale, bool flipX, bool flipY, const FWallCoords& WallC, const ProjectedWallLight& light, FTexture* texture, const short* mfloorclip, const short* mceilingclip, FRenderStyle style);
+		void DrawMasked(RenderThread* thread, double topZ, double scale, bool flipX, bool flipY, const FWallCoords& WallC, int clipx1, int clipx2, const ProjectedWallLight& light, FTexture* texture, const short* mfloorclip, const short* mceilingclip, FRenderStyle style);
 		void DrawMasked2D(RenderThread *thread, double x0, double x1, double y0, double y1, FTexture* texture, FRenderStyle style);
 		void DrawVoxelBlocks(RenderThread *thread, const VoxelBlock *blocks, int blockcount);
 

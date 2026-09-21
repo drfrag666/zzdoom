@@ -142,6 +142,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_StopSound, NativeStopSound)
 	return 0;
 }
 
+DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_StopSounds, S_StopActorSounds)
+{
+	PARAM_SELF_PROLOGUE(AActor);
+	PARAM_INT(chanmin);
+	PARAM_INT(chanmax);
+	S_StopActorSounds(self, chanmin, chanmax);
+	return 0;
+}
+
 DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_SoundPitch, S_ChangeActorSoundPitch)
 {
 	PARAM_SELF_PROLOGUE(AActor);
@@ -183,7 +192,8 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_StartSound, A_StartSound)
 	PARAM_FLOAT(volume);
 	PARAM_FLOAT(attenuation);
 	PARAM_FLOAT(pitch);
-	A_StartSound(self, soundid, channel, flags, volume, attenuation, pitch);
+	PARAM_FLOAT(startTime);
+	A_StartSound(self, soundid, channel, flags, volume, attenuation, pitch, startTime);
 	return 0;
 }
 
@@ -1947,6 +1957,7 @@ DEFINE_FIELD_X(FLineTraceData, FLineTraceData, HitSector);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, Hit3DFloor);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, HitTexture);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, HitLocation);
+DEFINE_FIELD_X(FLineTraceData, FLineTraceData, HitDir);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, Distance);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, NumPortals);
 DEFINE_FIELD_X(FLineTraceData, FLineTraceData, LineSide);

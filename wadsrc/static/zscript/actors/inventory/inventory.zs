@@ -326,7 +326,7 @@ class Inventory : Actor
 		bIsMonster = false;
 		ChangeStatNum(STAT_INVENTORY);
 		// stop all sounds this item is playing.
-		for(int i = 1;i<=7;i++) A_StopSound(i);
+		A_StopAllSounds();
 		SetState (FindState("Held"));
 	}
 
@@ -1099,7 +1099,7 @@ class Inventory : Actor
 	//
 	//===========================================================================
 
-	virtual void AbsorbDamage (int damage, Name damageType, out int newdamage) {}
+	virtual void AbsorbDamage (int damage, Name damageType, out int newdamage, Actor inflictor = null, Actor source = null, int flags = 0) {}
 	
 	//===========================================================================
 	//
