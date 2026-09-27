@@ -20,6 +20,7 @@ enum
 	TRANSLATION_Blood,
 	TRANSLATION_RainPillar,
 	TRANSLATION_Custom,
+	TRANSLATION_Font,
 
 	NUM_TRANSLATION_TABLES
 };
@@ -52,6 +53,7 @@ struct FRemapTable
 	bool AddColourisation(int start, int end, int r, int g, int b);
 	bool AddTint(int start, int end, int r, int g, int b, int amount);
 	bool AddToTranslation(const char * range);
+	bool AddColors(int start, int count, const uint8_t*);
 	int StoreTranslation(int slot);
 
 	uint8_t *Remap;				// For the software renderer
