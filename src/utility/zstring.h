@@ -404,6 +404,7 @@ public:
 		return Compare(other) >= 0;
 	}
 
+	// These are needed to block the default char * conversion operator from making a mess.
 	bool operator == (const char *) const = delete;
 	bool operator != (const char *) const = delete;
 	bool operator <  (const char *) const = delete;
@@ -421,6 +422,7 @@ public:
 private:
 };
 
+// These are also needed to block the default char * conversion operator from making a mess.
 bool operator == (const char *, const FString &) = delete;
 bool operator != (const char *, const FString &) = delete;
 bool operator <  (const char *, const FString &) = delete;
@@ -482,10 +484,19 @@ inline FName::FName(const FString &text, bool noCreate) { Index = NameData.FindN
 inline FName &FName::operator = (const FString &text) { Index = NameData.FindName (text.GetChars(), text.Len(), false); return *this; }
 
 // Hash FStrings on their contents. (used by TMap)
-extern unsigned int SuperFastHash (const char *data, size_t len);
+#include "superfasthash.h"
+
 template<> struct THashTraits<FString>
 {
 	hash_t Hash(const FString &key) { return (hash_t)SuperFastHash(key.GetChars(), key.Len()); }
 	// Compares two keys, returning zero if they are the same.
 	int Compare(const FString &left, const FString &right) { return left.Compare(right); }
 };
+
+struct StringNoCaseHashTraits
+{
+	hash_t Hash(const FString& key) { return (hash_t)SuperFastHashI(key.GetChars(), key.Len()); }
+	// Compares two keys, returning zero if they are the same.
+	int Compare(const FString& left, const FString& right) { return left.CompareNoCase(right); }
+};
+

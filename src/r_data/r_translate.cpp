@@ -49,6 +49,7 @@
 #include "vm.h"
 #include "v_text.h"
 #include "g_levellocals.h"
+#include "palutil.h"
 
 #include "gi.h"
 
@@ -378,8 +379,8 @@ bool FRemapTable::AddIndexRange(int start, int end, int pal1, int pal2)
 
 	if (start > end)
 	{
-		swapvalues (start, end);
-		swapvalues (pal1, pal2);
+		std::swap (start, end);
+		std::swap (pal1, pal2);
 	}
 	else if (start == end)
 	{
@@ -426,7 +427,7 @@ bool FRemapTable::AddColorRange(int start, int end, int _r1,int _g1, int _b1, in
 
 	if (start > end)
 	{
-		swapvalues (start, end);
+		std::swap (start, end);
 		r = r2;
 		g = g2;
 		b = b2;
@@ -489,10 +490,10 @@ bool FRemapTable::AddDesaturation(int start, int end, double r1, double g1, doub
 
 	if (start > end)
 	{
-		swapvalues(start, end);
-		swapvalues(r1, r2);
-		swapvalues(g1, g2);
-		swapvalues(b1, b2);
+		std::swap(start, end);
+		std::swap(r1, r2);
+		std::swap(g1, g2);
+		std::swap(b1, b2);
 	}
 
 	r2 -= r1;
@@ -831,7 +832,7 @@ int CreateBloodTranslation(PalEntry color)
 	trans->Remap[0] = 0;
 	for (i = 1; i < 256; i++)
 	{
-		int bright = MAX(MAX(GPalette.BaseColors[i].r, GPalette.BaseColors[i].g), GPalette.BaseColors[i].b);
+		int bright = std::max(std::max(GPalette.BaseColors[i].r, GPalette.BaseColors[i].g), GPalette.BaseColors[i].b);
 		PalEntry pe = PalEntry(255, color.r*bright/255, color.g*bright/255, color.b*bright/255);
 		int entry = ColorMatcher.Pick(pe.r, pe.g, pe.b);
 
@@ -1097,7 +1098,7 @@ static void SetRemap(FRemapTable *table, int i, float r, float g, float b)
 
 //----------------------------------------------------------------------------
 //
-// Sets the translation Heretic's the rain pillar
+// Sets the translation for Heretic's rain pillar
 // This tries to create a translation that preserves the brightness of
 // the rain projectiles so that their effect isn't ruined.
 //

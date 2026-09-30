@@ -619,12 +619,12 @@ void FTexture::FlipSquareBlock (uint8_t *block, int x, int y)
 		if (count & 1)
 		{
 			count--;
-			swapvalues<uint8_t> (corner[count], corner[count*x]);
+			std::swap<uint8_t> (corner[count], corner[count*x]);
 		}
 		for (j = 0; j < count; j += 2)
 		{
-			swapvalues<uint8_t> (corner[j], corner[j*x]);
-			swapvalues<uint8_t> (corner[j+1], corner[(j+1)*x]);
+			std::swap<uint8_t> (corner[j], corner[j*x]);
+			std::swap<uint8_t> (corner[j+1], corner[(j+1)*x]);
 		}
 	}
 }
@@ -642,12 +642,12 @@ void FTexture::FlipSquareBlockBgra(uint32_t *block, int x, int y)
 		if (count & 1)
 		{
 			count--;
-			swapvalues<uint32_t>(corner[count], corner[count*x]);
+			std::swap<uint32_t>(corner[count], corner[count*x]);
 		}
 		for (j = 0; j < count; j += 2)
 		{
-			swapvalues<uint32_t>(corner[j], corner[j*x]);
-			swapvalues<uint32_t>(corner[j + 1], corner[(j + 1)*x]);
+			std::swap<uint32_t>(corner[j], corner[j*x]);
+			std::swap<uint32_t>(corner[j + 1], corner[(j + 1)*x]);
 		}
 	}
 }

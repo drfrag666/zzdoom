@@ -32,8 +32,9 @@
 **
 */
 
-#include "palette.h"
+#include "palutil.h"
 #include "palentry.h"
+#include "files.h"
 
 /****************************/
 /* Palette management stuff */

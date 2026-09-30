@@ -93,7 +93,7 @@ namespace swrenderer
 
 			if (sprflipvert)
 			{
-				swapvalues(dc_yl, dc_yh);
+				std::swap(dc_yl, dc_yh);
 			}
 
 			if (dc_yh >= mfloorclip[dc_x])
@@ -217,7 +217,7 @@ namespace swrenderer
 
 			if (sprflipvert)
 			{
-				swapvalues(dc_yl, dc_yh);
+				std::swap(dc_yl, dc_yh);
 			}
 
 			if (dc_yh >= mfloorclip[dc_x])

@@ -2408,7 +2408,7 @@ void MapLoader::CreateBlockMap ()
 		{
 			if (bx > bx2)
 			{
-				swapvalues (block, endblock);
+				std::swap (block, endblock);
 			}
 			do
 			{
@@ -2420,7 +2420,7 @@ void MapLoader::CreateBlockMap ()
 		{
 			if (by > by2)
 			{
-				swapvalues (block, endblock);
+				std::swap (block, endblock);
 			}
 			do
 			{

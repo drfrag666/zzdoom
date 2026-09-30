@@ -937,6 +937,7 @@ set (PCH_SOURCES
 	r_data/models/models_voxel.cpp
 	r_data/models/models_ue1.cpp
 	r_data/models/models_obj.cpp
+	scripting/dictionary.cpp
 	scripting/symbols.cpp
 	scripting/vmiterators.cpp
 	scripting/vmthunks.cpp
@@ -976,6 +977,7 @@ set (PCH_SOURCES
 	utility/m_random.cpp
 	utility/memarena.cpp
 	utility/md5.cpp
+	utility/superfasthash.cpp
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
@@ -1020,7 +1022,6 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	utility/x86.cpp
 	utility/strnatcmp.c
 	utility/zstring.cpp
-	utility/dictionary.cpp
 	utility/math/asin.c
 	utility/math/atan.c
 	utility/math/const.c

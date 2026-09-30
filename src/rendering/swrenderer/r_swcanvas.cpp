@@ -432,7 +432,7 @@ void SWCanvas::DrawLine(DCanvas *canvas, int x0, int y0, int x1, int y1, int pal
 	{ // horizontal line
 		if (x0 > x1)
 		{
-			swapvalues(x0, x1);
+			std::swap(x0, x1);
 		}
 		if (canvas->IsBgra())
 		{

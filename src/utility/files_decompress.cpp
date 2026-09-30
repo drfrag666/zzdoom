@@ -33,16 +33,18 @@
 **
 */
 
-// This also pulls in windows.h
+// Caution: LzmaDec also pulls in windows.h!
+#define NOMINMAX
 #include "LzmaDec.h"
 #include <zlib.h>
 #include <bzlib.h>
 #include <stdexcept>
+#include <algorithm>
 
 #include "files.h"
 #include "templates.h"
+#include "zstring.h"
 #include "cmdlib.h"
-
 
 //==========================================================================
 //
@@ -83,6 +85,12 @@ char *DecompressorBase::Gets(char *strbuf, int len)
 	return nullptr;
 }
 
+void DecompressorBase::SetOwnsReader()
+{
+	OwnedFile = std::move(*File);
+	File = &OwnedFile;
+}
+
 //==========================================================================
 //
 // DecompressorZ
@@ -96,17 +104,17 @@ class DecompressorZ : public DecompressorBase
 {
 	enum { BUFF_SIZE = 4096 };
 
-	FileReader &File;
 	bool SawEOF;
 	z_stream Stream;
 	uint8_t InBuff[BUFF_SIZE];
 	
 public:
-	DecompressorZ (FileReader &file, bool zip, const std::function<void(const char*)>& cb)
-	: File(file), SawEOF(false)
+	DecompressorZ (FileReader *file, bool zip, const std::function<void(const char*)>& cb)
+	: SawEOF(false)
 	{
 		int err;
 
+		File = file;
 		SetErrorCallback(cb);
 		FillBuffer ();
 
@@ -158,7 +166,7 @@ public:
 
 	void FillBuffer ()
 	{
-		auto numread = File.Read (InBuff, BUFF_SIZE);
+		auto numread = File->Read (InBuff, BUFF_SIZE);
 
 		if (numread < BUFF_SIZE)
 		{
@@ -187,17 +195,17 @@ class DecompressorBZ2 : public DecompressorBase
 {
 	enum { BUFF_SIZE = 4096 };
 
-	FileReader &File;
 	bool SawEOF;
 	bz_stream Stream;
 	uint8_t InBuff[BUFF_SIZE];
 	
 public:
-	DecompressorBZ2 (FileReader &file, const std::function<void(const char*)>& cb)
-	: File(file), SawEOF(false)
+	DecompressorBZ2 (FileReader *file, const std::function<void(const char*)>& cb)
+	: SawEOF(false)
 	{
 		int err;
 
+		File = file;
 		SetErrorCallback(cb);
 		stupidGlobal = this;
 		FillBuffer ();
@@ -252,7 +260,7 @@ public:
 
 	void FillBuffer ()
 	{
-		auto numread = File.Read(InBuff, BUFF_SIZE);
+		auto numread = File->Read(InBuff, BUFF_SIZE);
 
 		if (numread < BUFF_SIZE)
 		{
@@ -296,7 +304,6 @@ class DecompressorLZMA : public DecompressorBase
 {
 	enum { BUFF_SIZE = 4096 };
 
-	FileReader &File;
 	bool SawEOF;
 	CLzmaDec Stream;
 	size_t Size;
@@ -306,18 +313,19 @@ class DecompressorLZMA : public DecompressorBase
 
 public:
 
-	DecompressorLZMA (FileReader &file, size_t uncompressed_size, const std::function<void(const char*)>& cb)
-	: File(file), SawEOF(false)
+	DecompressorLZMA (FileReader *file, size_t uncompressed_size, const std::function<void(const char*)>& cb)
+	: SawEOF(false)
 	{
 		uint8_t header[4 + LZMA_PROPS_SIZE];
 		int err;
+		File = file;
 		SetErrorCallback(cb);
 
 		Size = uncompressed_size;
 		OutProcessed = 0;
 
 		// Read zip LZMA properties header
-		if (File.Read(header, sizeof(header)) < (long)sizeof(header))
+		if (File->Read(header, sizeof(header)) < (long)sizeof(header))
 		{
 			DecompressionError("DecompressorLZMA: File too short\n");
 		}
@@ -394,7 +402,7 @@ public:
 
 	void FillBuffer ()
 	{
-		auto numread = File.Read(InBuff, BUFF_SIZE);
+		auto numread = File->Read(InBuff, BUFF_SIZE);
 
 		if (numread < BUFF_SIZE)
 		{
@@ -416,7 +424,6 @@ class DecompressorLZSS : public DecompressorBase
 {
 	enum { BUFF_SIZE = 4096, WINDOW_SIZE = 4096, INTERNAL_BUFFER_SIZE = 128 };
 
-	FileReader &File;
 	bool SawEOF;
 	uint8_t InBuff[BUFF_SIZE];
 
@@ -447,7 +454,7 @@ class DecompressorLZSS : public DecompressorBase
 		if(Stream.AvailIn)
 			memmove(InBuff, Stream.In, Stream.AvailIn);
 
-		auto numread = File.Read(InBuff+Stream.AvailIn, BUFF_SIZE-Stream.AvailIn);
+		auto numread = File->Read(InBuff+Stream.AvailIn, BUFF_SIZE-Stream.AvailIn);
 
 		if (numread < BUFF_SIZE)
 		{
@@ -502,7 +509,7 @@ class DecompressorLZSS : public DecompressorBase
 				// Partial overlap: Copy in 2 or 3 chunks.
 				do
 				{
-					unsigned int copy = MIN<unsigned int>(len, pos+1);
+					unsigned int copy = std::min<unsigned int>(len, pos+1);
 					memcpy(Stream.InternalBuffer, copyStart, copy);
 					Stream.InternalBuffer += copy;
 					Stream.InternalOut += copy;
@@ -534,8 +541,9 @@ class DecompressorLZSS : public DecompressorBase
 	}
 
 public:
-	DecompressorLZSS(FileReader &file, const std::function<void(const char*)>& cb) : File(file), SawEOF(false)
+	DecompressorLZSS(FileReader *file, const std::function<void(const char*)>& cb) : SawEOF(false)
 	{
+		File = file;
 		SetErrorCallback(cb);
 		Stream.State = STREAM_EMPTY;
 		Stream.WindowData = Stream.InternalBuffer = Stream.Window+WINDOW_SIZE;
@@ -567,7 +575,7 @@ public:
 					break;
 			}
 
-			unsigned int copy = MIN<unsigned int>(Stream.InternalOut, AvailOut);
+			unsigned int copy = std::min<unsigned int>(Stream.InternalOut, AvailOut);
 			if(copy > 0)
 			{
 				memcpy(Out, Stream.WindowData, copy);
@@ -600,29 +608,35 @@ public:
 bool FileReader::OpenDecompressor(FileReader &parent, Size length, int method, bool seekable, const std::function<void(const char*)>& cb)
 {
 	DecompressorBase *dec = nullptr;
-	switch (method)
+	FileReader *p = &parent;
+	switch (method & ~METHOD_TRANSFEROWNER)
 	{
 		case METHOD_DEFLATE:
 		case METHOD_ZLIB:
-			dec = new DecompressorZ(parent, method == METHOD_DEFLATE, cb);
+			dec = new DecompressorZ(p, method == METHOD_DEFLATE, cb);
 			break;
 
 		case METHOD_BZIP2:
-			dec = new DecompressorBZ2(parent, cb);
+			dec = new DecompressorBZ2(p, cb);
 			break;
 
 		case METHOD_LZMA:
-			dec = new DecompressorLZMA(parent, length, cb);
+			dec = new DecompressorLZMA(p, length, cb);
 			break;
 
 		case METHOD_LZSS:
-			dec = new DecompressorLZSS(parent, cb);
+			dec = new DecompressorLZSS(p, cb);
 			break;
 			
 		// todo: METHOD_IMPLODE, METHOD_SHRINK
 		default:
 			return false;
 	}
+	if (method & METHOD_TRANSFEROWNER)
+	{
+		dec->SetOwnsReader();
+	}
+
 	dec->Length = (long)length;
 	if (!seekable)
 	{
@@ -637,3 +651,4 @@ bool FileReader::OpenDecompressor(FileReader &parent, Size length, int method, b
 		return false;
 	}
 }
+

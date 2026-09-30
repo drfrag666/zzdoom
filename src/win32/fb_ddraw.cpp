@@ -765,7 +765,7 @@ void DDrawFB::RebuildColorTable ()
 
 		for (i = 0; i < 256; i++)
 		{
-			swapvalues (syspal[i].peRed, syspal[i].peBlue);
+			std::swap (syspal[i].peRed, syspal[i].peBlue);
 		}
 		for (i = 0; i < 256; i++)
 		{
