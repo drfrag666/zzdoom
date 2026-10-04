@@ -40,10 +40,10 @@
 #include "s_sound.h"
 #include "d_event.h"
 #include "m_random.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "doomstat.h"
 #include "wi_stuff.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "am_map.h"
 #include "c_dispatch.h"
 
@@ -568,7 +568,7 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 		}
 		else 
 		{
-			nextlevel.Format("enDSeQ%04x", int(gameinfo.DefaultEndSequence));
+			nextlevel.Format("enDSeQ%04x", gameinfo.DefaultEndSequence.GetIndex());
 		}
 	}
 	else if (strncmp(levelname, "enDSeQ", 6) != 0)
@@ -858,8 +858,8 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 				FTexture *tex = TexMan[*texids[i]];
 				if (tex != nullptr)
 				{
-					int filenum = Wads.GetLumpFile(tex->GetSourceLump());
-					if (filenum >= 0 && filenum <= Wads.GetMaxIwadNum())
+					int filenum = fileSystem.GetFileContainer(tex->GetSourceLump());
+					if (filenum >= 0 && filenum <= fileSystem.GetMaxIwadNum())
 					{
 						texids[i]->SetInvalid();
 					}
@@ -1768,11 +1768,12 @@ void G_ReadSnapshots(FResourceFile *resf)
 		FResourceLump * resl = resf->GetLump(j);
 		if (resl != nullptr)
 		{
-			auto ptr = strstr(resl->FullName, ".map.json");
+			auto name = resl->getName();
+			auto ptr = strstr(name, ".map.json");
 			if (ptr != nullptr)
 			{
-				ptrdiff_t maplen = ptr - resl->FullName.GetChars();
-				FString mapname(resl->FullName.GetChars(), (size_t)maplen);
+				ptrdiff_t maplen = ptr - name;
+				FString mapname(name, (size_t)maplen);
 				i = FindLevelInfo(mapname);
 				if (i != nullptr)
 				{
@@ -1781,11 +1782,11 @@ void G_ReadSnapshots(FResourceFile *resf)
 			}
 			else
 			{
-				auto ptr = strstr(resl->FullName, ".mapd.json");
+				auto ptr = strstr(name, ".mapd.json");
 				if (ptr != nullptr)
 				{
-					ptrdiff_t maplen = ptr - resl->FullName.GetChars();
-					FString mapname(resl->FullName.GetChars(), (size_t)maplen);
+					ptrdiff_t maplen = ptr - name;
+					FString mapname(name, (size_t)maplen);
 					TheDefaultLevelInfo.Snapshot = resl->GetRawData();
 				}
 			}

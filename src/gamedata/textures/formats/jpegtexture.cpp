@@ -41,7 +41,7 @@ extern "C"
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_text.h"
 #include "bitmap.h"
 #include "v_video.h"
@@ -276,7 +276,7 @@ FTextureFormat FJPEGTexture::GetFormat()
 
 uint8_t *FJPEGTexture::MakeTexture (FRenderStyle style)
 {
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	JSAMPLE *buff = NULL;
 	bool doalpha = !!(style.Flags & STYLEF_RedIsAlpha);
 
@@ -300,7 +300,7 @@ uint8_t *FJPEGTexture::MakeTexture (FRenderStyle style)
 			(cinfo.out_color_space == JCS_YCbCr && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_GRAYSCALE && cinfo.num_components == 1)))
 		{
-			Printf(TEXTCOLOR_ORANGE "Unsupported color format in %s\n", Wads.GetLumpFullPath(SourceLump).GetChars());
+			Printf(TEXTCOLOR_ORANGE "Unsupported color format in %s\n", fileSystem.GetFileFullPath(SourceLump).GetChars());
 		}
 		else
 		{
@@ -377,7 +377,7 @@ uint8_t *FJPEGTexture::MakeTexture (FRenderStyle style)
 	}
 	catch (int)
 	{
-		Printf(TEXTCOLOR_ORANGE "JPEG error in %s\n", Wads.GetLumpFullPath(SourceLump).GetChars());
+		Printf(TEXTCOLOR_ORANGE "JPEG error in %s\n", fileSystem.GetFileFullPath(SourceLump).GetChars());
 	}
 	jpeg_destroy_decompress(&cinfo);
 	if (buff != NULL)
@@ -400,7 +400,7 @@ int FJPEGTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FC
 {
 	PalEntry pe[256];
 
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	JSAMPLE *buff = NULL;
 
 	jpeg_decompress_struct cinfo;
@@ -421,7 +421,7 @@ int FJPEGTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FC
 			(cinfo.out_color_space == JCS_YCbCr && cinfo.num_components == 3) ||
 			(cinfo.out_color_space == JCS_GRAYSCALE && cinfo.num_components == 1)))
 		{
-			Printf(TEXTCOLOR_ORANGE "Unsupported color format in %s\n", Wads.GetLumpFullPath(SourceLump).GetChars());
+			Printf(TEXTCOLOR_ORANGE "Unsupported color format in %s\n", fileSystem.GetFileFullPath(SourceLump).GetChars());
 		}
 		else
 		{
@@ -470,7 +470,7 @@ int FJPEGTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FC
 	}
 	catch (int)
 	{
-		Printf(TEXTCOLOR_ORANGE "JPEG error in %s\n", Wads.GetLumpFullPath(SourceLump).GetChars());
+		Printf(TEXTCOLOR_ORANGE "JPEG error in %s\n", fileSystem.GetFileFullPath(SourceLump).GetChars());
 	}
 	jpeg_destroy_decompress(&cinfo);
 	if (buff != NULL) delete [] buff;

@@ -47,7 +47,7 @@
 #include "d_net.h"
 #include "serializer.h"
 #include "d_player.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "vm.h"
 #include "g_levellocals.h"
 
@@ -253,7 +253,7 @@ void InitBotStuff()
 {
 	int lump;
 	int lastlump = 0;
-	while (-1 != (lump = Wads.FindLump("BOTSUPP", &lastlump)))
+	while (-1 != (lump = fileSystem.FindLump("BOTSUPP", &lastlump)))
 	{
 		FScanner sc(lump);
 		sc.SetCMode(true);

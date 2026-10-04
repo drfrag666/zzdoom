@@ -39,7 +39,7 @@
 #include "a_sharedglobal.h"
 #include "d_net.h"
 #include "p_setup.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_text.h"
 #include "c_functions.h"
 #include "gstrings.h"
@@ -156,7 +156,7 @@ CCMD (mapchecksum)
 		else
 		{
 			map->GetChecksum(cksum);
-			const char *wadname = Wads.GetWadName(Wads.GetLumpFile(map->lumpnum));
+			const char *wadname = fileSystem.GetResourceFileName(fileSystem.GetFileContainer(map->lumpnum));
 			delete map;
 			for (size_t j = 0; j < sizeof(cksum); ++j)
 			{
@@ -326,7 +326,7 @@ CCMD(listmaps)
 		if (map != NULL)
 		{
 			Printf("%s: '%s' (%s)\n", info->MapName.GetChars(), info->LookupLevelName().GetChars(),
-				Wads.GetWadName(Wads.GetLumpFile(map->lumpnum)));
+				fileSystem.GetResourceFileName(fileSystem.GetFileContainer(map->lumpnum)));
 			delete map;
 		}
 	}

@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "templates.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "doomdef.h"
 #include "doomstat.h"
 #include "doomdata.h"
@@ -32,7 +32,7 @@
 #include "r_sky.h"
 #include "v_video.h"
 #include "m_swap.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "stats.h"
 #include "a_sharedglobal.h"
 #include "d_net.h"

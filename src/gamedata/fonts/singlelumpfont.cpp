@@ -33,10 +33,10 @@
 **
 */
 
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "textures.h"
 #include "v_font.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "utf8.h"
 #include "textures/formats/fontchars.h"
 
@@ -124,7 +124,7 @@ FSingleLumpFont::FSingleLumpFont (const char *name, int lump) : FFont(lump)
 
 	FontName = name;
 
-	FMemLump data1 = Wads.ReadLump (lump);
+	FileData data1 = fileSystem.ReadFile (lump);
 	const uint8_t *data = (const uint8_t *)data1.GetMem();
 
 	if (data[0] == 0xE1 && data[1] == 0xE6 && data[2] == 0xD5 && data[3] == 0x1A)
@@ -542,7 +542,7 @@ int FSingleLumpFont::BMFCompare(const void *a, const void *b)
 
 void FSingleLumpFont::CheckFON1Chars (double *luminosity)
 {
-	FMemLump memLump = Wads.ReadLump(Lump);
+	FileData memLump = fileSystem.ReadFile(Lump);
 	const uint8_t* data = (const uint8_t*) memLump.GetMem();
 
 	uint8_t used[256], reverse[256];

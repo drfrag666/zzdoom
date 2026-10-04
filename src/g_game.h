@@ -31,6 +31,7 @@
 struct event_t;
 
 #include "dobjgc.h"
+#include "name.h"
 
 // The current state of the game: whether we are
 // playing, gazing at the intermission screen,
@@ -121,6 +122,9 @@ void G_AddViewPitch (int look, bool mouse = false);
 
 // Adds to consoleplayer's viewangle if allowed
 void G_AddViewAngle (int yaw, bool mouse = false);
+
+class FBaseCVar;
+FBaseCVar* G_GetUserCVar(int playernum, const char* cvarname);
 
 extern const AActor *SendItemUse, *SendItemDrop;
 extern int SendItemDropAmount;

@@ -26,7 +26,7 @@
 **
 **/
 
-#include "w_wad.h"
+#include "filesystem.h"
 #include "r_data/models/models.h"
 
 #ifdef _MSC_VER
@@ -170,7 +170,7 @@ bool FDMDModel::Load(const char * path, int lumpnum, const char * buffer, int le
 void FDMDModel::LoadGeometry()
 {
 	static int axis[3] = { VX, VY, VZ };
-	FMemLump lumpdata = Wads.ReadLump(mLumpNum);
+	FileData lumpdata = fileSystem.ReadFile(mLumpNum);
 	const char *buffer = (const char *)lumpdata.GetMem();
 	texCoords = new FTexCoord[info.numTexCoords];
 	memcpy(texCoords, buffer + info.offsetTexCoords, info.numTexCoords * sizeof(FTexCoord));
@@ -496,7 +496,7 @@ void FMD2Model::LoadGeometry()
 {
 	static int axis[3] = { VX, VY, VZ };
 	uint8_t   *md2_frames;
-	FMemLump lumpdata = Wads.ReadLump(mLumpNum);
+	FileData lumpdata = fileSystem.ReadFile(mLumpNum);
 	const char *buffer = (const char *)lumpdata.GetMem();
 
 	texCoords = new FTexCoord[info.numTexCoords];

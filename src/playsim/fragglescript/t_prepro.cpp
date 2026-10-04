@@ -41,7 +41,7 @@
 /* includes ************************/
 
 #include "t_script.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "serializer.h"
 #include "g_levellocals.h"
 
@@ -411,15 +411,15 @@ void DFsScript::ParseInclude(FLevelLocals *Level, char *lumpname)
 	int lumpnum;
 	char *lump;
 	
-	if((lumpnum = Wads.CheckNumForName(lumpname)) == -1)
+	if((lumpnum = fileSystem.CheckNumForName(lumpname)) == -1)
     {
 		I_Error("include lump '%s' not found!\n", lumpname);
 		return;
     }
 	
-	int lumplen=Wads.LumpLength(lumpnum);
+	int lumplen=fileSystem.FileLength(lumpnum);
 	lump=new char[lumplen+10];
-	Wads.ReadLump(lumpnum,lump);
+	fileSystem.ReadFile(lumpnum,lump);
 	
 	lump[lumplen]=0;
 	

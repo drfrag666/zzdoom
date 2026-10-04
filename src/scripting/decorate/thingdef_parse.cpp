@@ -44,7 +44,7 @@
 #include "thingdef.h"
 #include "a_morph.h"
 #include "backend/codegen.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_text.h"
 #include "m_argv.h"
 #include "v_video.h"
@@ -53,7 +53,7 @@
 #endif // !_MSC_VER
 
 void ParseOldDecoration(FScanner &sc, EDefinitionType def, PNamespace *ns);
-EXTERN_CVAR(Bool, strictdecorate);
+CVAR(Bool, strictdecorate, false, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
 
 
 //==========================================================================
@@ -1113,7 +1113,7 @@ static PClassActor *ParseActorHeader(FScanner &sc, Baggage *bag)
 	{
 		PClassActor *info = CreateNewActor(sc, typeName, parentName);
 		info->ActorInfo()->DoomEdNum = DoomEdNum > 0 ? DoomEdNum : -1;
-		info->SourceLumpName = Wads.GetLumpFullPath(sc.LumpNum);
+		info->SourceLumpName = fileSystem.GetFileFullPath(sc.LumpNum);
 
 		if (!info->SetReplacement(replaceName))
 		{
@@ -1124,7 +1124,7 @@ static PClassActor *ParseActorHeader(FScanner &sc, Baggage *bag)
 		bag->Info = info;
 		bag->Lumpnum = sc.LumpNum;
 #ifdef _DEBUG
-		bag->ClassName = typeName;
+		bag->ClassName = typeName.GetChars();
 #endif
 		return info;
 	}
@@ -1270,13 +1270,13 @@ void ParseDecorate (FScanner &sc, PNamespace *ns)
 		{
 			sc.MustGetString();
 			// This check needs to remain overridable for testing purposes.
-			if (Wads.GetLumpFile(sc.LumpNum) == 0 && !Args->CheckParm("-allowdecoratecrossincludes"))
+			if (fileSystem.GetFileContainer(sc.LumpNum) == 0 && !Args->CheckParm("-allowdecoratecrossincludes"))
 			{
-				int includefile = Wads.GetLumpFile(Wads.CheckNumForFullName(sc.String, true));
+				int includefile = fileSystem.GetFileContainer(fileSystem.CheckNumForFullName(sc.String, true));
 				if (includefile != 0)
 				{
 					I_FatalError("File %s is overriding core lump %s.",
-						Wads.GetWadFullName(includefile), sc.String);
+						fileSystem.GetResourceFileFullName(includefile), sc.String);
 				}
 			}
 			FScanner newscanner;
@@ -1341,7 +1341,7 @@ void ParseAllDecorate()
 {
 	int lastlump = 0, lump;
 
-	while ((lump = Wads.FindLump("DECORATE", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump("DECORATE", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 		auto ns = Namespaces.NewNamespace(sc.LumpNum);

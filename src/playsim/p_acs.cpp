@@ -51,7 +51,7 @@
 #include "s_sndseq.h"
 #include "sbar.h"
 #include "a_sharedglobal.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "r_sky.h"
 #include "gstrings.h"
 #include "gi.h"
@@ -1920,12 +1920,12 @@ void FBehaviorContainer::LoadDefaultModules ()
 	// Scan each LOADACS lump and load the specified modules in order
 	int lump, lastlump = 0;
 
-	while ((lump = Wads.FindLump ("LOADACS", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump ("LOADACS", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 		while (sc.GetString())
 		{
-			int acslump = Wads.CheckNumForName (sc.String, ns_acslibrary);
+			int acslump = fileSystem.CheckNumForName (sc.String, ns_acslibrary);
 			if (acslump >= 0)
 			{
 				LoadModule (acslump);
@@ -1958,7 +1958,7 @@ FBehavior *FBehaviorContainer::LoadModule (int lumpnum, FileReader *fr, int len,
 	else
 	{
 		delete behavior;
-		Printf(TEXTCOLOR_RED "%s: invalid ACS module\n", Wads.GetLumpFullName(lumpnum));
+		Printf(TEXTCOLOR_RED "%s: invalid ACS module\n", fileSystem.GetFileFullName(lumpnum));
 		return NULL;
 	}
 }
@@ -2224,7 +2224,7 @@ bool FBehavior::Init(FLevelLocals *Level, int lumpnum, FileReader * fr, int len,
 	// 2. Corrupt modules won't be reported when a level is being loaded if this function quits before
 	//    adding it to the list.
 
-	if (fr == NULL) len = Wads.LumpLength (lumpnum);
+	if (fr == NULL) len = fileSystem.FileLength (lumpnum);
 
 
 
@@ -2240,7 +2240,7 @@ bool FBehavior::Init(FLevelLocals *Level, int lumpnum, FileReader * fr, int len,
 	object = new uint8_t[len];
 	if (fr == NULL)
 	{
-		Wads.ReadLump (lumpnum, object);
+		fileSystem.ReadFile (lumpnum, object);
 	}
 	else
 	{
@@ -2272,7 +2272,7 @@ bool FBehavior::Init(FLevelLocals *Level, int lumpnum, FileReader * fr, int len,
 
 	if (fr == NULL)
 	{
-		Wads.GetLumpName (ModuleName, lumpnum);
+		fileSystem.GetFileShortName (ModuleName, lumpnum);
 		ModuleName[8] = 0;
 	}
 	else
@@ -2317,8 +2317,8 @@ bool FBehavior::Init(FLevelLocals *Level, int lumpnum, FileReader * fr, int len,
 		// If this is an original Hexen BEHAVIOR, set up some localization info for it. Original Hexen BEHAVIORs are always in the old format.
 		if ((Level->flags2 & LEVEL2_HEXENHACK) && gameinfo.gametype == GAME_Hexen && lumpnum == -1 && reallumpnum > 0)
 		{
-			int fileno = Wads.GetLumpFile(reallumpnum);
-			const char * filename = Wads.GetWadName(fileno);
+			int fileno = fileSystem.GetFileContainer(reallumpnum);
+			const char * filename = fileSystem.GetResourceFileName(fileno);
 			if (!stricmp(filename, "HEXEN.WAD") || !stricmp(filename, "HEXDD.WAD"))
 			{
 				ShouldLocalize = true;
@@ -2563,7 +2563,7 @@ bool FBehavior::Init(FLevelLocals *Level, int lumpnum, FileReader * fr, int len,
 				if (parse[i])
 				{
 					FBehavior *module = NULL;
-					int lump = Wads.CheckNumForName (&parse[i], ns_acslibrary);
+					int lump = fileSystem.CheckNumForName (&parse[i], ns_acslibrary);
 					if (lump < 0)
 					{
 						Printf (TEXTCOLOR_RED "Could not find ACS library %s.\n", &parse[i]);
@@ -2909,7 +2909,7 @@ void FBehavior::LoadScriptsDirectory ()
 			{
 				const char *str = (const char *)(scripts.b + 8 + scripts.dw[3 + (-Scripts[i].Number - 1)]);
 				FName name(str);
-				Scripts[i].Number = -name;
+				Scripts[i].Number = -name.GetIndex();
 			}
 		}
 		// We need to resort scripts, because the new numbers for named scripts likely
@@ -4393,13 +4393,13 @@ int DLevelScript::GetActorProperty (int tid, int property)
 	case APROP_PainSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->PainSound));
 	case APROP_DeathSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->DeathSound));
 	case APROP_ActiveSound:	return GlobalACSStrings.AddString(S_GetSoundName(actor->ActiveSound));
-	case APROP_Species:		return GlobalACSStrings.AddString(actor->GetSpecies());
+	case APROP_Species:		return GlobalACSStrings.AddString(actor->GetSpecies().GetChars());
 	case APROP_NameTag:		return GlobalACSStrings.AddString(actor->GetTag());
 	case APROP_StencilColor:return actor->fillcolor;
 	case APROP_Friction:	return DoubleToACS(actor->Friction);
 	case APROP_MaxStepHeight: return DoubleToACS(actor->MaxStepHeight);
 	case APROP_MaxDropOffHeight: return DoubleToACS(actor->MaxDropOffHeight);
-	case APROP_DamageType:	return GlobalACSStrings.AddString(actor->DamageType);
+	case APROP_DamageType:	return GlobalACSStrings.AddString(actor->DamageType.GetChars());
 
 	default:				return 0;
 	}
@@ -4470,9 +4470,9 @@ int DLevelScript::CheckActorProperty (int tid, int property, int value)
 		case APROP_PainSound:	string = S_GetSoundName(actor->PainSound); break;
 		case APROP_DeathSound:	string = S_GetSoundName(actor->DeathSound); break;
 		case APROP_ActiveSound:	string = S_GetSoundName(actor->ActiveSound); break; 
-		case APROP_Species:		string = actor->GetSpecies(); break;
+		case APROP_Species:		string = actor->GetSpecies().GetChars(); break;
 		case APROP_NameTag:		string = actor->GetTag(); break;
-		case APROP_DamageType:	string = actor->DamageType; break;
+		case APROP_DamageType:	string = actor->DamageType.GetChars(); break;
 	}
 	if (string == NULL) string = "";
 	return (!stricmp(string, Level->Behaviors.LookupString(value)));
@@ -5262,7 +5262,7 @@ int DLevelScript::SwapActorTeleFog(AActor *activator, int tid)
 				VMCall(func, &params[0], params.Size(), &ret, 1);
 				if (rettype == TypeName)
 				{
-					retval = GlobalACSStrings.AddString(FName(ENamedName(retval)));
+					retval = GlobalACSStrings.AddString(FName(ENamedName(retval)).GetChars());
 				}
 				else if (rettype == TypeSound)
 				{
@@ -5744,7 +5744,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_ACS_NamedExecuteWithResult:
 		case ACSF_ACS_NamedExecuteAlways:
 			{
-				int scriptnum = -FName(Level->Behaviors.LookupString(args[0]));
+				int scriptnum = -FName(Level->Behaviors.LookupString(args[0])).GetIndex();
 				int arg1 = argCount > 1 ? args[1] : 0;
 				int arg2 = argCount > 2 ? args[2] : 0;
 				int arg3 = argCount > 3 ? args[3] : 0;
@@ -5807,14 +5807,14 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 		case ACSF_GetUserCVar:
 			if (argCount == 2)
 			{
-				return DoGetCVar(GetUserCVar(args[0], Level->Behaviors.LookupString(args[1])), false);
+				return DoGetCVar(G_GetUserCVar(args[0], Level->Behaviors.LookupString(args[1])), false);
 			}
 			break;
 
 		case ACSF_GetUserCVarString:
 			if (argCount == 2)
 			{
-				return DoGetCVar(GetUserCVar(args[0], Level->Behaviors.LookupString(args[1])), true);
+				return DoGetCVar(G_GetUserCVar(args[0], Level->Behaviors.LookupString(args[1])), true);
 			}
 			break;
 
@@ -6609,7 +6609,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 			auto a = Level->SingleActorFromTID(args[0], activator);
 			if (a != nullptr)
 			{
-				return GlobalACSStrings.AddString(Terrains[a->floorterrain].Name);
+				return GlobalACSStrings.AddString(Terrains[a->floorterrain].Name.GetChars());
 			}
 			else
 			{
@@ -6619,7 +6619,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 		}
 
 		case ACSF_StrArg:
-			return -FName(Level->Behaviors.LookupString(args[0]));
+			return -FName(Level->Behaviors.LookupString(args[0])).GetIndex();
 
 		case ACSF_Floor:
 			return args[0] & ~0xffff;
@@ -8321,7 +8321,7 @@ scriptwait:
 			}
 
 		case PCD_SCRIPTWAITNAMED:
-			statedata = -FName(Level->Behaviors.LookupString(STACK(1)));
+			statedata = -FName(Level->Behaviors.LookupString(STACK(1))).GetIndex();
 			sp--;
 			goto scriptwait;
 
@@ -8977,7 +8977,7 @@ scriptwait:
 				if (specnum >= -ACSF_ACS_NamedExecuteAlways && specnum <= -ACSF_ACS_NamedExecute)
 				{
 					specnum = NamedACSToNormalACS[-specnum - ACSF_ACS_NamedExecute];
-					arg0 = -FName(Level->Behaviors.LookupString(arg0));
+					arg0 = -FName(Level->Behaviors.LookupString(arg0)).GetIndex();
 				}
 
 				auto itr = Level->GetLineIdIterator(STACK(7));
@@ -9006,7 +9006,7 @@ scriptwait:
 				if (specnum >= -ACSF_ACS_NamedExecuteAlways && specnum <= -ACSF_ACS_NamedExecute)
 				{
 					specnum = NamedACSToNormalACS[-specnum - ACSF_ACS_NamedExecute];
-					arg0 = -FName(Level->Behaviors.LookupString(arg0));
+					arg0 = -FName(Level->Behaviors.LookupString(arg0)).GetIndex();
 				}
 
 				if (STACK(7) != 0)

@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "textures/textures.h"
 
 //==========================================================================
@@ -77,7 +77,7 @@ FFlatTexture::FFlatTexture (int lumpnum)
 	int area;
 	int bits;
 
-	area = Wads.LumpLength (lumpnum);
+	area = fileSystem.FileLength (lumpnum);
 
 	switch (area)
 	{
@@ -104,7 +104,7 @@ FFlatTexture::FFlatTexture (int lumpnum)
 
 uint8_t *FFlatTexture::MakeTexture (FRenderStyle style)
 {
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	auto Pixels = new uint8_t[Width*Height];
 	auto numread = lump.Read (Pixels, Width*Height);
 	if (numread < Width*Height)

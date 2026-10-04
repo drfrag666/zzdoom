@@ -40,7 +40,7 @@
 #include "hu_stuff.h"
 #include "configfile.h"
 #include "d_event.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "templates.h"
 #include "dobject.h"
 #include "vm.h"
@@ -688,7 +688,7 @@ void C_BindDefaults ()
 {
 	int lump, lastlump = 0;
 
-	while ((lump = Wads.FindLump("DEFBINDS", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump("DEFBINDS", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 

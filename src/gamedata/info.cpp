@@ -50,7 +50,7 @@
 #include "d_player.h"
 #include "events.h"
 #include "types.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "g_levellocals.h"
 
 extern void LoadActors ();
@@ -316,7 +316,7 @@ static void LoadAltHudStuff()
 		break;
 	}
 
-	while ((lump = Wads.FindLump("ALTHUDCF", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump("ALTHUDCF", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 		while (sc.GetString())

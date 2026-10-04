@@ -428,7 +428,7 @@ static bool DoSubstitution (FString &out, const char *in)
 				}
 				else
 				{
-					out += weapon->GetClass()->TypeName;
+					out += weapon->GetClass()->TypeName.GetChars();
 				}
 			}
 		}

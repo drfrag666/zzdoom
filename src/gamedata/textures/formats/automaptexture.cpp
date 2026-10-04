@@ -37,7 +37,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "textures/textures.h"
 
 //==========================================================================
@@ -64,8 +64,8 @@ public:
 
 FTexture *AutomapTexture_TryCreate(FileReader &data, int lumpnum)
 {
-	if (data.GetLength() < 320) return NULL;
-	if (!Wads.CheckLumpName(lumpnum, "AUTOPAGE")) return NULL;
+	if (data.GetLength() < 320) return nullptr;
+	if (!fileSystem.CheckFileName(lumpnum, "AUTOPAGE")) return nullptr;
 	return new FAutomapTexture(lumpnum);
 }
 
@@ -79,7 +79,7 @@ FAutomapTexture::FAutomapTexture (int lumpnum)
 : FWorldTexture(NULL, lumpnum)
 {
 	Width = 320;
-	Height = uint16_t(Wads.LumpLength(lumpnum) / 320);
+	Height = uint16_t(fileSystem.FileLength(lumpnum) / 320);
 	CalcBitSize ();
 }
 
@@ -92,7 +92,7 @@ FAutomapTexture::FAutomapTexture (int lumpnum)
 uint8_t *FAutomapTexture::MakeTexture (FRenderStyle style)
 {
 	int x, y;
-	FMemLump data = Wads.ReadLump (SourceLump);
+	FileData data = fileSystem.ReadFile (SourceLump);
 	const uint8_t *indata = (const uint8_t *)data.GetMem();
 
 	auto Pixels = new uint8_t[Width * Height];

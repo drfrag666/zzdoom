@@ -923,7 +923,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_AttachLight, AttachLightDirect)
 	PARAM_FLOAT(spoti);
 	PARAM_FLOAT(spoto);
 	PARAM_FLOAT(spotp);
-	ACTION_RETURN_BOOL(AttachLightDirect(self, lightid, type, color, radius1, radius2, flags, ofs_x, ofs_y, ofs_z, parami, spoti, spoto, spotp));
+	ACTION_RETURN_BOOL(AttachLightDirect(self, lightid.GetIndex(), type, color, radius1, radius2, flags, ofs_x, ofs_y, ofs_z, parami, spoti, spoto, spotp));
 }
 
 //==========================================================================
@@ -950,7 +950,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_RemoveLight, RemoveLight)
 {
 	PARAM_SELF_PROLOGUE(AActor);
 	PARAM_NAME(lightid);
-	ACTION_RETURN_BOOL(RemoveLight(self, lightid));
+	ACTION_RETURN_BOOL(RemoveLight(self, lightid.GetIndex()));
 }
 
 

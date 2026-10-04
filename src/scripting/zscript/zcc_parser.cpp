@@ -33,7 +33,7 @@
 
 #include "dobject.h"
 #include "sc_man.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "cmdlib.h"
 #include "m_argv.h"
 #include "v_text.h"
@@ -245,7 +245,7 @@ static void ParseSingleFile(FScanner *pSC, const char *filename, int lump, void 
 	{
 		if (filename != nullptr)
 		{
-			lump = Wads.CheckNumForFullName(filename, true);
+			lump = fileSystem.CheckNumForFullName(filename, true);
 			if (lump >= 0)
 			{
 				lsc.OpenLumpNum(lump);
@@ -297,12 +297,12 @@ static void ParseSingleFile(FScanner *pSC, const char *filename, int lump, void 
 
 		case TK_None:	// 'NONE' is a token for SBARINFO but not here.
 		case TK_Identifier:
-			value.Int = FName(sc.String);
+			value.Int = FName(sc.String).GetIndex();
 			tokentype = ZCC_IDENTIFIER;
 			break;
 
 		case TK_NonWhitespace:
-			value.Int = FName(sc.String);
+			value.Int = FName(sc.String).GetIndex();
 			tokentype = ZCC_NWS;
 			break;
 
@@ -355,7 +355,7 @@ static void DoParse(int lumpnum)
 	void *parser;
 	ZCCToken value;
 	auto baselump = lumpnum;
-	auto fileno = Wads.GetLumpFile(lumpnum);
+	auto fileno = fileSystem.GetFileContainer(lumpnum);
 
 	parser = ZCCParseAlloc(malloc);
 	ZCCParseState state;
@@ -415,18 +415,18 @@ static void DoParse(int lumpnum)
 	ParseSingleFile(&sc, nullptr, lumpnum, parser, state);
 	for (unsigned i = 0; i < Includes.Size(); i++)
 	{
-		lumpnum = Wads.CheckNumForFullName(Includes[i], true);
+		lumpnum = fileSystem.CheckNumForFullName(Includes[i], true);
 		if (lumpnum == -1)
 		{
 			IncludeLocs[i].Message(MSG_ERROR, "Include script lump %s not found", Includes[i].GetChars());
 		}
 		else
 		{
-			auto fileno2 = Wads.GetLumpFile(lumpnum);
+			auto fileno2 = fileSystem.GetFileContainer(lumpnum);
 			if (fileno == 0 && fileno2 != 0)
 			{
 				I_FatalError("File %s is overriding core lump %s.",
-					Wads.GetWadFullName(Wads.GetLumpFile(lumpnum)), Includes[i].GetChars());
+					fileSystem.GetResourceFileFullName(fileSystem.GetFileContainer(lumpnum)), Includes[i].GetChars());
 			}
 
 			ParseSingleFile(nullptr, nullptr, lumpnum, parser, state);
@@ -445,7 +445,7 @@ static void DoParse(int lumpnum)
 	// If the parser fails, there is no point starting the compiler, because it'd only flood the output with endless errors.
 	if (FScriptPosition::ErrorCounter > 0)
 	{
-		I_Error("%d errors while parsing %s", FScriptPosition::ErrorCounter, Wads.GetLumpFullPath(baselump).GetChars());
+		I_Error("%d errors while parsing %s", FScriptPosition::ErrorCounter, fileSystem.GetFileFullPath(baselump).GetChars());
 	}
 
 #ifndef NDEBUG
@@ -459,7 +459,7 @@ static void DoParse(int lumpnum)
 	if (Args->CheckParm("-dumpast"))
 	{
 		FString ast = ZCC_PrintAST(state.TopNode);
-		FString filename = Wads.GetLumpFullPath(baselump);
+		FString filename = fileSystem.GetFileFullPath(baselump);
 		filename.ReplaceChars(":\\/?|", '.');
 		filename << ".ast";
 		FileWriter *ff = FileWriter::Open(filename);
@@ -471,19 +471,19 @@ static void DoParse(int lumpnum)
 	}
 
 	PSymbolTable symtable;
-	auto newns = Wads.GetLumpFile(baselump) == 0 ? Namespaces.GlobalNamespace : Namespaces.NewNamespace(Wads.GetLumpFile(baselump));
+	auto newns = fileSystem.GetFileContainer(baselump) == 0 ? Namespaces.GlobalNamespace : Namespaces.NewNamespace(fileSystem.GetFileContainer(baselump));
 	ZCCCompiler cc(state, NULL, symtable, newns, baselump, state.ParseVersion);
 	cc.Compile();
 
 	if (FScriptPosition::ErrorCounter > 0)
 	{
 		// Abort if the compiler produced any errors. Also do not compile further lumps, because they very likely miss some stuff.
-		I_Error("%d errors, %d warnings while compiling %s", FScriptPosition::ErrorCounter, FScriptPosition::WarnCounter, Wads.GetLumpFullPath(baselump).GetChars());
+		I_Error("%d errors, %d warnings while compiling %s", FScriptPosition::ErrorCounter, FScriptPosition::WarnCounter, fileSystem.GetFileFullPath(baselump).GetChars());
 	}
 	else if (FScriptPosition::WarnCounter > 0)
 	{
 		// If we got warnings, but no errors, print the information but continue.
-		Printf(TEXTCOLOR_ORANGE "%d warnings while compiling %s\n", FScriptPosition::WarnCounter, Wads.GetLumpFullPath(baselump).GetChars());
+		Printf(TEXTCOLOR_ORANGE "%d warnings while compiling %s\n", FScriptPosition::WarnCounter, fileSystem.GetFileFullPath(baselump).GetChars());
 	}
 
 }
@@ -497,7 +497,7 @@ void ParseScripts()
 	int lump, lastlump = 0;
 	FScriptPosition::ResetErrorCounter();
 
-	while ((lump = Wads.FindLump("ZSCRIPT", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump("ZSCRIPT", &lastlump)) != -1)
 	{
 		DoParse(lump);
 	}

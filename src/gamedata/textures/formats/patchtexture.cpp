@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_palette.h"
 #include "v_video.h"
 #include "bitmap.h"
@@ -176,10 +176,10 @@ uint8_t *FPatchTexture::MakeTexture (FRenderStyle style)
 	const column_t *maxcol;
 	int x;
 
-	FMemLump lump = Wads.ReadLump (SourceLump);
+	FileData lump = fileSystem.ReadFile (SourceLump);
 	const patch_t *patch = (const patch_t *)lump.GetMem();
 
-	maxcol = (const column_t *)((const uint8_t *)patch + Wads.LumpLength (SourceLump) - 3);
+	maxcol = (const column_t *)((const uint8_t *)patch + fileSystem.FileLength (SourceLump) - 3);
 
 	remap = GetRemap(style, isalpha);
 	// Special case for skies
@@ -283,12 +283,12 @@ int FPatchTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, F
 void FPatchTexture::DetectBadPatches ()
 {
 	// The patch must look like it is large enough for the rules to apply to avoid using this on truly empty patches.
-	if (Wads.LumpLength(SourceLump) < Width * Height / 2) return;
+	if (fileSystem.FileLength(SourceLump) < Width * Height / 2) return;
 
 	// Check if this patch is likely to be a problem.
 	// It must be 256 pixels tall, and all its columns must have exactly
 	// one post, where each post has a supposed length of 0.
-	FMemLump lump = Wads.ReadLump (SourceLump);
+	FileData lump = fileSystem.ReadFile (SourceLump);
 	const patch_t *realpatch = (patch_t *)lump.GetMem();
 	const uint32_t *cofs = realpatch->columnofs;
 	int x, x2 = LittleShort(realpatch->width);

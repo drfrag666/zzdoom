@@ -61,7 +61,7 @@
 #include "v_video.h"
 #include "v_pfx.h"
 #include "stats.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "r_data/r_translate.h"
 #include "f_wipe.h"
 #include "sbar.h"
@@ -69,7 +69,7 @@
 #include "win32swiface.h"
 #include "doomstat.h"
 #include "v_palette.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "textures.h"
 #include "r_data/colormaps.h"
 #include "SkylineBinPack.h"
@@ -179,7 +179,7 @@ extern bool AppActive;
 extern int SessionState;
 extern bool VidResizing;
 
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 EXTERN_CVAR (Float, Gamma)
 EXTERN_CVAR (Bool, vid_vsync)
 EXTERN_CVAR (Float, transsouls)
@@ -571,10 +571,10 @@ bool D3DFB::LoadShaders()
 		{
 			shaderpath = shaderdir;
 			shaderpath += ShaderNames[i];
-			lump = Wads.CheckNumForFullName(shaderpath);
+			lump = fileSystem.CheckNumForFullName(shaderpath);
 			if (lump >= 0)
 			{
-				FMemLump data = Wads.ReadLump(lump);
+				FileData data = fileSystem.ReadFile(lump);
 				if (FAILED(D3DDevice->CreatePixelShader((DWORD *)data.GetMem(), &Shaders[i])) &&
 					i < SHADER_BurnWipe)
 				{

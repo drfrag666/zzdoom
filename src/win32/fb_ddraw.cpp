@@ -50,7 +50,7 @@
 #include "v_video.h"
 #include "v_pfx.h"
 #include "stats.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 
 #include "win32iface.h"
 #include "win32swiface.h"
@@ -76,7 +76,7 @@ extern bool AppActive;
 extern int SessionState;
 extern bool VidResizing;
 
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 EXTERN_CVAR (Float, Gamma)
 EXTERN_CVAR (Int, vid_refreshrate)
 

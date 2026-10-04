@@ -40,8 +40,9 @@
 #include "zstring.h"
 #include "vectors.h"
 #include "cmdlib.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "memarena.h"
+#include "name.h"
 #include "scripting/backend/scopebarrier.h"
 
 class DObject;
@@ -98,7 +99,7 @@ enum EVMAbortException
 	X_FORMAT_ERROR
 };
 
-class CVMAbortException : public CDoomError
+class CVMAbortException : public CEngineError
 {
 public:
 	static FString stacktrace;

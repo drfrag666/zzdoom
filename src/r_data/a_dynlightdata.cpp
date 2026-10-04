@@ -42,7 +42,7 @@
 #include "m_random.h"
 #include "sc_man.h"
 #include "templates.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "gi.h"
 #include "r_state.h"
 #include "stats.h"
@@ -1137,7 +1137,7 @@ static void DoParseDefs(FScanner &sc, int workingLump)
 			{
 				sc.MustGetString();
 				// This is not using sc.Open because it can print a more useful error message when done here
-				lump = Wads.CheckNumForFullName(sc.String, true);
+				lump = fileSystem.CheckNumForFullName(sc.String, true);
 				if (lump==-1)
 					sc.ScriptError("Lump '%s' not found", sc.String);
 
@@ -1220,7 +1220,7 @@ static void LoadGLDefs(const char *defsLump)
 	static const char *gldefsnames[] = { "GLDEFS", defsLump, nullptr };
 
 	lastLump = 0;
-	while ((workingLump = Wads.FindLumpMulti(gldefsnames, &lastLump)) != -1)
+	while ((workingLump = fileSystem.FindLumpMulti(gldefsnames, &lastLump)) != -1)
 	{
 		FScanner sc(workingLump);
 		DoParseDefs(sc, workingLump);

@@ -63,7 +63,7 @@
 #include "v_video.h"
 #include "v_pfx.h"
 #include "stats.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "m_argv.h"
 #include "r_defs.h"
 #include "v_text.h"
@@ -98,7 +98,7 @@ extern int SessionState;
 extern bool FullscreenReset;
 extern bool VidResizing;
 
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 EXTERN_CVAR (Float, Gamma)
 EXTERN_CVAR (Bool, cl_capfps)
 

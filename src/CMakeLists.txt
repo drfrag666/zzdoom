@@ -266,7 +266,7 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		set( CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -pg" )
 	endif()
 
-	set( REL_CXX_FLAGS "-fno-rtti" )
+	#set( REL_CXX_FLAGS "-fno-rtti" )
 	if( NOT PROFILE AND NOT APPLE )
 		# On OS X frame pointers are required for exception handling, at least with Clang
 		set( REL_CXX_FLAGS "${REL_CXX_FLAGS} -fomit-frame-pointer" )
@@ -541,8 +541,8 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRE
 	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/zcc-parse.lemon )
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
-	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/utility/sc_man_scanner.re
-	DEPENDS re2c ${CMAKE_CURRENT_SOURCE_DIR}/utility/sc_man_scanner.re )
+	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/common/engine/sc_man_scanner.re
+	DEPENDS re2c ${CMAKE_CURRENT_SOURCE_DIR}/common/engine/sc_man_scanner.re )
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
@@ -572,9 +572,12 @@ file( GLOB HEADER_FILES
 	win32/*.h
 	r_data/*.h
 	r_data/models/*.h
-	utility/rapidjson/*.h
-	utility/sfmt/*.h
-	utility/math./*h
+	common/utility/*.h
+	common/engine/*.h
+	common/filesystem/*.h
+	common/thirdparty/*.h
+	common/thirdparty/rapidjson/*.h
+	common/thirdparty/math./*h
 	utility/*.h
 	scripting/*.h
 	scripting/backend/*.h
@@ -679,7 +682,7 @@ set( NOT_COMPILED_SOURCE_FILES
 	${SWRENDER_SOURCES}
 	${POLYRENDER_SOURCES}
 	sc_man_scanner.h
-	utility/sc_man_scanner.re
+	common/engine/sc_man_scanner.re
 	g_statusbar/sbarinfo_commands.cpp
 	gamedata/xlat/xlat_parser.y
 	xlat_parser.c
@@ -712,7 +715,7 @@ set( FASTMATH_SOURCES
 	sound/music/music_midi_base.cpp
 	sound/backend/oalsound.cpp
 	r_data/models/models.cpp
-	utility/matrix.cpp
+	common/utility/matrix.cpp
 )
 
 set (PCH_SOURCES
@@ -723,6 +726,7 @@ set (PCH_SOURCES
 	playsim/bots/b_move.cpp
 	playsim/bots/b_think.cpp
 	bbannouncer.cpp
+	console/c_commandline.cpp
 	console/c_bind.cpp
 	console/c_cmds.cpp
 	console/c_console.cpp
@@ -798,7 +802,6 @@ set (PCH_SOURCES
 	gamedata/gi.cpp
 	gamedata/stringtable.cpp
 	gamedata/umapinfo.cpp
-	gamedata/w_wad.cpp
 	gamedata/d_dehacked.cpp
 	gamedata/g_doomedmap.cpp
 	gamedata/info.cpp
@@ -868,16 +871,6 @@ set (PCH_SOURCES
 	menu/optionmenu.cpp
 	menu/playermenu.cpp
 	menu/videomenu.cpp
-	gamedata/resourcefiles/ancientzip.cpp
-	gamedata/resourcefiles/file_7z.cpp
-	gamedata/resourcefiles/file_grp.cpp
-	gamedata/resourcefiles/file_lump.cpp
-	gamedata/resourcefiles/file_rff.cpp
-	gamedata/resourcefiles/file_wad.cpp
-	gamedata/resourcefiles/file_zip.cpp
-	gamedata/resourcefiles/file_pak.cpp
-	gamedata/resourcefiles/file_directory.cpp
-	gamedata/resourcefiles/resourcefile.cpp
 	gamedata/textures/animations.cpp
 	gamedata/textures/anim_switches.cpp
 	gamedata/textures/bitmap.cpp
@@ -960,43 +953,57 @@ set (PCH_SOURCES
 	scripting/zscript/ast.cpp
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
-	utility/sfmt/SFMT.cpp
 	sound/music/i_music.cpp
 	sound/music/i_soundfont.cpp
 	sound/backend/i_sound.cpp
 	sound/music/music_config.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	events.cpp
+	common/thirdparty/sfmt/SFMT.cpp
+	common/utility/engineerrors.cpp
+	common/utility/i_module.cpp
+	common/utility/m_alloc.cpp
+	common/utility/utf8.cpp
+	common/utility/palette.cpp
+	common/utility/files.cpp
+	common/utility/files_decompress.cpp
+	common/utility/memarena.cpp
+	common/utility/cmdlib.cpp
+	common/utility/configfile.cpp
+	common/utility/i_time.cpp
+	common/utility/m_argv.cpp
+	common/utility/s_playlist.cpp
+	common/utility/zstrformat.cpp
+	common/utility/name.cpp
+	common/thirdparty/md5.cpp
+ 	common/thirdparty/superfasthash.cpp
+	common/filesystem/filesystem.cpp
+	common/filesystem/ancientzip.cpp
+	common/filesystem/file_7z.cpp
+	common/filesystem/file_grp.cpp
+	common/filesystem/file_lump.cpp
+	common/filesystem/file_rff.cpp
+	common/filesystem/file_wad.cpp
+	common/filesystem/file_zip.cpp
+	common/filesystem/file_pak.cpp
+	common/filesystem/file_whres.cpp
+	common/filesystem/file_directory.cpp
+	common/filesystem/resourcefile.cpp
+	common/engine/sc_man.cpp
+	
 	utility/GuillotineBinPack.cpp
 	utility/SkylineBinPack.cpp
-	utility/i_module.cpp
-	utility/palette.cpp
-	utility/files.cpp
-	utility/files_decompress.cpp
 	utility/m_png.cpp
 	utility/m_random.cpp
-	utility/memarena.cpp
-	utility/md5.cpp
-	utility/superfasthash.cpp
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
-	utility/sc_man.cpp
 	utility/stats.cpp
-	utility/cmdlib.cpp
-	utility/configfile.cpp
-	utility/i_time.cpp
-	utility/m_alloc.cpp
-	utility/m_argv.cpp
 	utility/m_bbox.cpp
-	utility/name.cpp
-	utility/s_playlist.cpp
 	utility/v_collection.cpp
-	utility/utf8.cpp
-	utility/zstrformat.cpp
 )
 
 if( ${HAVE_VM_JIT} )
@@ -1019,33 +1026,34 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${SYSTEM_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
-	utility/x86.cpp
-	utility/strnatcmp.c
-	utility/zstring.cpp
-	utility/math/asin.c
-	utility/math/atan.c
-	utility/math/const.c
-	utility/math/cosh.c
-	utility/math/exp.c
-	utility/math/isnan.c
-	utility/math/log.c
-	utility/math/log10.c
-	utility/math/mtherr.c
-	utility/math/polevl.c
-	utility/math/pow.c
-	utility/math/powi.c
-	utility/math/sin.c
-	utility/math/sinh.c
-	utility/math/sqrt.c
-	utility/math/tan.c
-	utility/math/tanh.c
-	utility/math/fastsin.cpp
+	common/utility/x86.cpp
+	common/thirdparty/strnatcmp.c
+	common/utility/zstring.cpp
+	common/utility/findfile.cpp
+	common/thirdparty/math/asin.c
+	common/thirdparty/math/atan.c
+	common/thirdparty/math/const.c
+	common/thirdparty/math/cosh.c
+	common/thirdparty/math/exp.c
+	common/thirdparty/math/isnan.c
+	common/thirdparty/math/log.c
+	common/thirdparty/math/log10.c
+	common/thirdparty/math/mtherr.c
+	common/thirdparty/math/polevl.c
+	common/thirdparty/math/pow.c
+	common/thirdparty/math/powi.c
+	common/thirdparty/math/sin.c
+	common/thirdparty/math/sinh.c
+	common/thirdparty/math/sqrt.c
+	common/thirdparty/math/tan.c
+	common/thirdparty/math/tanh.c
+	common/thirdparty/math/fastsin.cpp
 	zzautozend.cpp
 )
 
 set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
 set_source_files_properties( xlat/parse_xlat.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c" )
-set_source_files_properties( utility/sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
+set_source_files_properties( common/engine/sc_man.cpp PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h" )
 set_source_files_properties( ${NOT_COMPILED_SOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE )
 if ( WIN32 )
 	set_source_files_properties( win32/fb_d3d9.cpp win32/fb_d3d9_wipe.cpp PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
@@ -1067,6 +1075,10 @@ endif()
 target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa lzma ${ZMUSIC_LIBRARIES} )
 
 include_directories( .
+	common/thirdparty
+	common/filesystem
+	common/utility
+	common/engine
 	g_statusbar
 	console
 	playsim
@@ -1184,13 +1196,13 @@ source_group("Audio Files\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_
 source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")
 source_group("Audio Files\\Third-party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/thirdparty/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
-source_group("Game Data\\Resource Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/resourcefiles/.+")
 source_group("Game Data\\Fonts" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/fonts/.+")
 source_group("Game Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/textures/.+")
 source_group("Game Data\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/textures/formats/.+")
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
 source_group("Map Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/maploader/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
+source_group("Console" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/console/.+")
 source_group("Playsim" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/playsim/.+")
 source_group("Playsim\\Bots" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/playsim/bots/.+")
 source_group("Playsim\\FraggleScript" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/playsim/fragglescript/.+")
@@ -1223,12 +1235,16 @@ source_group("Scripting\\ZScript frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_
 source_group("Scripting\\Compiler backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/backend/.+")
 source_group("Scripting\\VM" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/vm/.+")
 source_group("Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/.+")
+source_group("Common" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/.+")
+source_group("Common\\Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/.+")
+source_group("Common\\File System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/filesystem/.+")
+source_group("Common\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/.+")
+source_group("Common\\Third Party\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/math/.+")
+source_group("Common\\Third Party\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/rapidjson/.+")
+source_group("Common\\Third Party\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/sfmt/.+")
 source_group("Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/.+")
 source_group("Utility\\Node Builder" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/nodebuilder/.+")
-source_group("Utility\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/math/.+")
-source_group("Utility\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/rapidjson/.+")
-source_group("Utility\\SFMT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/utility/sfmt/.+")
 source_group("Statusbar" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/g_statusbar/.+")
 source_group("Versioning" FILES version.h win32/zdoom.rc)
 source_group("Xlat" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/xlat/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.h)
-source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h utility/sc_man_scanner.re)
+source_group("Source Files" FILES ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h common/engine/sc_man_scanner.re)

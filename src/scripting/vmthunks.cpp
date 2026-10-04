@@ -49,8 +49,11 @@
 #include "am_map.h"
 #include "v_video.h"
 #include "gi.h"
+#include "utf8.h"
 #include "fontinternals.h"
 #include "intermission/intermission.h"
+#include "menu/menu.h"
+#include "c_cvars.h"
 
 DVector2 AM_GetPosition();
 int Net_GetLatency(int *ld, int *ad);
@@ -3126,6 +3129,199 @@ DEFINE_ACTION_FUNCTION_NATIVE(_AltHUD, GetLatency, Net_GetLatency)
 	if (numret > 2) ret[2].SetInt(ad);
 	return numret;
 }
+
+//==========================================================================
+//
+// file system
+//
+//==========================================================================
+
+DEFINE_ACTION_FUNCTION(_Wads, GetNumEntries)
+{
+	PARAM_PROLOGUE;
+	ACTION_RETURN_INT(fileSystem.GetNumEntries());
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, CheckNumForName)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(name);
+	PARAM_INT(ns);
+	PARAM_INT(wadnum);
+	PARAM_BOOL(exact);
+	ACTION_RETURN_INT(fileSystem.CheckNumForName(name, ns, wadnum, exact));
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, CheckNumForFullName)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(name);
+	ACTION_RETURN_INT(fileSystem.CheckNumForFullName(name));
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, FindLump)
+{
+	PARAM_PROLOGUE;
+	PARAM_STRING(name);
+	PARAM_INT(startlump);
+	PARAM_INT(ns);
+	const bool isLumpValid = startlump >= 0 && startlump < fileSystem.GetNumEntries();
+	ACTION_RETURN_INT(isLumpValid ? fileSystem.FindLump(name, &startlump, 0 != ns) : -1);
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, GetLumpName)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(lump);
+	FString lumpname;
+	fileSystem.GetFileShortName(lumpname, lump);
+	ACTION_RETURN_STRING(lumpname);
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, GetLumpFullName)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(lump);
+	ACTION_RETURN_STRING(fileSystem.GetFileFullName(lump));
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, GetLumpNamespace)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(lump);
+	ACTION_RETURN_INT(fileSystem.GetFileNamespace(lump));
+}
+
+DEFINE_ACTION_FUNCTION(_Wads, ReadLump)
+{
+	PARAM_PROLOGUE;
+	PARAM_INT(lump);
+	const bool isLumpValid = lump >= 0 && lump < fileSystem.GetNumEntries();
+	ACTION_RETURN_STRING(isLumpValid ? fileSystem.ReadFile(lump).GetString() : FString());
+}
+
+//==========================================================================
+//
+// CVARs
+//
+//==========================================================================
+
+DEFINE_ACTION_FUNCTION(_CVar, GetInt)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	auto v = self->GetGenericRep(CVAR_Int);
+	ACTION_RETURN_INT(v.Int);
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, GetFloat)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	auto v = self->GetGenericRep(CVAR_Float);
+	ACTION_RETURN_FLOAT(v.Float);
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, GetString)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	auto v = self->GetGenericRep(CVAR_String);
+	ACTION_RETURN_STRING(v.String);
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, SetInt)
+{
+	// Only menus are allowed to change CVARs.
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	if (!(self->GetFlags() & CVAR_MOD))
+	{
+		// Only menus are allowed to change non-mod CVARs.
+		if (DMenu::InMenu == 0)
+		{
+			ThrowAbortException(X_OTHER, "Attempt to change CVAR '%s' outside of menu code", self->GetName());
+		}
+	}
+	PARAM_INT(val);
+	UCVarValue v;
+	v.Int = val;
+	self->SetGenericRep(v, CVAR_Int);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, SetFloat)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	if (!(self->GetFlags() & CVAR_MOD))
+	{
+		// Only menus are allowed to change non-mod CVARs.
+		if (DMenu::InMenu == 0)
+		{
+			ThrowAbortException(X_OTHER, "Attempt to change CVAR '%s' outside of menu code", self->GetName());
+		}
+	}
+	PARAM_FLOAT(val);
+	UCVarValue v;
+	v.Float = (float)val;
+	self->SetGenericRep(v, CVAR_Float);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, SetString)
+{
+	// Only menus are allowed to change CVARs.
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	if (!(self->GetFlags() & CVAR_MOD))
+	{
+		// Only menus are allowed to change non-mod CVARs.
+		if (DMenu::InMenu == 0)
+		{
+			ThrowAbortException(X_OTHER, "Attempt to change CVAR '%s' outside of menu code", self->GetName());
+		}
+	}
+	PARAM_STRING(val);
+	UCVarValue v;
+	v.String = val.GetChars();
+	self->SetGenericRep(v, CVAR_String);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, GetRealType)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	ACTION_RETURN_INT(self->GetRealType());
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, ResetToDefault)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FBaseCVar);
+	if (!(self->GetFlags() & CVAR_MOD))
+	{
+		// Only menus are allowed to change non-mod CVARs.
+		if (DMenu::InMenu == 0)
+		{
+			ThrowAbortException(X_OTHER, "Attempt to change CVAR '%s' outside of menu code", self->GetName());
+		}
+	}
+
+	self->ResetToDefault();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, FindCVar)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(name);
+	ACTION_RETURN_POINTER(FindCVar(name.GetChars(), nullptr));
+}
+
+DEFINE_ACTION_FUNCTION(_CVar, GetCVar)
+{
+	PARAM_PROLOGUE;
+	PARAM_NAME(name);
+	PARAM_POINTER(plyr, player_t);
+	ACTION_RETURN_POINTER(GetCVar(plyr ? int(plyr - players) : -1, name.GetChars()));
+}
+
+
+
 
 //==========================================================================
 //

@@ -35,7 +35,7 @@
 #include "doomtype.h"
 #include "g_game.h"
 #include "d_event.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "gi.h"
 #include "v_video.h"
 #include "d_main.h"
@@ -170,12 +170,12 @@ void DIntermissionScreen::Init(FIntermissionAction *desc, bool first)
 		mFlatfill = desc->mFlatfill;
 	}
 	S_Sound (CHAN_VOICE, CHANF_UI, desc->mSound, 1.0f, ATTN_NONE);
-	if (desc->mPalette.IsNotEmpty() && (lumpnum = Wads.CheckNumForFullName(desc->mPalette, true)) > 0)
+	if (desc->mPalette.IsNotEmpty() && (lumpnum = fileSystem.CheckNumForFullName(desc->mPalette, true)) > 0)
 	{
 		PalEntry *palette;
 		uint8_t palbuffer[768];
 		const uint8_t *orgpal;
-		FMemLump lump;
+		FileData lump;
 		int i;
 
 		ReadPalette(lumpnum, palbuffer);

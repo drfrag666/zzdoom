@@ -59,7 +59,7 @@
 #include "v_text.h"
 #include "sc_man.h"
 
-#include "w_wad.h"
+#include "filesystem.h"
 
 #include "c_dispatch.h"
 #include "cmdlib.h"
@@ -84,7 +84,7 @@ int active_con_scale();
 FRenderer *Renderer;
 
 EXTERN_CVAR (Bool, swtruecolor)
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 
 #if defined(_DEBUG) && defined(_M_IX86) && !defined(__MINGW32__)
 #define DBGBREAK	{ __asm int 3 }
@@ -333,231 +333,6 @@ void DCanvas::GetScreenshotBuffer(const uint8_t *&buffer, int &pitch, ESSType &c
 void DCanvas::ReleaseScreenshotBuffer()
 {
 	Unlock();
-}
-
-//==========================================================================
-//
-// V_GetColorFromString
-//
-// Passed a string of the form "#RGB", "#RRGGBB", "R G B", or "RR GG BB",
-// returns a number representing that color. If palette is non-NULL, the
-// index of the best match in the palette is returned, otherwise the
-// RRGGBB value is returned directly.
-//
-//==========================================================================
-
-int V_GetColorFromString (const uint32_t *palette, const char *cstr, FScriptPosition *sc)
-{
-	int c[3], i, p;
-	char val[3];
-
-	val[2] = '\0';
-
-	// Check for HTML-style #RRGGBB or #RGB color string
-	if (cstr[0] == '#')
-	{
-		size_t len = strlen (cstr);
-
-		if (len == 7)
-		{
-			// Extract each eight-bit component into c[].
-			for (i = 0; i < 3; ++i)
-			{
-				val[0] = cstr[1 + i*2];
-				val[1] = cstr[2 + i*2];
-				c[i] = ParseHex (val, sc);
-			}
-		}
-		else if (len == 4)
-		{
-			// Extract each four-bit component into c[], expanding to eight bits.
-			for (i = 0; i < 3; ++i)
-			{
-				val[1] = val[0] = cstr[1 + i];
-				c[i] = ParseHex (val, sc);
-			}
-		}
-		else
-		{
-			// Bad HTML-style; pretend it's black.
-			c[2] = c[1] = c[0] = 0;
-		}
-	}
-	else
-	{
-		if (strlen(cstr) == 6)
-		{
-			char *p;
-			int color = strtol(cstr, &p, 16);
-			if (*p == 0)
-			{
-				// RRGGBB string
-				c[0] = (color & 0xff0000) >> 16;
-				c[1] = (color & 0xff00) >> 8;
-				c[2] = (color & 0xff);
-			}
-			else goto normal;
-		}
-		else
-		{
-normal:
-			// Treat it as a space-delimited hexadecimal string
-			for (i = 0; i < 3; ++i)
-			{
-				// Skip leading whitespace
-				while (*cstr <= ' ' && *cstr != '\0')
-				{
-					cstr++;
-				}
-				// Extract a component and convert it to eight-bit
-				for (p = 0; *cstr > ' '; ++p, ++cstr)
-				{
-					if (p < 2)
-					{
-						val[p] = *cstr;
-					}
-				}
-				if (p == 0)
-				{
-					c[i] = 0;
-				}
-				else
-				{
-					if (p == 1)
-					{
-						val[1] = val[0];
-					}
-					c[i] = ParseHex (val, sc);
-				}
-			}
-		}
-	}
-	if (palette)
-		return ColorMatcher.Pick (c[0], c[1], c[2]);
-	else
-		return MAKERGB(c[0], c[1], c[2]);
-}
-
-//==========================================================================
-//
-// V_GetColorStringByName
-//
-// Searches for the given color name in x11r6rgb.txt and returns an
-// HTML-ish "#RRGGBB" string for it if found or the empty string if not.
-//
-//==========================================================================
-
-FString V_GetColorStringByName (const char *name, FScriptPosition *sc)
-{
-	FMemLump rgbNames;
-	char *rgbEnd;
-	char *rgb, *endp;
-	int rgblump;
-	int c[3], step;
-	size_t namelen;
-
-	if (Wads.GetNumLumps()==0) return FString();
-
-	rgblump = Wads.CheckNumForName ("X11R6RGB");
-	if (rgblump == -1)
-	{
-		if (!sc) Printf ("X11R6RGB lump not found\n");
-		else sc->Message(MSG_WARNING, "X11R6RGB lump not found");
-		return FString();
-	}
-
-	rgbNames = Wads.ReadLump (rgblump);
-	rgb = (char *)rgbNames.GetMem();
-	rgbEnd = rgb + Wads.LumpLength (rgblump);
-	step = 0;
-	namelen = strlen (name);
-
-	while (rgb < rgbEnd)
-	{
-		// Skip white space
-		if (*rgb <= ' ')
-		{
-			do
-			{
-				rgb++;
-			} while (rgb < rgbEnd && *rgb <= ' ');
-		}
-		else if (step == 0 && *rgb == '!')
-		{ // skip comment lines
-			do
-			{
-				rgb++;
-			} while (rgb < rgbEnd && *rgb != '\n');
-		}
-		else if (step < 3)
-		{ // collect RGB values
-			c[step++] = strtoul (rgb, &endp, 10);
-			if (endp == rgb)
-			{
-				break;
-			}
-			rgb = endp;
-		}
-		else
-		{ // Check color name
-			endp = rgb;
-			// Find the end of the line
-			while (endp < rgbEnd && *endp != '\n')
-				endp++;
-			// Back up over any whitespace
-			while (endp > rgb && *endp <= ' ')
-				endp--;
-			if (endp == rgb)
-			{
-				break;
-			}
-			size_t checklen = ++endp - rgb;
-			if (checklen == namelen && strnicmp (rgb, name, checklen) == 0)
-			{
-				FString descr;
-				descr.Format ("#%02x%02x%02x", c[0], c[1], c[2]);
-				return descr;
-			}
-			rgb = endp;
-			step = 0;
-		}
-	}
-	if (rgb < rgbEnd)
-	{
-		if (!sc) Printf ("X11R6RGB lump is corrupt\n");
-		else sc->Message(MSG_WARNING, "X11R6RGB lump is corrupt");
-	}
-	return FString();
-}
-
-//==========================================================================
-//
-// V_GetColor
-//
-// Works like V_GetColorFromString(), but also understands X11 color names.
-//
-//==========================================================================
-
-int V_GetColor (const uint32_t *palette, const char *str, FScriptPosition *sc)
-{
-	FString string = V_GetColorStringByName (str, sc);
-	int res;
-
-	if (!string.IsEmpty())
-	{
-		res = V_GetColorFromString (palette, string, sc);
-	}
-	else
-	{
-		res = V_GetColorFromString (palette, str, sc);
-	}
-	return res;
-}
-
-int V_GetColor(const uint32_t *palette, FScanner &sc)
-{
-	FScriptPosition scc = sc;
-	return V_GetColor(palette, sc.String, &scc);
 }
 
 //==========================================================================
@@ -1353,7 +1128,7 @@ CCMD (vid_setmode)
 	}
 
 	const bool goodmode = (width > 0 && height > 0)
-		&& (!fullscreen || (Video != nullptr && I_CheckResolution(width, height, bits)));
+		&& (!vid_fullscreen || (Video != nullptr && I_CheckResolution(width, height, bits)));
 
 	if (goodmode)
 	{

@@ -61,7 +61,7 @@
 #include <wincrypt.h>
 
 #include "hardware.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "cmdlib.h"
 
 #include "version.h"
@@ -110,8 +110,6 @@ extern void LayoutMainWindow(HWND hWnd, HWND pane);
 void DestroyCustomCursor();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
-
-static void CalculateCPUSpeed();
 
 static HCURSOR CreateCompatibleCursor(FTexture *cursorpic);
 static HCURSOR CreateAlphaCursor(FTexture *cursorpic);
@@ -327,20 +325,6 @@ void CalculateCPUSpeed()
 
 //==========================================================================
 //
-// I_Init
-//
-//==========================================================================
-
-void I_Init()
-{
-	CheckCPUID(&CPU);
-	CalculateCPUSpeed();
-	DumpCPUInfo(&CPU);
-}
-
-
-//==========================================================================
-//
 // I_PrintStr
 //
 // Send output to the list box shown during startup (and hidden during
@@ -496,15 +480,6 @@ static void DoPrintStr(const char *cpt, HWND edit, HANDLE StdOut)
 }
 
 static TArray<FString> bufferedConsoleStuff;
-
-void I_DebugPrint(const char *cp)
-{
-	if (IsDebuggerPresent())
-	{
-		auto wstr = WideString(cp);
-		OutputDebugStringW(wstr.c_str());
-	}
-}
 
 void I_PrintStr(const char *cp)
 {
@@ -801,7 +776,7 @@ static HCURSOR CreateAlphaCursor(FTexture *cursorpic)
 	// Find closest integer scale factor for the monitor DPI
 	HDC screenDC = GetDC(0);
 	int dpi = GetDeviceCaps(screenDC, LOGPIXELSX);
-	int scale = MAX((dpi + 96 / 2 - 1) / 96, 1);
+	int scale = std::max((dpi + 96 / 2 - 1) / 96, 1);
 	ReleaseDC(0, screenDC);
 
 	memset(&bi, 0, sizeof(bi));
@@ -935,64 +910,6 @@ bool I_WriteIniFailed()
 	errortext.Format ("The config file %s could not be written:\n%s", GameConfig->GetPathName(), lpMsgBuf);
 	LocalFree (lpMsgBuf);
 	return MessageBoxA(Window, errortext.GetChars(), GAMENAME " configuration not saved", MB_ICONEXCLAMATION | MB_RETRYCANCEL) == IDRETRY;
-}
-
-//==========================================================================
-//
-// I_FindFirst
-//
-// Start a pattern matching sequence.
-//
-//==========================================================================
-
-
-void *I_FindFirst(const char *filespec, findstate_t *fileinfo)
-{
-	static_assert(sizeof(WIN32_FIND_DATAW) == sizeof(fileinfo->FindData), "Findata size mismatch");
-	auto widespec = WideString(filespec);
-	fileinfo->UTF8Name = "";
-	return FindFirstFileW(widespec.c_str(), (LPWIN32_FIND_DATAW)&fileinfo->FindData);
-}
-
-//==========================================================================
-//
-// I_FindNext
-//
-// Return the next file in a pattern matching sequence.
-//
-//==========================================================================
-
-int I_FindNext(void *handle, findstate_t *fileinfo)
-{
-	fileinfo->UTF8Name = "";
-	return !FindNextFileW((HANDLE)handle, (LPWIN32_FIND_DATAW)&fileinfo->FindData);
-}
-
-//==========================================================================
-//
-// I_FindClose
-//
-// Finish a pattern matching sequence.
-//
-//==========================================================================
-
-int I_FindClose(void *handle)
-{
-	return FindClose((HANDLE)handle);
-}
-
-//==========================================================================
-//
-// I_FindName
-//
-// Returns the name for an entry
-//
-//==========================================================================
-
-const char *I_FindName(findstate_t *fileinfo)
-{
-	if (fileinfo->UTF8Name.IsEmpty()) fileinfo->UTF8Name = fileinfo->FindData.Name;
-	return fileinfo->UTF8Name.GetChars();
 }
 
 //==========================================================================

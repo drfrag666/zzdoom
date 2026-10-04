@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_video.h"
 #include "bitmap.h"
 #include "textures/textures.h"
@@ -108,7 +108,7 @@ FTexture *IMGZTexture_TryCreate(FileReader & file, int lumpnum)
 FIMGZTexture::FIMGZTexture (int lumpnum, uint16_t w, uint16_t h, int16_t l, int16_t t, bool _isalpha)
 	: FWorldTexture(NULL, lumpnum)
 {
-	Wads.GetLumpName (Name, lumpnum);
+	fileSystem.GetFileShortName (Name, lumpnum);
 	Width = w;
 	Height = h;
 	_LeftOffset[1] = _LeftOffset[0] = l;
@@ -125,7 +125,7 @@ FIMGZTexture::FIMGZTexture (int lumpnum, uint16_t w, uint16_t h, int16_t l, int1
 
 uint8_t *FIMGZTexture::MakeTexture (FRenderStyle style)
 {
-	FMemLump lump = Wads.ReadLump (SourceLump);
+	FileData lump = fileSystem.ReadFile (SourceLump);
 	const ImageHeader *imgz = (const ImageHeader *)lump.GetMem();
 	const uint8_t *data = (const uint8_t *)&imgz[1];
 

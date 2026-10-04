@@ -38,7 +38,7 @@
 #include "m_random.h"
 #include "m_swap.h"
 
-#include "w_wad.h"
+#include "filesystem.h"
 #include "g_level.h"
 #include "s_sound.h"
 #include "doomstat.h"
@@ -369,7 +369,7 @@ bool DInterBackground::LoadBackground(bool isenterpic)
 	}
 	else
 	{
-		int lumpnum = Wads.CheckNumForFullName(lumpname + 1, true);
+		int lumpnum = fileSystem.CheckNumForFullName(lumpname + 1, true);
 		if (lumpnum >= 0)
 		{
 			FScanner sc(lumpnum);

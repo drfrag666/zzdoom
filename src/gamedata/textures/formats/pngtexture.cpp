@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "templates.h"
 #include "m_png.h"
 #include "bitmap.h"
@@ -240,12 +240,12 @@ FPNGTexture::FPNGTexture (FileReader &lump, int lumpnum, const FString &filename
 				ihoty = BigLong((int)hoty);
 				if (ihotx < -32768 || ihotx > 32767)
 				{
-					Printf ("X-Offset for PNG texture %s is bad: %d (0x%08x)\n", Wads.GetLumpFullName (lumpnum), ihotx, ihotx);
+					Printf ("X-Offset for PNG texture %s is bad: %d (0x%08x)\n", fileSystem.GetFileFullName (lumpnum), ihotx, ihotx);
 					ihotx = 0;
 				}
 				if (ihoty < -32768 || ihoty > 32767)
 				{
-					Printf ("Y-Offset for PNG texture %s is bad: %d (0x%08x)\n", Wads.GetLumpFullName (lumpnum), ihoty, ihoty);
+					Printf ("Y-Offset for PNG texture %s is bad: %d (0x%08x)\n", fileSystem.GetFileFullName (lumpnum), ihoty, ihoty);
 					ihoty = 0;
 				}
 				_LeftOffset[1] = _LeftOffset[0] = ihotx;
@@ -306,7 +306,7 @@ FPNGTexture::FPNGTexture (FileReader &lump, int lumpnum, const FString &filename
 
 	case 3:		// Paletted
 		PaletteMap = new uint8_t[PaletteSize];
-		GPalette.MakeRemap (p.palette, PaletteMap, trans, PaletteSize);
+		MakeRemap ((uint32_t*)GPalette.BaseColors, p.palette, PaletteMap, trans, PaletteSize);
 		for (i = 0; i < PaletteSize; ++i)
 		{
 			if (trans[i] == 0)
@@ -399,7 +399,7 @@ uint8_t *FPNGTexture::MakeTexture (FRenderStyle style)
 
 	if (SourceLump >= 0)
 	{
-		lfr = Wads.OpenLumpReader(SourceLump);
+		lfr = fileSystem.OpenFileReader(SourceLump);
 		lump = &lfr;
 	}
 	else
@@ -552,7 +552,7 @@ int FPNGTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCo
 
 	if (SourceLump >= 0)
 	{
-		lfr = Wads.OpenLumpReader(SourceLump);
+		lfr = fileSystem.OpenFileReader(SourceLump);
 		lump = &lfr;
 	}
 	else

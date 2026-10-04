@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_palette.h"
 #include "textures/textures.h"
 
@@ -169,7 +169,7 @@ FRawPageTexture::FRawPageTexture (int lumpnum)
 
 uint8_t *FRawPageTexture::MakeTexture (FRenderStyle style)
 {
-	FMemLump lump = Wads.ReadLump (SourceLump);
+	FileData lump = fileSystem.ReadFile (SourceLump);
 	const uint8_t *source = (const uint8_t *)lump.GetMem();
 	const uint8_t *source_p = source;
 	uint8_t *dest_p;

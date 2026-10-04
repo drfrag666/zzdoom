@@ -50,7 +50,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "bitmap.h"
 #include "v_video.h"
 #include "textures/textures.h"
@@ -402,7 +402,7 @@ FTextureFormat FDDSTexture::GetFormat()
 
 uint8_t *FDDSTexture::MakeTexture (FRenderStyle style)
 {
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 
 	auto Pixels = new uint8_t[Width*Height];
 
@@ -811,7 +811,7 @@ void FDDSTexture::DecompressDXT5 (FileReader &lump, bool premultiplied, uint8_t 
 
 int FDDSTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCopyInfo *inf)
 {
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 
 	uint8_t *TexBuffer = new uint8_t[4*Width*Height];
 

@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "templates.h"
 #include "bitmap.h"
 #include "v_video.h"
@@ -132,7 +132,7 @@ FTexture *TGATexture_TryCreate(FileReader & file, int lumpnum)
 FTGATexture::FTGATexture (int lumpnum, TGAHeader * hdr)
 : FWorldTexture(NULL, lumpnum)
 {
-	Wads.GetLumpName (Name, lumpnum);
+	fileSystem.GetFileShortName (Name, lumpnum);
 	Width = hdr->width;
 	Height = hdr->height;
 	// Alpha channel is used only for 32 bit RGBA and paletted images with RGBA palettes.
@@ -196,7 +196,7 @@ void FTGATexture::ReadCompressed(FileReader &lump, uint8_t * buffer, int bytespe
 uint8_t *FTGATexture::MakeTexture (FRenderStyle style)
 {
 	uint8_t PaletteMap[256];
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	TGAHeader hdr;
 	uint16_t w;
 	uint8_t r,g,b,a;
@@ -406,7 +406,7 @@ uint8_t *FTGATexture::MakeTexture (FRenderStyle style)
 int FTGATexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCopyInfo *inf)
 {
 	PalEntry pe[256];
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	TGAHeader hdr;
 	uint16_t w;
 	uint8_t r,g,b,a;

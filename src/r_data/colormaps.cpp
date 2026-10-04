@@ -39,7 +39,7 @@
 #include <float.h>
 
 
-#include "w_wad.h"
+#include "filesystem.h"
 #include "r_sky.h"
 #include "colormaps.h"
 #include "templates.h"
@@ -202,17 +202,17 @@ void R_InitColormaps (bool allowCustomColormap)
 	cm.blend = 0;
 	fakecmaps.Push(cm);
 
-	uint32_t NumLumps = Wads.GetNumLumps();
+	uint32_t NumLumps = fileSystem.GetNumEntries();
 
 	for (uint32_t i = 0; i < NumLumps; i++)
 	{
-		if (Wads.GetLumpNamespace(i) == ns_colormaps)
+		if (fileSystem.GetFileNamespace(i) == ns_colormaps)
 		{
 			char name[9];
 			name[8] = 0;
-			Wads.GetLumpName (name, i);
+			fileSystem.GetFileShortName (name, i);
 
-			if (Wads.CheckNumForName (name, ns_colormaps) == (int)i)
+			if (fileSystem.CheckNumForName (name, ns_colormaps) == (int)i)
 			{
 				strncpy(cm.name, name, 8);
 				cm.blend = 0;
@@ -242,10 +242,10 @@ void R_InitColormaps (bool allowCustomColormap)
 
 		for (unsigned j = 1; j < fakecmaps.Size(); j++)
 		{
-			if (Wads.LumpLength (fakecmaps[j].lump) >= 256)
+			if (fileSystem.FileLength (fakecmaps[j].lump) >= 256)
 			{
 				int k, r, g, b;
-				auto lump = Wads.OpenLumpReader (fakecmaps[j].lump);
+				auto lump = fileSystem.OpenFileReader (fakecmaps[j].lump);
 				lump.Read(map, 256);
 				r = g = b = 0;
 

@@ -34,11 +34,5 @@ struct TranslationMap
 extern TArray<TranslationParm> TranslationParms[2];
 extern TArray<TranslationMap> TranslationLookup;
 extern TArray<PalEntry> TranslationColors;
-extern uint16_t lowerforupper[65536];
-extern uint16_t upperforlower[65536];
 
 void RecordTextureColors (FTexture *pic, uint32_t *colorsused);
-bool myislower(int code);
-bool myisupper(int code);
-int stripaccent(int code);
-int getAlternative(int code);

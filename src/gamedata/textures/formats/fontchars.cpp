@@ -35,13 +35,13 @@
 */
 
 #include "doomtype.h"
-#include "doomerrors.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "v_palette.h"
 #include "v_video.h"
 #include "textures/textures.h"
 #include "bitmap.h"
 #include "fontchars.h"
+#include "engineerrors.h"
 
 //==========================================================================
 //
@@ -277,7 +277,7 @@ void FFontChar2::SetSourceRemap(const uint8_t *sourceremap)
 
 void FFontChar2::MakeTexture ()
 {
-	auto lump = Wads.OpenLumpReader (SourceLump);
+	auto lump = fileSystem.OpenFileReader (SourceLump);
 	int destSize = Width * Height;
 	uint8_t max = 255;
 	bool rle = true;
@@ -386,7 +386,7 @@ void FFontChar2::MakeTexture ()
 	if (destSize < 0)
 	{
 		char name[9];
-		Wads.GetLumpName (name, SourceLump);
+		fileSystem.GetFileShortName (name, SourceLump);
 		name[8] = 0;
 		I_FatalError ("The font %s is corrupt", name);
 	}

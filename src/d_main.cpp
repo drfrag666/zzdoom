@@ -45,7 +45,7 @@
 #include <math.h>
 #include <assert.h>
 
-#include "doomerrors.h"
+#include "engineerrors.h"
 
 #include "i_time.h"
 #include "d_gui.h"
@@ -53,7 +53,7 @@
 #include "doomdef.h"
 #include "doomstat.h"
 #include "gstrings.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "s_sound.h"
 #include "v_video.h"
 #include "intermission/intermission.h"
@@ -105,6 +105,8 @@
 #include "r_data/r_vanillatrans.h"
 #include "s_music.h"
 #include "swrenderer/r_swcolormaps.h"
+#include "findfile.h"
+#include "md5.h"
 
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
@@ -150,7 +152,6 @@ void DrawFullscreenSubtitle(const char *text);
 void D_Cleanup();
 void FreeSBarInfoScript();
 void I_UpdateWindowTitle();
-void C_GrabCVarDefaults ();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
@@ -172,7 +173,6 @@ EXTERN_CVAR (Bool, sv_unlimited_pickup)
 extern int testingmode;
 extern bool setmodeneeded;
 extern int NewWidth, NewHeight, NewBits, DisplayBits;
-extern bool gameisdead;
 extern bool demorecording;
 extern bool M_DemoNoPlay;	// [RH] if true, then skip any demos in the loop
 extern bool insave;
@@ -284,6 +284,62 @@ static int demosequence;
 static int pagetic;
 
 // CODE --------------------------------------------------------------------
+
+void D_GrabCVarDefaults()
+{
+	int lump, lastlump = 0;
+	int lumpversion, gamelastrunversion;
+	gamelastrunversion = atoi(LASTRUNVERSION);
+
+	while ((lump = fileSystem.FindLump("DEFCVARS", &lastlump)) != -1)
+	{
+		// don't parse from wads
+		if (lastlump > fileSystem.GetLastEntry(fileSystem.GetMaxIwadNum()))
+			I_FatalError("Cannot load DEFCVARS from a wadfile!\n");
+
+		FScanner sc(lump);
+
+		sc.MustGetString();
+		if (!sc.Compare("version"))
+			sc.ScriptError("Must declare version for defcvars! (currently: %i)", gamelastrunversion);
+		sc.MustGetNumber();
+		lumpversion = sc.Number;
+		if (lumpversion > gamelastrunversion)
+			sc.ScriptError("Unsupported version %i (%i supported)", lumpversion, gamelastrunversion);
+		if (lumpversion < 219)
+			sc.ScriptError("Version must be at least 219 (current version %i)", gamelastrunversion);
+
+		FBaseCVar* var;
+
+		while (sc.GetString())
+		{
+			if (sc.Compare("set"))
+			{
+				sc.MustGetString();
+			}
+			var = FindCVar(sc.String, NULL);
+			if (var != NULL)
+			{
+				if (var->GetFlags() & CVAR_ARCHIVE)
+				{
+					UCVarValue val;
+
+					sc.MustGetString();
+					val.String = const_cast<char*>(sc.String);
+					var->SetGenericRepDefault(val, CVAR_String);
+				}
+				else
+				{
+					sc.ScriptError("Cannot set cvar default for non-config cvar '%s'", sc.String);
+				}
+			}
+			else
+			{
+				sc.ScriptError("Unknown cvar '%s'", sc.String);
+			}
+		}
+	}
+}
 
 //==========================================================================
 //
@@ -1233,7 +1289,7 @@ void D_DoStrifeAdvanceDemo ()
 	case 0:
 		pagetic = 6 * TICRATE;
 		pagename = "TITLEPIC";
-		if (Wads.CheckNumForName ("d_logo", ns_music) < 0)
+		if (fileSystem.CheckNumForName ("d_logo", ns_music) < 0)
 		{ // strife0.wad does not have d_logo
 			S_StartMusic ("");
 		}
@@ -1391,7 +1447,7 @@ void D_DoAdvanceDemo (void)
 			V_SetBorderNeedRefresh();
 			democount++;
 			mysnprintf (demoname + 4, countof(demoname) - 4, "%d", democount);
-			if (Wads.CheckNumForName (demoname) < 0)
+			if (fileSystem.CheckNumForName (demoname) < 0)
 			{
 				demosequence = 0;
 				democount = 0;
@@ -1422,7 +1478,7 @@ void D_DoAdvanceDemo (void)
 		gamestate = GS_DEMOSCREEN;
 		if (gameinfo.creditPages.Size() > 0)
 		{
-			pagename = gameinfo.creditPages[pagecount];
+			pagename = gameinfo.creditPages[pagecount].GetChars();
 			pagecount = (pagecount+1) % gameinfo.creditPages.Size();
 		}
 		demosequence = 1;
@@ -1478,7 +1534,7 @@ void ParseCVarInfo()
 	int lump, lastlump = 0;
 	bool addedcvars = false;
 
-	while ((lump = Wads.FindLump("CVARINFO", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump("CVARINFO", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 		sc.SetCMode(true);
@@ -2030,49 +2086,19 @@ static FString ParseGameInfo(TArray<FString> &pwads, const char *fn, const char 
 
 static FString CheckGameInfo(TArray<FString> & pwads)
 {
-	// scan the list of WADs backwards to find the last one that contains a GAMEINFO lump
-	for(int i=pwads.Size()-1; i>=0; i--)
+	FileSystem check;
+
+	// Open the entire list as a temporary file system and look for a GAMEINFO lump. The last one will automatically win.
+	check.InitMultipleFiles(pwads, true);
+	if (check.GetNumEntries() > 0)
 	{
-		bool isdir = false;
-		FResourceFile *resfile;
-		const char *filename = pwads[i];
-
-		// Does this exist? If so, is it a directory?
-		if (!DirEntryExists(pwads[i], &isdir))
+		int num = check.CheckNumForName("GAMEINFO");
+		if (num >= 0)
 		{
-			Printf(TEXTCOLOR_RED "Could not stat %s\n", filename);
-			continue;
-		}
-
-		if (!isdir)
-		{
-			FileReader fr;
-			if (!fr.OpenFile(filename))
-			{ 
-				// Didn't find file
-				continue;
-			}
-			resfile = FResourceFile::OpenResourceFile(filename, fr, true);
-		}
-		else
-			resfile = FResourceFile::OpenDirectory(filename, true);
-
-		if (resfile != NULL)
-		{
-			uint32_t cnt = resfile->LumpCount();
-			for(int i=cnt-1; i>=0; i--)
-			{
-				FResourceLump *lmp = resfile->GetLump(i);
-
-				if (lmp->Namespace == ns_global && !stricmp(lmp->Name, "GAMEINFO"))
-				{
-					// Found one!
-					FString iwad = ParseGameInfo(pwads, resfile->FileName, (const char*)lmp->CacheLump(), lmp->LumpSize);
-					delete resfile;
-					return iwad;
-				}
-			}
-			delete resfile;
+			// Found one!
+			auto data = check.GetFileData(num);
+			auto wadname = check.GetResourceFileName(check.GetFileContainer(num));
+			return ParseGameInfo(pwads, wadname, (const char*)data.Data(), data.Size());
 		}
 	}
 	return "";
@@ -2086,9 +2112,9 @@ static FString CheckGameInfo(TArray<FString> & pwads)
 
 static void SetMapxxFlag()
 {
-	int lump_name = Wads.CheckNumForName("MAP01", ns_global, Wads.GetIwadNum());
-	int lump_wad = Wads.CheckNumForFullName("maps/map01.wad", Wads.GetIwadNum());
-	int lump_map = Wads.CheckNumForFullName("maps/map01.map", Wads.GetIwadNum());
+	int lump_name = fileSystem.CheckNumForName("MAP01", ns_global, fileSystem.GetIwadNum());
+	int lump_wad = fileSystem.CheckNumForFullName("maps/map01.wad", fileSystem.GetIwadNum());
+	int lump_map = fileSystem.CheckNumForFullName("maps/map01.map", fileSystem.GetIwadNum());
 
 	if (lump_name >= 0 || lump_wad >= 0 || lump_map >= 0) gameinfo.flags |= GI_MAPxx;
 }
@@ -2350,68 +2376,376 @@ static void CheckCmdLine()
 	}
 }
 
-//==========================================================================
-//
-// I_Error
-//
-// Throw an error that will send us to the console if we are far enough
-// along in the startup process.
-//
-//==========================================================================
-
-void I_Error(const char *error, ...)
-{
-	va_list argptr;
-	char errortext[MAX_ERRORTEXT];
-
-	va_start(argptr, error);
-	myvsnprintf(errortext, MAX_ERRORTEXT, error, argptr);
-	va_end(argptr);
-	I_DebugPrint(errortext);
-
-	throw CRecoverableError(errortext);
-}
-
-//==========================================================================
-//
-// I_FatalError
-//
-// Throw an error that will end the game.
-//
-//==========================================================================
-extern FILE *Logfile;
-
-void I_FatalError(const char *error, ...)
-{
-	static bool alreadyThrown = false;
-	gameisdead = true;
-
-	if (!alreadyThrown)		// ignore all but the first message -- killough
-	{
-		alreadyThrown = true;
-		char errortext[MAX_ERRORTEXT];
-		va_list argptr;
-		va_start(argptr, error);
-		myvsnprintf(errortext, MAX_ERRORTEXT, error, argptr);
-		va_end(argptr);
-		I_DebugPrint(errortext);
-
-		// Record error to log (if logging)
-		if (Logfile)
-		{
-			fprintf(Logfile, "\n**** DIED WITH FATAL ERROR:\n%s\n", errortext);
-			fflush(Logfile);
-		}
-
-		throw CFatalError(errortext);
-	}
-	std::terminate(); // recursive I_FatalErrors must immediately terminate.
-}
-
 static void NewFailure ()
 {
     I_FatalError ("Failed to allocate memory from system heap");
 }
+
+
+//==========================================================================
+//
+// RenameSprites
+//
+// Renames sprites in IWADs so that unique actors can have unique sprites,
+// making it possible to import any actor from any game into any other
+// game without jumping through hoops to resolve duplicate sprite names.
+// You just need to know what the sprite's new name is.
+//
+//==========================================================================
+
+static void RenameSprites(FileSystem &fileSystem, const TArray<FString>& deletelumps)
+{
+	bool renameAll;
+	bool MNTRZfound = false;
+	const char* altbigfont = gameinfo.gametype == GAME_Strife ? "SBIGFONT" : (gameinfo.gametype & GAME_Raven) ? "HBIGFONT" : "DBIGFONT";
+
+	static const uint32_t HereticRenames[] =
+	{ MAKE_ID('H','E','A','D'), MAKE_ID('L','I','C','H'),		// Ironlich
+	};
+
+	static const uint32_t HexenRenames[] =
+	{ MAKE_ID('B','A','R','L'), MAKE_ID('Z','B','A','R'),		// ZBarrel
+	  MAKE_ID('A','R','M','1'), MAKE_ID('A','R','_','1'),		// MeshArmor
+	  MAKE_ID('A','R','M','2'), MAKE_ID('A','R','_','2'),		// FalconShield
+	  MAKE_ID('A','R','M','3'), MAKE_ID('A','R','_','3'),		// PlatinumHelm
+	  MAKE_ID('A','R','M','4'), MAKE_ID('A','R','_','4'),		// AmuletOfWarding
+	  MAKE_ID('S','U','I','T'), MAKE_ID('Z','S','U','I'),		// ZSuitOfArmor and ZArmorChunk
+	  MAKE_ID('T','R','E','1'), MAKE_ID('Z','T','R','E'),		// ZTree and ZTreeDead
+	  MAKE_ID('T','R','E','2'), MAKE_ID('T','R','E','S'),		// ZTreeSwamp150
+	  MAKE_ID('C','A','N','D'), MAKE_ID('B','C','A','N'),		// ZBlueCandle
+	  MAKE_ID('R','O','C','K'), MAKE_ID('R','O','K','K'),		// rocks and dirt in a_debris.cpp
+	  MAKE_ID('W','A','T','R'), MAKE_ID('H','W','A','T'),		// Strife also has WATR
+	  MAKE_ID('G','I','B','S'), MAKE_ID('P','O','L','5'),		// RealGibs
+	  MAKE_ID('E','G','G','M'), MAKE_ID('P','R','K','M'),		// PorkFX
+	  MAKE_ID('I','N','V','U'), MAKE_ID('D','E','F','N'),		// Icon of the Defender
+	};
+
+	static const uint32_t StrifeRenames[] =
+	{ MAKE_ID('M','I','S','L'), MAKE_ID('S','M','I','S'),		// lots of places
+	  MAKE_ID('A','R','M','1'), MAKE_ID('A','R','M','3'),		// MetalArmor
+	  MAKE_ID('A','R','M','2'), MAKE_ID('A','R','M','4'),		// LeatherArmor
+	  MAKE_ID('P','M','A','P'), MAKE_ID('S','M','A','P'),		// StrifeMap
+	  MAKE_ID('T','L','M','P'), MAKE_ID('T','E','C','H'),		// TechLampSilver and TechLampBrass
+	  MAKE_ID('T','R','E','1'), MAKE_ID('T','R','E','T'),		// TreeStub
+	  MAKE_ID('B','A','R','1'), MAKE_ID('B','A','R','C'),		// BarricadeColumn
+	  MAKE_ID('S','H','T','2'), MAKE_ID('M','P','U','F'),		// MaulerPuff
+	  MAKE_ID('B','A','R','L'), MAKE_ID('B','B','A','R'),		// StrifeBurningBarrel
+	  MAKE_ID('T','R','C','H'), MAKE_ID('T','R','H','L'),		// SmallTorchLit
+	  MAKE_ID('S','H','R','D'), MAKE_ID('S','H','A','R'),		// glass shards
+	  MAKE_ID('B','L','S','T'), MAKE_ID('M','A','U','L'),		// Mauler
+	  MAKE_ID('L','O','G','G'), MAKE_ID('L','O','G','W'),		// StickInWater
+	  MAKE_ID('V','A','S','E'), MAKE_ID('V','A','Z','E'),		// Pot and Pitcher
+	  MAKE_ID('C','N','D','L'), MAKE_ID('K','N','D','L'),		// Candle
+	  MAKE_ID('P','O','T','1'), MAKE_ID('M','P','O','T'),		// MetalPot
+	  MAKE_ID('S','P','I','D'), MAKE_ID('S','T','L','K'),		// Stalker
+	};
+
+	const uint32_t* renames;
+	int numrenames;
+
+	switch (gameinfo.gametype)
+	{
+	case GAME_Doom:
+	default:
+		// Doom's sprites don't get renamed.
+		renames = nullptr;
+		numrenames = 0;
+		break;
+
+	case GAME_Heretic:
+		renames = HereticRenames;
+		numrenames = sizeof(HereticRenames) / 8;
+		break;
+
+	case GAME_Hexen:
+		renames = HexenRenames;
+		numrenames = sizeof(HexenRenames) / 8;
+		break;
+
+	case GAME_Strife:
+		renames = StrifeRenames;
+		numrenames = sizeof(StrifeRenames) / 8;
+		break;
+	}
+
+	unsigned NumFiles = fileSystem.GetNumEntries();
+
+	for (uint32_t i = 0; i < NumFiles; i++)
+	{
+		// check for full Minotaur animations. If this is not found
+		// some frames need to be renamed.
+		if (fileSystem.GetFileNamespace(i) == ns_sprites)
+		{
+			auto& shortName = fileSystem.GetShortName(i);
+			if (shortName.dword == MAKE_ID('M', 'N', 'T', 'R') && shortName.String[4] == 'Z')
+			{
+				MNTRZfound = true;
+				break;
+			}
+		}
+	}
+
+	renameAll = !!Args->CheckParm("-oldsprites") || nospriterename;
+
+	for (uint32_t i = 0; i < NumFiles; i++)
+	{
+		auto& shortName = fileSystem.GetShortName(i);
+		if (fileSystem.GetFileNamespace(i) == ns_sprites)
+		{
+			// Only sprites in the IWAD normally get renamed
+			if (renameAll || fileSystem.GetFileContainer(i) == fileSystem.GetIwadNum())
+			{
+				for (int j = 0; j < numrenames; ++j)
+				{
+					if (shortName.dword == renames[j * 2])
+					{
+						shortName.dword = renames[j * 2 + 1];
+					}
+				}
+				if (gameinfo.gametype == GAME_Hexen)
+				{
+					if (fileSystem.CheckFileName(i, "ARTIINVU"))
+					{
+						shortName.String[4] = 'D'; shortName.String[5] = 'E';
+						shortName.String[6] = 'F'; shortName.String[7] = 'N';
+					}
+				}
+			}
+
+			if (!MNTRZfound)
+			{
+				if (shortName.dword == MAKE_ID('M', 'N', 'T', 'R'))
+				{
+					for (size_t fi : {4, 6})
+					{
+						if (shortName.String[fi] >= 'F' && shortName.String[fi] <= 'K')
+						{
+							shortName.String[fi] += 'U' - 'F';
+						}
+					}
+				}
+			}
+
+			// When not playing Doom rename all BLOD sprites to BLUD so that
+			// the same blood states can be used everywhere
+			if (!(gameinfo.gametype & GAME_DoomChex))
+			{
+				if (shortName.dword == MAKE_ID('B', 'L', 'O', 'D'))
+				{
+					shortName.dword = MAKE_ID('B', 'L', 'U', 'D');
+				}
+			}
+		}
+		else if (fileSystem.GetFileNamespace(i) == ns_global)
+		{
+			int fn = fileSystem.GetFileContainer(i);
+			if (fn >= fileSystem.GetIwadNum() && fn <= fileSystem.GetMaxIwadNum() && deletelumps.Find(shortName.String) < deletelumps.Size())
+			{
+				shortName.String[0] = 0;	// Lump must be deleted from directory.
+			}
+			// Rename the game specific big font lumps so that the font manager does not have to do problematic special checks for them.
+			else if (!strcmp(shortName.String, altbigfont))
+			{
+				strcpy(shortName.String, "BIGFONT");
+			}
+		}
+	}
+}
+
+//==========================================================================
+//
+// RenameNerve
+//
+// Renames map headers and map name pictures in nerve.wad so as to load it
+// alongside Doom II and offer both episodes without causing conflicts.
+// MD5 checksum for NERVE.WAD: 967d5ae23daf45196212ae1b605da3b0 (3,819,855)
+// MD5 checksum for Unity version of NERVE.WAD: 4214c47651b63ee2257b1c2490a518c9 (3,821,966)
+//
+//==========================================================================
+void RenameNerve(FileSystem& fileSystem)
+{
+	if (gameinfo.gametype != GAME_Doom)
+		return;
+
+	const int numnerveversions = 2;
+
+	bool found = false;
+	uint8_t cksum[16];
+	static const uint8_t nerve[numnerveversions][16] = {
+			{ 0x96, 0x7d, 0x5a, 0xe2, 0x3d, 0xaf, 0x45, 0x19,
+				0x62, 0x12, 0xae, 0x1b, 0x60, 0x5d, 0xa3, 0xb0 },
+			{ 0x42, 0x14, 0xc4, 0x76, 0x51, 0xb6, 0x3e, 0xe2,
+				0x25, 0x7b, 0x1c, 0x24, 0x90, 0xa5, 0x18, 0xc9 }
+	};
+	size_t nervesize[numnerveversions] = { 3819855, 3821966 }; // NERVE.WAD's file size
+	int w = fileSystem.GetIwadNum();
+	while (++w < fileSystem.GetNumWads())
+	{
+		auto fr = fileSystem.GetFileReader(w);
+		int isizecheck = -1;
+		if (fr == NULL)
+		{
+			continue;
+		}
+		for (int icheck = 0; icheck < numnerveversions; icheck++)
+			if (fr->GetLength() == (long)nervesize[icheck])
+				isizecheck = icheck;
+		if (isizecheck == -1)
+		{
+			// Skip MD5 computation when there is a
+			// cheaper way to know this is not the file
+			continue;
+		}
+		fr->Seek(0, FileReader::SeekSet);
+		MD5Context md5;
+		md5Update(*fr, md5, (unsigned)fr->GetLength());
+		md5.Final(cksum);
+		if (memcmp(nerve[isizecheck], cksum, 16) == 0)
+		{
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return;
+
+	for (int i = fileSystem.GetFirstEntry(w); i <= fileSystem.GetLastEntry(w); i++)
+	{
+		auto& shortName = fileSystem.GetShortName(i);
+		// Only rename the maps from NERVE.WAD
+		if (shortName.dword == MAKE_ID('C', 'W', 'I', 'L'))
+		{
+			shortName.String[0] = 'N';
+		}
+		else if (shortName.dword == MAKE_ID('M', 'A', 'P', '0'))
+		{
+			shortName.String[6] = shortName.String[4];
+			shortName.String[5] = '0';
+			shortName.String[4] = 'L';
+			shortName.dword = MAKE_ID('L', 'E', 'V', 'E');
+		}
+	}
+}
+
+//==========================================================================
+//
+// FixMacHexen
+//
+// Discard all extra lumps in Mac version of Hexen IWAD (demo or full)
+// to avoid any issues caused by names of these lumps, including:
+//  * Wrong height of small font
+//  * Broken life bar of mage class
+//
+//==========================================================================
+
+void FixMacHexen(FileSystem& fileSystem)
+{
+	if (GAME_Hexen != gameinfo.gametype)
+	{
+		return;
+	}
+
+	FileReader* reader = fileSystem.GetFileReader(fileSystem.GetIwadNum());
+	auto iwadSize = reader->GetLength();
+
+	static const long DEMO_SIZE = 13596228;
+	static const long BETA_SIZE = 13749984;
+	static const long FULL_SIZE = 21078584;
+
+	if (DEMO_SIZE != iwadSize
+		&& BETA_SIZE != iwadSize
+		&& FULL_SIZE != iwadSize)
+	{
+		return;
+	}
+
+	reader->Seek(0, FileReader::SeekSet);
+
+	uint8_t checksum[16];
+	MD5Context md5;
+
+	md5Update(*reader, md5, (unsigned)iwadSize);
+	md5.Final(checksum);
+
+	static const uint8_t HEXEN_DEMO_MD5[16] =
+	{
+		0x92, 0x5f, 0x9f, 0x50, 0x00, 0xe1, 0x7d, 0xc8,
+		0x4b, 0x0a, 0x6a, 0x3b, 0xed, 0x3a, 0x6f, 0x31
+	};
+
+	static const uint8_t HEXEN_BETA_MD5[16] =
+	{
+		0x2a, 0xf1, 0xb2, 0x7c, 0xd1, 0x1f, 0xb1, 0x59,
+		0xe6, 0x08, 0x47, 0x2a, 0x1b, 0x53, 0xe4, 0x0e
+	};
+
+	static const uint8_t HEXEN_FULL_MD5[16] =
+	{
+		0xb6, 0x81, 0x40, 0xa7, 0x96, 0xf6, 0xfd, 0x7f,
+		0x3a, 0x5d, 0x32, 0x26, 0xa3, 0x2b, 0x93, 0xbe
+	};
+
+	const bool isBeta = 0 == memcmp(HEXEN_BETA_MD5, checksum, sizeof checksum);
+
+	if (!isBeta
+		&& 0 != memcmp(HEXEN_DEMO_MD5, checksum, sizeof checksum)
+		&& 0 != memcmp(HEXEN_FULL_MD5, checksum, sizeof checksum))
+	{
+		return;
+	}
+
+	static const int EXTRA_LUMPS = 299;
+
+	// Hexen Beta is very similar to Demo but it has MAP41: Maze at the end of the WAD
+	// So keep this map if it's present but discard all extra lumps
+
+	const int lastLump = fileSystem.GetLastEntry(fileSystem.GetIwadNum()) - (isBeta ? 12 : 0);
+	assert(fileSystem.GetFirstEntry(fileSystem.GetIwadNum()) + 299 < lastLump);
+
+	for (int i = lastLump - EXTRA_LUMPS + 1; i <= lastLump; ++i)
+	{
+		auto& shortName = fileSystem.GetShortName(i);
+		shortName.String[0] = '\0';
+	}
+}
+
+static void FindStrifeTeaserVoices(FileSystem& fileSystem)
+{
+	if (gameinfo.gametype == GAME_Strife && gameinfo.flags & GI_SHAREWARE)
+	{
+		unsigned NumFiles = fileSystem.GetNumEntries();
+		for (uint32_t i = 0; i < NumFiles; i++)
+		{
+			auto& shortName = fileSystem.GetShortName(i);
+			if (fileSystem.GetFileNamespace(i) == ns_global)
+			{
+				// Only sprites in the IWAD normally get renamed
+				if (fileSystem.GetFileContainer(i) == fileSystem.GetIwadNum())
+				{
+					if (shortName.String[0] == 'V' &&
+						shortName.String[1] == 'O' &&
+						shortName.String[2] == 'C')
+					{
+						int j;
+
+						for (j = 3; j < 8; ++j)
+						{
+							if (shortName.String[j] != 0 && !isdigit(shortName.String[j]))
+								break;
+						}
+						if (j == 8)
+						{
+							fileSystem.SetFileNamespace(i, ns_strifevoices);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
 
 //==========================================================================
 //
@@ -2495,6 +2829,16 @@ static int D_DoomMain_Internal (void)
 
 	// reinit from here
 
+	ConsoleCallbacks cb = {
+		D_UserInfoChanged,
+		D_SendServerInfoChange,
+		D_SendServerFlagChange,
+		G_GetUserCVar,
+		[]() { return gamestate != GS_FULLCONSOLE && gamestate != GS_STARTUP; }
+	};
+
+	C_InstallHandlers(&cb);
+
 	do
 	{
 		PClass::StaticInit();
@@ -2569,12 +2913,44 @@ static int D_DoomMain_Internal (void)
 		}
 
 		if (!batchrun) Printf ("W_Init: Init WADfiles.\n");
-		Wads.InitMultipleFiles (allwads, iwad_info->DeleteLumps);
+
+		LumpFilterInfo lfi;
+		lfi.dotFilter = LumpFilterIWAD;
+
+		static const struct { int match; const char* name; } blanket[] =
+		{
+			{ GAME_Raven,			"game-Raven" },
+			{ GAME_DoomStrifeChex,	"game-DoomStrifeChex" },
+			{ GAME_DoomChex,		"game-DoomChex" },
+			{ GAME_Any, NULL }
+		};
+
+		for (auto& inf : blanket)
+		{
+			if (gameinfo.gametype & inf.match) lfi.gameTypeFilter.Push(inf.name);
+		}
+		lfi.gameTypeFilter.Push(FStringf("game-%s", GameTypeName()));
+
+		static const char* folders[] = { "flats/", "textures/", "hires/", "sprites/", "voxels/", "colormaps/", "acs/", "maps/", "voices/", "patches/", "graphics/", "sounds/", "music/" };
+		for (auto p : folders) lfi.reservedFolders.Push(p);
+
+		static const char* reserved[] = { "mapinfo", "zmapinfo", "gameinfo", "sndinfo", "sbarinfo", "menudef", "gldefs", "animdefs", "decorate", "zscript", "maps/" };
+		for (auto p : reserved) lfi.requiredPrefixes.Push(p);
+
+		lfi.postprocessFunc = [&]()
+		{
+			RenameNerve(fileSystem);
+			RenameSprites(fileSystem, iwad_info->DeleteLumps);
+			FixMacHexen(fileSystem);
+			FindStrifeTeaserVoices(fileSystem);
+		};
+
+		fileSystem.InitMultipleFiles (allwads, false, &lfi);
 		allwads.Clear();
 		allwads.ShrinkToFit();
 		SetMapxxFlag();
 
-		C_GrabCVarDefaults(); //parse DEFCVARS
+		D_GrabCVarDefaults(); //parse DEFCVARS
 
 		GameConfig->DoKeySetup(gameinfo.ConfigName);
 
@@ -2602,7 +2978,10 @@ static int D_DoomMain_Internal (void)
 		if (!restart)
 		{
 			if (!batchrun) Printf ("I_Init: Setting up machine state.\n");
-			I_Init ();
+			CheckCPUID(&CPU);
+			CalculateCPUSpeed();
+			auto ci = DumpCPUInfo(&CPU);
+			Printf("%s", ci.GetChars());
 			I_CreateRenderer();
 		}
 
@@ -2911,6 +3290,8 @@ static int D_DoomMain_Internal (void)
 	}
 	while (1);
 }
+
+void I_ShowFatalError(const char* message);
 
 int D_DoomMain()
 {

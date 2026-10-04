@@ -50,7 +50,7 @@
 #include "c_console.h"
 #include "c_bind.h"
 #include "c_dispatch.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "p_local.h" 
 #include "gstrings.h"
 #include "r_sky.h"
@@ -538,6 +538,22 @@ static inline int joyint(double val)
 		return int(floor(val));
 	}
 }
+
+FBaseCVar* G_GetUserCVar(int playernum, const char* cvarname)
+{
+	if ((unsigned)playernum >= MAXPLAYERS || !playeringame[playernum])
+	{
+		return nullptr;
+	}
+	FBaseCVar** cvar_p = players[playernum].userinfo.CheckKey(FName(cvarname, true));
+	FBaseCVar* cvar;
+	if (cvar_p == nullptr || (cvar = *cvar_p) == nullptr || (cvar->GetFlags() & CVAR_IGNORE))
+	{
+		return nullptr;
+	}
+	return cvar;
+}
+
 
 //
 // G_BuildTiccmd
@@ -1051,7 +1067,7 @@ void G_Ticker ()
 	if (ToggleFullscreen)
 	{
 		ToggleFullscreen = false;
-		AddCommandString ("toggle fullscreen");
+		AddCommandString ("toggle vid_fullscreen");
 	}
 
 	// do things to change the game state
@@ -1766,7 +1782,7 @@ static bool CheckSingleWad (const char *name, bool &printRequires, bool printwar
 	{
 		return true;
 	}
-	if (Wads.CheckIfWadLoaded (name) < 0)
+	if (fileSystem.CheckIfResourceFileLoaded (name) < 0)
 	{
 		if (printwarn)
 		{
@@ -1815,6 +1831,48 @@ static void LoadGameError(const char *label, const char *append = "")
 	Printf ("%s %s\n", message.GetChars(), append);
 }
 
+void C_SerializeCVars(FSerializer& arc, const char* label, uint32_t filter)
+{
+	FBaseCVar* cvar;
+	FString dump;
+
+	if (arc.BeginObject(label))
+	{
+		if (arc.isWriting())
+		{
+			for (cvar = CVars; cvar != NULL; cvar = cvar->m_Next)
+			{
+				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
+				{
+					UCVarValue val = cvar->GetGenericRep(CVAR_String);
+					char* c = const_cast<char*>(val.String);
+					arc(cvar->GetName(), c);
+				}
+			}
+		}
+		else
+		{
+			for (cvar = CVars; cvar != NULL; cvar = cvar->m_Next)
+			{
+				if ((cvar->Flags & filter) && !(cvar->Flags & (CVAR_NOSAVE | CVAR_IGNORE | CVAR_CONFIG_ONLY)))
+				{
+					UCVarValue val;
+					char* c = nullptr;
+					arc(cvar->GetName(), c);
+					if (c != nullptr)
+					{
+						val.String = c;
+						cvar->SetGenericRep(val, CVAR_String);
+						delete[] c;
+					}
+				}
+			}
+		}
+		arc.EndObject();
+	}
+}
+
+
 void G_DoLoadGame ()
 {
 	bool hidecon;
@@ -1841,7 +1899,7 @@ void G_DoLoadGame ()
 
 	SaveVersion = 0;
 
-	void *data = info->CacheLump();
+	void *data = info->Lock();
 	FSerializer arc(nullptr);
 	if (!arc.OpenReader((const char *)data, info->LumpSize))
 	{
@@ -1917,7 +1975,7 @@ void G_DoLoadGame ()
 		return;
 	}
 
-	data = info->CacheLump();
+	data = info->Lock();
 	if (!arc.OpenReader((const char *)data, info->LumpSize))
 	{
 		LoadGameError("TXT_SGINFOERR");
@@ -2130,13 +2188,13 @@ static void PutSaveWads (FSerializer &arc)
 	const char *name;
 
 	// Name of IWAD
-	name = Wads.GetWadName (Wads.GetIwadNum());
+	name = fileSystem.GetResourceFileName (fileSystem.GetIwadNum());
 	arc.AddString("Game WAD", name);
 
 	// Name of wad the map resides in
-	if (Wads.GetLumpFile (primaryLevel->lumpnum) > Wads.GetIwadNum())
+	if (fileSystem.GetFileContainer (primaryLevel->lumpnum) > fileSystem.GetIwadNum())
 	{
-		name = Wads.GetWadName (Wads.GetLumpFile (primaryLevel->lumpnum));
+		name = fileSystem.GetResourceFileName (fileSystem.GetFileContainer (primaryLevel->lumpnum));
 		arc.AddString("Map WAD", name);
 	}
 }
@@ -2724,12 +2782,12 @@ void G_DoPlayDemo (void)
 	gameaction = ga_nothing;
 
 	// [RH] Allow for demos not loaded as lumps
-	demolump = Wads.CheckNumForFullName (defdemoname, true);
+	demolump = fileSystem.CheckNumForFullName (defdemoname, true);
 	if (demolump >= 0)
 	{
-		int demolen = Wads.LumpLength (demolump);
+		int demolen = fileSystem.FileLength (demolump);
 		demobuffer = (uint8_t *)M_Malloc(demolen);
-		Wads.ReadLump (demolump, demobuffer);
+		fileSystem.ReadFile (demolump, demobuffer);
 	}
 	else
 	{

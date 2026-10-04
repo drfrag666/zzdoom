@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "templates.h"
 
 #include "r_data/r_translate.h"
@@ -107,7 +107,7 @@ FTexture * FTexture::CreateTexture (int lumpnum, ETextureType usetype)
 
 	if (lumpnum == -1) return NULL;
 
-	auto data = Wads.OpenLumpReader (lumpnum);
+	auto data = fileSystem.OpenFileReader (lumpnum);
 
 	for(size_t i = 0; i < countof(CreateInfo); i++)
 	{
@@ -174,14 +174,14 @@ FTexture::FTexture (const char *name, int lumpnum)
 	}
 	else
 	{
-		Wads.GetLumpName (Name, lumpnum);
+		fileSystem.GetFileShortName (Name, lumpnum);
 	}
 }
 
 FTexture::~FTexture ()
 {
-	FTexture *link = Wads.GetLinkedTexture(SourceLump);
-	if (link == this) Wads.SetLinkedTexture(SourceLump, NULL);
+	FTexture *link = fileSystem.GetLinkedTexture(SourceLump);
+	if (link == this) fileSystem.SetLinkedTexture(SourceLump, nullptr);
 	KillNative();
 }
 

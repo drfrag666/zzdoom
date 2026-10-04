@@ -35,7 +35,7 @@
 #include "a_pickups.h"
 #include "thingdef.h"
 #include "c_console.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "zcc_parser.h"
 #include "zcc-parse.h"
 #include "zcc_compile.h"
@@ -687,7 +687,7 @@ void ZCCCompiler::CreateStructTypes()
 			syms = &OutNamespace->Symbols;
 		}
 
-		if (s->NodeName() == NAME__ && Wads.GetLumpFile(Lump) == 0)
+		if (s->NodeName() == NAME__ && fileSystem.GetFileContainer(Lump) == 0)
 		{
 			// This is just a container for syntactic purposes.
 			s->strct->Type = nullptr;
@@ -779,7 +779,7 @@ void ZCCCompiler::CreateClassTypes()
 				do
 				{
 					if (build.IsNotEmpty()) build += '.';
-					build += FName(p->Id);
+					build += FName(p->Id).GetChars();
 					p = static_cast<decltype(p)>(p->SiblingNext);
 				} while (p != ParentName);
 				Error(c->cls, "Qualified name '%s' for base class not supported in '%s'", build.GetChars(), FName(c->NodeName()).GetChars());
@@ -1406,7 +1406,7 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 			ZCC_Latent | ZCC_Final | ZCC_Action | ZCC_Static | ZCC_FuncConst | ZCC_Abstract | ZCC_Virtual | ZCC_Override | ZCC_Extension | ZCC_VirtualScope | ZCC_ClearScope;
 
 		// Some internal fields need to be set to clearscope.
-		if (Wads.GetLumpFile(Lump) == 0) notallowed &= ~ZCC_ClearScope;
+		if (fileSystem.GetFileContainer(Lump) == 0) notallowed &= ~ZCC_ClearScope;
 
 		if (field->Flags & notallowed)
 		{
@@ -1617,7 +1617,7 @@ bool ZCCCompiler::CompileProperties(PClass *type, TArray<ZCC_Property *> &Proper
 		TArray<PField *> fields;
 		ZCC_Identifier *id = (ZCC_Identifier *)p->Body;
 
-		if (FName(p->NodeName) == FName("prefix") && Wads.GetLumpFile(Lump) == 0)
+		if (FName(p->NodeName) == FName("prefix") && fileSystem.GetFileContainer(Lump) == 0)
 		{
 			// only for internal definitions: Allow setting a prefix. This is only for compatiblity with the old DECORATE property parser, but not for general use.
 			prefix = id->Id;
@@ -1672,7 +1672,7 @@ bool ZCCCompiler::CompileFlagDefs(PClass *type, TArray<ZCC_FlagDef *> &Propertie
 		PField *field;
 		FName referenced = FName(p->RefName);
 
-		if (FName(p->NodeName) == FName("prefix") && Wads.GetLumpFile(Lump) == 0)
+		if (FName(p->NodeName) == FName("prefix") && fileSystem.GetFileContainer(Lump) == 0)
 		{
 			// only for internal definitions: Allow setting a prefix. This is only for compatiblity with the old DECORATE property parser, but not for general use.
 			prefix = referenced;
@@ -1840,7 +1840,7 @@ PType *ZCCCompiler::DetermineType(PType *outertype, ZCC_TreeNode *field, FName n
 		case ZCC_NativeType:
 
 			// Creating an instance of a native struct is only allowed for internal definitions of native variables.
-			if (Wads.GetLumpFile(Lump) != 0 || !formember)
+			if (fileSystem.GetFileContainer(Lump) != 0 || !formember)
 			{
 				Error(field, "%s: @ not allowed for user scripts", name.GetChars());
 			}
@@ -1896,7 +1896,7 @@ PType *ZCCCompiler::DetermineType(PType *outertype, ZCC_TreeNode *field, FName n
 		auto ftype = DetermineType(outertype, field, name, atype->ElementType, false, true);
 		if (ftype->GetRegType() == REGT_NIL || ftype->GetRegCount() > 1)
 		{
-			if (field->NodeType == AST_VarDeclarator && (static_cast<ZCC_VarDeclarator*>(field)->Flags & ZCC_Native) && Wads.GetLumpFile(Lump) == 0)
+			if (field->NodeType == AST_VarDeclarator && (static_cast<ZCC_VarDeclarator*>(field)->Flags & ZCC_Native) && fileSystem.GetFileContainer(Lump) == 0)
 			{
 				// the internal definitions may declare native arrays to complex types.
 				// As long as they can be mapped to a static array type the VM can handle them, in a limited but sufficient fashion.
@@ -2391,13 +2391,13 @@ void ZCCCompiler::ProcessDefaultProperty(PClassActor *cls, ZCC_PropertyStmt *pro
 		}
 
 		// a one-name property
-		propname = FName(namenode->Id);
+		propname = FName(namenode->Id).GetChars();
 
 	}
 	else if (namenode->SiblingNext->SiblingNext == namenode)
 	{
 		// a two-name property
-		propname << FName(namenode->Id) << "." << FName(static_cast<ZCC_Identifier *>(namenode->SiblingNext)->Id);
+		propname << FName(namenode->Id).GetChars() << "." << FName(static_cast<ZCC_Identifier *>(namenode->SiblingNext)->Id).GetChars();
 	}
 	else
 	{
@@ -2541,7 +2541,7 @@ void ZCCCompiler::InitDefaults()
 
 				Baggage bag;
 			#ifdef _DEBUG
-				bag.ClassName = cls->TypeName;
+				bag.ClassName = cls->TypeName.GetChars();
 			#endif
 				bag.Version = mVersion;
 				bag.Namespace = OutNamespace;
@@ -3283,7 +3283,7 @@ void ZCCCompiler::CompileStates()
 				case AST_StateLabel:
 				{
 					auto sl = static_cast<ZCC_StateLabel *>(st);
-					statename = FName(sl->Label);
+					statename = FName(sl->Label).GetChars();
 					statedef.AddStateLabel(statename);
 					break;
 				}
@@ -3372,12 +3372,12 @@ void ZCCCompiler::CompileStates()
 					statename = "";
 					if (sg->Qualifier != nullptr)
 					{
-						statename << FName(sg->Qualifier->Id) << "::";
+						statename << FName(sg->Qualifier->Id).GetChars() << "::";
 					}
 					auto part = sg->Label;
 					do
 					{
-						statename << FName(part->Id) << '.';
+						statename << FName(part->Id).GetChars() << '.';
 						part = static_cast<decltype(part)>(part->SiblingNext);
 					} while (part != sg->Label);
 					statename.Truncate(statename.Len() - 1);	// remove the last '.' in the label name

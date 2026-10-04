@@ -68,9 +68,9 @@
 #include "v_text.h"
 #include "p_setup.h"
 #include "gi.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "types.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "p_conversation.h"
 #include "v_video.h"
 #include "i_time.h"
@@ -1156,7 +1156,7 @@ void MapLoader::LoadSectors (MapData *map, FMissingTextureTracker &missingtex)
 template<class nodetype, class subsectortype>
 bool MapLoader::LoadNodes (MapData * map)
 {
-	FMemLump	data;
+	FileData	data;
 	int 		j;
 	int 		k;
 	nodetype	*mn;
@@ -2032,7 +2032,7 @@ void MapLoader::LoopSidedefs (bool firstloop)
 
 int MapLoader::DetermineTranslucency (int lumpnum)
 {
-	auto tranmap = Wads.OpenLumpReader (lumpnum);
+	auto tranmap = fileSystem.OpenFileReader (lumpnum);
 	uint8_t index;
 	PalEntry newcolor;
 	PalEntry newcolor2;
@@ -2052,7 +2052,7 @@ int MapLoader::DetermineTranslucency (int lumpnum)
 		{
 			char lumpname[9];
 			lumpname[8] = 0;
-			Wads.GetLumpName (lumpname, lumpnum);
+			fileSystem.GetFileShortName (lumpname, lumpnum);
 			Printf ("%s appears to be additive translucency %d (%d%%)\n", lumpname, newcolor.r,
 				newcolor.r*100/255);
 		}
@@ -2063,7 +2063,7 @@ int MapLoader::DetermineTranslucency (int lumpnum)
 	{
 		char lumpname[9];
 		lumpname[8] = 0;
-		Wads.GetLumpName (lumpname, lumpnum);
+		fileSystem.GetFileShortName (lumpname, lumpnum);
 		Printf ("%s appears to be translucency %d (%d%%)\n", lumpname, newcolor.r,
 			newcolor.r*100/255);
 	}
@@ -2148,8 +2148,8 @@ void MapLoader::ProcessSideTextures(bool checktranmap, side_t *sd, sector_t *sec
 				// The translator set the alpha argument already; no reason to do it again.
 				sd->SetTexture(side_t::mid, FNullTextureID());
 			}
-			else if ((lumpnum = Wads.CheckNumForName (msd->midtexture)) > 0 &&
-				Wads.LumpLength (lumpnum) == 65536)
+			else if ((lumpnum = fileSystem.CheckNumForName (msd->midtexture)) > 0 &&
+				fileSystem.FileLength (lumpnum) == 65536)
 			{
 				*alpha = (short)DetermineTranslucency (lumpnum);
 				sd->SetTexture(side_t::mid, FNullTextureID());

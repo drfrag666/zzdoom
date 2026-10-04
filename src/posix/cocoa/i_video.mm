@@ -53,7 +53,7 @@
 #include "v_video.h"
 #include "version.h"
 #include "videomodes.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 
 
 @implementation NSWindow(ExitAppOnClose)
@@ -104,7 +104,7 @@ CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOI
 	setmodeneeded = true;
 }
 
-CUSTOM_CVAR(Bool, fullscreen, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+CUSTOM_CVAR(Bool, vid_fullscreen, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	extern int NewWidth, NewHeight, NewBits, DisplayBits;
 
@@ -968,14 +968,14 @@ void I_CreateRenderer()
 
 DFrameBuffer* I_SetMode(int &width, int &height, DFrameBuffer* old)
 {
-	return Video->CreateFrameBuffer(width, height, swtruecolor, fullscreen, old);
+	return Video->CreateFrameBuffer(width, height, swtruecolor, vid_fullscreen, old);
 }
 
 bool I_CheckResolution(const int width, const int height, const int bits)
 {
 	int twidth, theight;
 
-	Video->StartModeIterator(bits, fullscreen);
+	Video->StartModeIterator(bits, vid_fullscreen);
 
 	while (Video->NextMode(&twidth, &theight, NULL))
 	{
@@ -997,7 +997,7 @@ void I_ClosestResolution(int *width, int *height, int bits)
 
 	for (iteration = 0; iteration < 2; ++iteration)
 	{
-		Video->StartModeIterator(bits, fullscreen);
+		Video->StartModeIterator(bits, vid_fullscreen);
 
 		while (Video->NextMode(&twidth, &theight, NULL))
 		{

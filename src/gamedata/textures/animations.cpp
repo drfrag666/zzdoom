@@ -34,12 +34,12 @@
 
 #include "doomtype.h"
 #include "cmdlib.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "r_sky.h"
 #include "m_random.h"
 #include "d_player.h"
 #include "p_spec.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "serializer.h"
 
 // MACROS ------------------------------------------------------------------
@@ -179,11 +179,11 @@ void FTextureManager::InitAnimated (void)
 		// don't know about ZDoom's more flexible texture system.
 		// | FTextureManager::TEXMAN_TryAny;
 
-	int lumpnum = Wads.CheckNumForName ("ANIMATED");
+	int lumpnum = fileSystem.CheckNumForName ("ANIMATED");
 	if (lumpnum != -1)
 	{
-		FMemLump animatedlump = Wads.ReadLump (lumpnum);
-		int animatedlen = Wads.LumpLength(lumpnum);
+		FileData animatedlump = fileSystem.ReadFile (lumpnum);
+		int animatedlen = fileSystem.FileLength(lumpnum);
 		const uint8_t *animdefs = (const uint8_t *)animatedlump.GetMem();
 		const uint8_t *anim_p;
 		FTextureID pic1, pic2;
@@ -242,8 +242,8 @@ void FTextureManager::InitAnimated (void)
 				if (debuganimated)
 				{
 					Printf("Defining animation '%s' (texture %d, lump %d, file %d) to '%s' (texture %d, lump %d, file %d)\n",
-						tex1->Name.GetChars(), pic1.GetIndex(), tex1->GetSourceLump(), Wads.GetLumpFile(tex1->GetSourceLump()),
-						tex2->Name.GetChars(), pic2.GetIndex(), tex2->GetSourceLump(), Wads.GetLumpFile(tex2->GetSourceLump()));
+						tex1->Name.GetChars(), pic1.GetIndex(), tex1->GetSourceLump(), fileSystem.GetFileContainer(tex1->GetSourceLump()),
+						tex2->Name.GetChars(), pic2.GetIndex(), tex2->GetSourceLump(), fileSystem.GetFileContainer(tex2->GetSourceLump()));
 				}
 
 				if (pic1 == pic2)
@@ -280,7 +280,7 @@ void FTextureManager::InitAnimDefs ()
 	const BITFIELD texflags = TEXMAN_Overridable | TEXMAN_TryAny;
 	int lump, lastlump = 0;
 	
-	while ((lump = Wads.FindLump ("ANIMDEFS", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump ("ANIMDEFS", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 

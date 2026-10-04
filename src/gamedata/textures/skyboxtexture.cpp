@@ -22,7 +22,7 @@
 
 #include "doomtype.h"
 #include "sc_man.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "textures.h"
 #include "skyboxtexture.h"
 
@@ -156,7 +156,7 @@ void ParseGldefSkybox(FScanner &sc)
 
 void ParseVavoomSkybox()
 {
-	int lump = Wads.CheckNumForName("SKYBOXES");
+	int lump = fileSystem.CheckNumForName("SKYBOXES");
 
 	if (lump < 0) return;
 
@@ -179,7 +179,7 @@ void ParseVavoomSkybox()
 				sc.MustGetStringName("map");
 				sc.MustGetString();
 
-				maplump = Wads.CheckNumForFullName(sc.String, true);
+				maplump = fileSystem.CheckNumForFullName(sc.String, true);
 
 				FTexture *tex = TexMan.FindTexture(sc.String, ETextureType::Wall, FTextureManager::TEXMAN_TryAny);
 				if (tex == NULL)

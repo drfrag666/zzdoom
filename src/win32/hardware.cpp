@@ -46,12 +46,12 @@
 #include "doomstat.h"
 #include "m_argv.h"
 #include "version.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "i_system.h"
 #include "swrenderer/r_swrenderer.h"
 
 EXTERN_CVAR (Bool, ticker)
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 EXTERN_CVAR (Bool, swtruecolor)
 EXTERN_CVAR (Float, vid_winscale)
 EXTERN_CVAR (Bool, vid_forceddraw)
@@ -148,7 +148,7 @@ DFrameBuffer *I_SetMode (int &width, int &height, DFrameBuffer *old)
 		}
 		else
 		{
-			fs = fullscreen;
+			fs = vid_fullscreen;
 		}
 		break;
 	}
@@ -167,7 +167,7 @@ bool I_CheckResolution (int width, int height, int bits)
 {
 	int twidth, theight;
 
-	Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : fullscreen);
+	Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
 	while (Video->NextMode (&twidth, &theight, NULL))
 	{
 		if (width == twidth && height == theight)
@@ -185,7 +185,7 @@ void I_ClosestResolution (int *width, int *height, int bits)
 
 	for (iteration = 0; iteration < 2; iteration++)
 	{
-		Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : fullscreen);
+		Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
 		while (Video->NextMode (&twidth, &theight, NULL))
 		{
 			if (twidth == *width && theight == *height)
@@ -344,7 +344,7 @@ CUSTOM_CVAR(Bool, swtruecolor, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINIT
 CUSTOM_CVAR(Bool, win_borderless, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	// Just reinit the window. Saves a lot of trouble.
-	if (!fullscreen)
+	if (!vid_fullscreen)
 	{
 		NewWidth = screen->VideoWidth;
 		NewHeight = screen->VideoHeight;
@@ -353,7 +353,7 @@ CUSTOM_CVAR(Bool, win_borderless, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR
 	}
 }
 
-CUSTOM_CVAR (Bool, fullscreen, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
+CUSTOM_CVAR(Bool, vid_fullscreen, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG | CVAR_NOINITCALL)
 {
 	NewWidth = screen->VideoWidth;
 	NewHeight = screen->VideoHeight;

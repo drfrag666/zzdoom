@@ -44,7 +44,7 @@
 #include "m_argv.h"
 #include "st_console.h"
 #include "version.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "s_music.h"
 
 
@@ -58,7 +58,7 @@ CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 EXTERN_CVAR(Int,  vid_defwidth )
 EXTERN_CVAR(Int,  vid_defheight)
 EXTERN_CVAR(Bool, vid_vsync    )
-EXTERN_CVAR(Bool, fullscreen   )
+EXTERN_CVAR(Bool, vid_fullscreen   )
 
 
 // ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ int DoMain(int argc, char** argv)
 	vid_defwidth  = static_cast<int>(screenSize.width);
 	vid_defheight = static_cast<int>(screenSize.height);
 	vid_vsync     = true;
-	fullscreen    = true;
+	vid_fullscreen    = true;
 
 	Args = new FArgs(argc, argv);
 

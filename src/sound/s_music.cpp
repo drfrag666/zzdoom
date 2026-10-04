@@ -68,7 +68,7 @@
 #include "s_playlist.h"
 #include "c_dispatch.h"
 #include "m_random.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "p_local.h"
 #include "doomstat.h"
 #include "cmdlib.h"
@@ -434,18 +434,18 @@ bool S_ChangeMusic (const char *musicname, int order, bool looping, bool force)
 		FileReader reader;
 		if (!FileExists (musicname))
 		{
-			if ((lumpnum = Wads.CheckNumForFullName (musicname, true, ns_music)) == -1)
+			if ((lumpnum = fileSystem.CheckNumForFullName (musicname, true, ns_music)) == -1)
 			{
 				Printf ("Music \"%s\" not found\n", musicname);
 				return false;
 			}
 			if (handle == nullptr)
 			{
-				if (Wads.LumpLength (lumpnum) == 0)
+				if (fileSystem.FileLength (lumpnum) == 0)
 				{
 					return false;
 				}
-				reader = Wads.ReopenLumpReader(lumpnum);
+				reader = fileSystem.ReopenFileReader(lumpnum);
 			}
 		}
 		else
@@ -730,13 +730,10 @@ UNSAFE_CCMD (playlist)
 	}
 	else
 	{
-		if (PlayList.GetNumSongs() > 0)
+		if (!PlayList.ChangeList(argv[1]))
 		{
-			PlayList.ChangeList (argv[1]);
-		}
-		else
-		{
-			PlayList.ChangeList(argv[1]);
+			Printf("Could not open " TEXTCOLOR_BOLD "%s" TEXTCOLOR_NORMAL ": %s\n", argv[1], strerror(errno));
+			return;
 		}
 		if (PlayList.GetNumSongs () > 0)
 		{

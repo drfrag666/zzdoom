@@ -36,7 +36,7 @@
 
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "bitmap.h"
 #include "v_video.h"
 #include "textures/textures.h"
@@ -379,7 +379,7 @@ uint8_t *FPCXTexture::MakeTexture(FRenderStyle style)
 	int bitcount;
 	bool alphatex = !!(style.Flags & STYLEF_RedIsAlpha);
 
-	auto lump = Wads.OpenLumpReader(SourceLump);
+	auto lump = fileSystem.OpenFileReader(SourceLump);
 
 	lump.Read(&header, sizeof(header));
 
@@ -470,7 +470,7 @@ int FPCXTexture::CopyTrueColorPixels(FBitmap *bmp, int x, int y, int rotate, FCo
 	int bitcount;
 	uint8_t * Pixels;
 
-	auto lump = Wads.OpenLumpReader(SourceLump);
+	auto lump = fileSystem.OpenFileReader(SourceLump);
 
 	lump.Read(&header, sizeof(header));
 

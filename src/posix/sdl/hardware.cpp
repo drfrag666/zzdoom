@@ -48,12 +48,12 @@
 #include "v_text.h"
 #include "doomstat.h"
 #include "m_argv.h"
+#include "engineerrors.h"
 #include "swrenderer/r_renderer.h"
-#include "doomerrors.h"
 #include "swrenderer/r_swrenderer.h"
 
 EXTERN_CVAR (Bool, ticker)
-EXTERN_CVAR (Bool, fullscreen)
+EXTERN_CVAR (Bool, vid_fullscreen)
 EXTERN_CVAR (Bool, swtruecolor)
 EXTERN_CVAR (Float, vid_winscale)
 
@@ -130,7 +130,7 @@ DFrameBuffer *I_SetMode (int &width, int &height, DFrameBuffer *old)
 		fs = true;
 		break;
 	case DISPLAY_Both:
-		fs = fullscreen;
+		fs = vid_fullscreen;
 		break;
 	}
 	DFrameBuffer *res = Video->CreateFrameBuffer (width, height, swtruecolor, fs, old);
@@ -148,7 +148,7 @@ bool I_CheckResolution (int width, int height, int bits)
 {
 	int twidth, theight;
 
-	Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : fullscreen);
+	Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
 	while (Video->NextMode (&twidth, &theight, NULL))
 	{
 		if (width == twidth && height == theight)
@@ -166,7 +166,7 @@ void I_ClosestResolution (int *width, int *height, int bits)
 
 	for (iteration = 0; iteration < 2; iteration++)
 	{
-		Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : fullscreen);
+		Video->StartModeIterator (bits, screen ? screen->IsFullscreen() : vid_fullscreen);
 		while (Video->NextMode (&twidth, &theight, NULL))
 		{
 			if (twidth == *width && theight == *height)
@@ -296,7 +296,7 @@ CUSTOM_CVAR(Bool, swtruecolor, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITC
 	NewBits = DisplayBits;
 	setmodeneeded = true;
 
-CUSTOM_CVAR (Bool, fullscreen, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
+CUSTOM_CVAR (Bool, vid_fullscreen, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG|CVAR_NOINITCALL)
 {
 	NewWidth = screen->VideoWidth;
 	NewHeight = screen->VideoHeight;

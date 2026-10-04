@@ -33,7 +33,7 @@
 */
 
 #include "doomtype.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 #include "v_pfx.h"
 
 PfxUnion GPfxPal;

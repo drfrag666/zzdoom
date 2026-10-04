@@ -36,7 +36,7 @@
 #include <ctype.h>
 #include "doomtype.h"
 #include "files.h"
-#include "w_wad.h"
+#include "filesystem.h"
 
 #include "gi.h"
 #include "st_start.h"
@@ -51,7 +51,7 @@
 #include "cmdlib.h"
 #include "textures/textures.h"
 #include "r_data/colormaps.h"
-#include "doomerrors.h"
+#include "engineerrors.h"
 
 // On the Alpha, accessing the shorts directly if they aren't aligned on a
 // 4-byte boundary causes unaligned access warnings. Why it does this at
@@ -737,7 +737,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 	}
 
 	{
-		auto pnames = Wads.OpenLumpReader(patcheslump);
+		auto pnames = fileSystem.OpenFileReader(patcheslump);
 		numpatches = pnames.ReadUInt32();
 
 		// Check whether the amount of names reported is correct.
@@ -748,7 +748,7 @@ void FTextureManager::AddTexturesLump (const void *lumpdata, int lumpsize, int d
 		}
 
 		// Check whether the amount of names reported is correct.
-		int lumplength = Wads.LumpLength(patcheslump);
+		int lumplength = fileSystem.FileLength(patcheslump);
 		if (numpatches > uint32_t((lumplength-4)/8))
 		{
 			Printf("PNAMES lump is shorter than required (%u entries reported but only %d bytes (%d entries) long\n",
@@ -869,13 +869,13 @@ void FTextureManager::AddTexturesLumps (int lump1, int lump2, int patcheslump)
 
 	if (lump1 >= 0)
 	{
-		FMemLump texdir = Wads.ReadLump (lump1);
-		AddTexturesLump (texdir.GetMem(), Wads.LumpLength (lump1), lump1, patcheslump, firstdup, true);
+		FileData texdir = fileSystem.ReadFile (lump1);
+		AddTexturesLump (texdir.GetMem(), fileSystem.FileLength (lump1), lump1, patcheslump, firstdup, true);
 	}
 	if (lump2 >= 0)
 	{
-		FMemLump texdir = Wads.ReadLump (lump2);
-		AddTexturesLump (texdir.GetMem(), Wads.LumpLength (lump2), lump2, patcheslump, firstdup, false);
+		FileData texdir = fileSystem.ReadFile (lump2);
+		AddTexturesLump (texdir.GetMem(), fileSystem.FileLength (lump2), lump2, patcheslump, firstdup, false);
 	}
 }
 

@@ -34,7 +34,7 @@
 #include "st_stuff.h"
 #include "p_local.h"
 #include "p_lnspec.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "a_sharedglobal.h"
 #include "d_event.h"
 #include "gi.h"
@@ -316,30 +316,26 @@ CVAR (Color, am_ovportalcolor,			0x004022,	CVAR_ARCHIVE);
 
 struct AMColor
 {
-	int Index;
 	uint32_t RGB;
 
 	void FromCVar(FColorCVar & cv)
 	{
-		Index = cv.GetIndex();
 		RGB = uint32_t(cv) | MAKEARGB(255, 0, 0, 0);
 	}
 
 	void FromRGB(int r,int g, int b)
 	{
 		RGB = MAKEARGB(255, r, g, b);
-		Index = ColorMatcher.Pick(r, g, b);
 	}
 
 	void setInvalid()
 	{
-		Index = -1;
-		RGB = -1;
+		RGB = 0;
 	}
 
 	bool isValid() const
 	{
-		return Index > -1;
+		return RGB != 0;
 	}
 };
 
@@ -830,7 +826,7 @@ static void AM_ParseArrow(TArray<mline_t> &Arrow, const char *lumpname)
 {
 	const int R = int((8 * PLAYERRADIUS) / 7);
 	FScanner sc;
-	int lump = Wads.CheckNumForFullName(lumpname, true);
+	int lump = fileSystem.CheckNumForFullName(lumpname, true);
 	if (lump >= 0)
 	{
 		sc.OpenLumpNum(lump);
@@ -1585,7 +1581,7 @@ void DAutomap::clearFB (const AMColor &color)
 
 	if (!drawback)
 	{
-		screen->Clear (0, 0, f_w, f_h, color.Index, color.RGB);
+		screen->Clear (0, 0, f_w, f_h, -1, color.RGB);
 	}
 	else
 	{
@@ -1752,7 +1748,7 @@ void DAutomap::drawMline (mline_t *ml, const AMColor &color)
 
 	if (clipMline (ml, &fl))
 	{
-		screen->DrawLine (f_x + fl.a.x, f_y + fl.a.y, f_x + fl.b.x, f_y + fl.b.y, color.Index, color.RGB);
+		screen->DrawLine (f_x + fl.a.x, f_y + fl.a.y, f_x + fl.b.x, f_y + fl.b.y, -1, color.RGB);
 	}
 }
 
@@ -2928,7 +2924,7 @@ void DAutomap::drawThings ()
 							if (G_SkillProperty(SKILLP_EasyKey) || am_showkeys_always)
 							{
 								// Already drawn by AM_drawKeys(), so don't draw again
-								color.Index = -1;
+								color.RGB = 0;
 							}
 							else if (am_showkeys)
 							{
@@ -2937,7 +2933,7 @@ void DAutomap::drawThings ()
 								if (c >= 0)	color.FromRGB(RPART(c), GPART(c), BPART(c));
 								else color = AMColors[AMColors.ThingColor_CountItem];
 								drawLineCharacter(&CheatKey[0], CheatKey.Size(), 0, 0., color, p.x, p.y);
-								color.Index = -1;
+								color.RGB = 0;
 							}
 							else
 							{
@@ -2950,7 +2946,7 @@ void DAutomap::drawThings ()
 							color = AMColors[AMColors.ThingColor_Item];
 					}
 
-					if (color.Index != -1)
+					if (color.isValid())
 					{
 						drawLineCharacter(thintriangle_guy.data(), thintriangle_guy.size(), 16, angle, color, p.x, p.y);
 					}
@@ -3126,7 +3122,7 @@ void DAutomap::drawAuthorMarkers ()
 
 void DAutomap::drawCrosshair (const AMColor &color)
 {
-	screen->DrawPixel(f_w/2, (f_h+1)/2, color.Index, color.RGB);
+	screen->DrawPixel(f_w/2, (f_h+1)/2, -1, color.RGB);
 }
 
 //=============================================================================

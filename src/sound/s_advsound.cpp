@@ -37,7 +37,7 @@
 #include "templates.h"
 #include "actor.h"
 #include "c_dispatch.h"
-#include "w_wad.h"
+#include "filesystem.h"
 #include "gi.h"
 #include "i_sound.h"
 #include "d_netinf.h"
@@ -435,7 +435,7 @@ DEFINE_ACTION_FUNCTION(DObject,S_GetLength)
 
 int S_AddSound (const char *logicalname, const char *lumpname, FScanner *sc)
 {
-	int lump = Wads.CheckNumForFullName (lumpname, true, ns_sounds);
+	int lump = fileSystem.CheckNumForFullName (lumpname, true, ns_sounds);
 	return S_AddSound (logicalname, lump);
 }
 
@@ -505,7 +505,7 @@ int S_AddPlayerSound (const char *pclass, int gender, int refid,
 	
 	if (lumpname)
 	{
-		lump = Wads.CheckNumForFullName (lumpname, true, ns_sounds);
+		lump = fileSystem.CheckNumForFullName (lumpname, true, ns_sounds);
 	}
 
 	return S_AddPlayerSound (pclass, gender, refid, lump);
@@ -780,19 +780,15 @@ void S_ParseSndInfo (bool redefine)
 
 	CurrentPitchMask = 0;
 	S_AddSound ("{ no sound }", "DSEMPTY");	// Sound 0 is no sound at all
-	for (lump = 0; lump < Wads.GetNumLumps(); ++lump)
+	for (lump = 0; lump < fileSystem.GetNumEntries(); ++lump)
 	{
-		switch (Wads.GetLumpNamespace (lump))
+		switch (fileSystem.GetFileNamespace (lump))
 		{
 		case ns_global:
-			if (Wads.CheckLumpName (lump, "SNDINFO"))
+			if (fileSystem.CheckFileName (lump, "SNDINFO"))
 			{
 				S_AddSNDINFO (lump);
 			}
-			break;
-
-		case ns_bloodsfx:
-			S_AddBloodSFX (lump);
 			break;
 
 		case ns_strifevoices:
@@ -805,7 +801,7 @@ void S_ParseSndInfo (bool redefine)
 
 	S_ShrinkPlayerSoundLists ();
 
-	sfx_empty = Wads.CheckNumForName ("dsempty", ns_sounds);
+	sfx_empty = fileSystem.CheckNumForName ("dsempty", ns_sounds);
 	S_CheckIntegrity();
 }
 
@@ -1195,12 +1191,12 @@ static void S_AddSNDINFO (int lump)
 
 			case SI_MusicAlias: {
 				sc.MustGetString();
-				int lump = Wads.CheckNumForName(sc.String, ns_music);
+				int lump = fileSystem.CheckNumForName(sc.String, ns_music);
 				if (lump >= 0)
 				{
 					// do not set the alias if a later WAD defines its own music of this name
-					int file = Wads.GetLumpFile(lump);
-					int sndifile = Wads.GetLumpFile(sc.LumpNum);
+					int file = fileSystem.GetFileContainer(lump);
+					int sndifile = fileSystem.GetFileContainer(sc.LumpNum);
 					if (file > sndifile)
 					{
 						sc.MustGetString();
@@ -1212,7 +1208,7 @@ static void S_AddSNDINFO (int lump)
 				FName mapped = sc.String;
 
 				// only set the alias if the lump it maps to exists.
-				if (mapped == NAME_None || Wads.CheckNumForFullName(sc.String, true, ns_music) >= 0)
+				if (mapped == NAME_None || fileSystem.CheckNumForFullName(sc.String, true, ns_music) >= 0)
 				{
 					MusicAliases[alias] = mapped;
 				}
@@ -1276,54 +1272,6 @@ static void S_AddSNDINFO (int lump)
 
 //==========================================================================
 //
-// S_AddBloodSFX
-//
-// Registers a new sound with the name "<lumpname>.sfx"
-// Actual sound data is searched for in the ns_bloodraw namespace.
-//
-//==========================================================================
-
-static void S_AddBloodSFX (int lumpnum)
-{
-	FMemLump sfxlump = Wads.ReadLump(lumpnum);
-	const FBloodSFX *sfx = (FBloodSFX *)sfxlump.GetMem();
-	int rawlump = Wads.CheckNumForName(sfx->RawName, ns_bloodraw);
-	int sfxnum;
-
-	if (rawlump != -1)
-	{
-		auto &S_sfx = soundEngine->GetSounds();
-		const char *name = Wads.GetLumpFullName(lumpnum);
-		sfxnum = S_AddSound(name, rawlump);
-		if (sfx->Format < 5 || sfx->Format > 12)
-		{	// [0..4] + invalid formats
-			S_sfx[sfxnum].RawRate = 11025;
-		}
-		else if (sfx->Format < 9)
-		{	// [5..8]
-			S_sfx[sfxnum].RawRate = 22050;
-		}
-		else
-		{	// [9..12]
-			S_sfx[sfxnum].RawRate = 44100;
-		}
-		S_sfx[sfxnum].bLoadRAW = true;
-		S_sfx[sfxnum].LoopStart = LittleLong(sfx->LoopStart);
-		// Make an ambient sound out of it, whether it has a loop point
-		// defined or not. (Because none of the standard Blood ambient
-		// sounds are explicitly defined as looping.)
-		FAmbientSound *ambient = &Ambients[Wads.GetLumpIndexNum(lumpnum)];
-		ambient->type = CONTINUOUS;
-		ambient->periodmin = 0;
-		ambient->periodmax = 0;
-		ambient->volume = 1;
-		ambient->attenuation = 1;
-		ambient->sound = FSoundID(sfxnum);
-	}
-}
-
-//==========================================================================
-//
 // S_AddStrifeVoice
 //
 // Registers a new sound with the name "svox/<lumpname>"
@@ -1333,7 +1281,7 @@ static void S_AddBloodSFX (int lumpnum)
 static void S_AddStrifeVoice (int lumpnum)
 {
 	char name[16] = "svox/";
-	Wads.GetLumpName (name+5, lumpnum);
+	fileSystem.GetFileShortName (name+5, lumpnum);
 	S_AddSound (name, lumpnum);
 }
 
@@ -1605,11 +1553,11 @@ static void S_RestorePlayerSounds()
 		FSavedPlayerSoundInfo * spi = &SavedPlayerSounds[i];
 		if (spi->alias)
 		{
-			S_AddPlayerSoundExisting(spi->pclass, spi->gender, spi->refid, spi->lumpnum);
+			S_AddPlayerSoundExisting(spi->pclass.GetChars(), spi->gender, spi->refid, spi->lumpnum);
 		}
 		else
 		{
-			S_AddPlayerSound(spi->pclass, spi->gender, spi->refid, spi->lumpnum);
+			S_AddPlayerSound(spi->pclass.GetChars(), spi->gender, spi->refid, spi->lumpnum);
 		}
 	}
 }
@@ -2047,7 +1995,7 @@ void S_ParseMusInfo()
 {
 	int lastlump = 0, lump;
 
-	while ((lump = Wads.FindLump ("MUSINFO", &lastlump)) != -1)
+	while ((lump = fileSystem.FindLump ("MUSINFO", &lastlump)) != -1)
 	{
 		FScanner sc(lump);
 
