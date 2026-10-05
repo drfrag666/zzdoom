@@ -94,7 +94,7 @@ namespace swrenderer
 		// [RH] Inverse light for shooting the Sigil
 		if (fixedcolormap == nullptr && viewpoint.extralight == INT_MIN)
 		{
-			fixedcolormap = &SpecialSWColormaps[INVERSECOLORMAP];
+			fixedcolormap = &SpecialSWColormaps[REALINVERSECOLORMAP];
 			viewpoint.extralight = 0;
 		}
 	}

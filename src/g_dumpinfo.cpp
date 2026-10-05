@@ -121,7 +121,7 @@ CCMD (countdecals)
 
 CCMD (spray)
 {
-	if (who == NULL || argv.argc() < 2)
+	if (players[consoleplayer].mo == NULL || argv.argc() < 2)
 	{
 		Printf ("Usage: spray <decal>\n");
 		return;
@@ -364,22 +364,3 @@ CCMD(listsnapshots)
 	}
 }
 
-
-CCMD(printlocalized)
-{
-	if (argv.argc() > 1)
-	{
-		if (argv.argc() > 2)
-		{
-			FString lang = argv[2];
-			lang.ToLower();
-			if (lang.Len() >= 2)
-			{
-				Printf("%s\n", GStrings.GetLanguageString(argv[1], MAKE_ID(lang[0], lang[1], lang[2], 0)));
-				return;
-			}
-		}
-		Printf("%s\n", GStrings(argv[1]));
-	}
-
-}

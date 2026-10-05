@@ -931,13 +931,13 @@ void FMultiPatchTexture::ParsePatch(FScanner &sc, TexPart & part, TexInit &init)
 				if (part.Translation != NULL) delete part.Translation;
 				part.Translation = NULL;
 				part.Blend = 0;
-				static const char *maps[] = { "inverse", "gold", "red", "green", "blue", NULL };
+				static const char *maps[] = { "gold", "red", "green", "blue", "inverse", NULL };
 				sc.MustGetString();
 
 				match = sc.MatchString(maps);
 				if (match >= 0)
 				{
-					part.Blend = BLEND_SPECIALCOLORMAP1 + match;
+					part.Blend = BLEND_SPECIALCOLORMAP1 + match + 1;
 				}
 				else if (sc.Compare("ICE"))
 				{
@@ -986,7 +986,7 @@ void FMultiPatchTexture::ParsePatch(FScanner &sc, TexPart & part, TexInit &init)
 				b1 = (float)sc.Float;
 				if (!sc.CheckString(","))
 				{
-					part.Blend = AddSpecialColormap(0,0,0, r1, g1, b1);
+					part.Blend = AddSpecialColormap(GPalette.BaseColors, 0, 0, 0, r1, g1, b1);
 				}
 				else
 				{
@@ -998,7 +998,7 @@ void FMultiPatchTexture::ParsePatch(FScanner &sc, TexPart & part, TexInit &init)
 					sc.MustGetStringName(",");
 					sc.MustGetFloat();
 					b2 = (float)sc.Float;
-					part.Blend = AddSpecialColormap(r1, g1, b1, r2, g2, b2);
+					part.Blend = AddSpecialColormap(GPalette.BaseColors, r1, g1, b1, r2, g2, b2);
 				}
 			}
 			else if (sc.Compare("Blend"))

@@ -81,6 +81,7 @@
 #include "p_conversation.h"
 #include "p_effect.h"
 #include "stringtable.h"
+#include "c_buttons.h"
 
 #include "gi.h"
 
@@ -1015,7 +1016,7 @@ void G_DoLoadLevel(const FString &nextmapname, int position, bool autosave, bool
 	gameaction = ga_nothing;
 
 	// clear cmd building stuff
-	ResetButtonStates();
+	buttonMap.ResetButtonStates();
 
 	SendItemUse = nullptr;
 	SendItemDrop = nullptr;

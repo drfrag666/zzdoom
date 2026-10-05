@@ -373,7 +373,7 @@ namespace swrenderer
 
 				if (visstyle.Invert)
 				{
-					vis.Light.BaseColormap = &SpecialSWColormaps[INVERSECOLORMAP];
+					vis.Light.BaseColormap = &SpecialSWColormaps[REALINVERSECOLORMAP];
 					vis.Light.ColormapNum = 0;
 					noaccel = true;
 				}

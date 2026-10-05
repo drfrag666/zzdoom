@@ -34,13 +34,16 @@
 #ifndef __C_BINDINGS_H__
 #define __C_BINDINGS_H__
 
-#include "doomdef.h"
+#include "keydef.h"
+#include "zstring.h"
+#include "tarray.h"
 
 struct event_t;
 class FConfigFile;
 class FCommandLine;
 
 void C_NameKeys (char *str, int first, int second);
+FString C_NameKeys (int *keys, int count, bool colors = false);
 
 class FKeyBindings
 {
@@ -51,14 +54,16 @@ public:
 	bool DoKey(event_t *ev);
 	void ArchiveBindings(FConfigFile *F, const char *matchcmd = NULL);
 	int  GetKeysForCommand (const char *cmd, int *first, int *second);
+	TArray<int> GetKeysForCommand (const char *cmd);
 	void UnbindACommand (const char *str);
 	void UnbindAll ();
 	void UnbindKey(const char *key);
 	void DoBind (const char *key, const char *bind);
 	void DefaultBind(const char *keyname, const char *cmd);
 
-	void SetBind(unsigned int key, const char *bind)
+	void SetBind(unsigned int key, const char *bind, bool override = true)
 	{
+		if (!override && Binds[key].IsNotEmpty()) return;
 		if (key < NUM_KEYS) Binds[key] = bind;
 	}
 
@@ -69,8 +74,12 @@ public:
 
 	const char *GetBind(unsigned int index) const
 	{
-		if (index < NUM_KEYS) return Binds[index].GetChars();
-		else return NULL;
+		if (index < NUM_KEYS)
+		{
+			auto c = Binds[index].GetChars();
+			if (*c) return c;
+		}
+		return NULL;
 	}
 
 };
@@ -104,3 +113,4 @@ struct FKeySection
 extern TArray<FKeySection> KeySections;
 
 #endif //__C_BINDINGS_H__
+

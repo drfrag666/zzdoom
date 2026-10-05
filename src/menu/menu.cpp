@@ -53,6 +53,7 @@
 #include "events.h"
 #include "v_video.h"
 #include "i_system.h"
+#include "c_buttons.h"
 #include "scripting/types.h"
 
 int DMenu::InMenu;
@@ -341,7 +342,7 @@ void M_StartControlPanel (bool makeSound, bool scaleoverride)
 	if (CurrentMenu != nullptr)
 		return;
 
-	ResetButtonStates ();
+	buttonMap.ResetButtonStates ();
 	for (int i = 0; i < NUM_MKEYS; ++i)
 	{
 		MenuButtons[i].ReleaseKey(0);

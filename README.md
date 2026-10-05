@@ -1,6 +1,6 @@
 # Welcome to ZZDoom!
 
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/coelckers/gzdoom?branch=master&svg=true)](https://ci.appveyor.com/project/coelckers/gzdoom) [![Build Status](https://travis-ci.org/coelckers/gzdoom.svg?branch=master)](https://travis-ci.org/coelckers/gzdoom)
+[![Build Status](https://github.com/coelckers/gzdoom/workflows/Continuous%20Integration/badge.svg)](https://github.com/coelckers/gzdoom/actions?query=workflow%3A%22Continuous+Integration%22)
 
 ## ZZDoom is a modder-friendly source port based on the DOOM engine
 

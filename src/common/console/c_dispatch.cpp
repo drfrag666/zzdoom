@@ -40,42 +40,20 @@
 #include <ctype.h>
 
 #include "templates.h"
-#include "doomtype.h"
 #include "cmdlib.h"
 #include "c_console.h"
 #include "c_dispatch.h"
 #include "m_argv.h"
-#include "g_game.h"
-#include "d_player.h"
+#include "gamestate.h"
 #include "configfile.h"
-#include "v_text.h"
-#include "d_net.h"
-#include "d_main.h"
-#include "serializer.h"
-#include "menu/menu.h"
-#include "vm.h"
-#include "g_levellocals.h"
+#include "printf.h"
+#include "c_cvars.h"
+#include "c_buttons.h"
+#include "findfile.h"
 
 // MACROS ------------------------------------------------------------------
 
 // TYPES -------------------------------------------------------------------
-
-class UnsafeExecutionScope
-{
-	const bool wasEnabled;
-
-public:
-	explicit UnsafeExecutionScope(const bool enable = true)
-		: wasEnabled(UnsafeExecutionContext)
-	{
-		UnsafeExecutionContext = enable;
-	}
-
-	~UnsafeExecutionScope()
-	{
-		UnsafeExecutionContext = wasEnabled;
-	}
-};
 
 class FDelayedCommand
 {
@@ -123,7 +101,7 @@ public:
 		if (Text.IsNotEmpty() && Command != nullptr)
 		{
 			FCommandLine args(Text);
-			Command->Run(args, players[consoleplayer].mo, 0);
+			Command->Run(args, 0);
 		}
 		return true;
 	}
@@ -176,85 +154,22 @@ void C_ClearDelayedCommands()
 
 
 
-struct FActionMap
-{
-	FButtonStatus	*Button;
-	unsigned int	Key;	// value from passing Name to MakeKey()
-	char			Name[12];
-};
-
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
-static long ParseCommandLine (const char *args, int *argc, char **argv, bool no_escapes);
 static FConsoleCommand *FindNameInHashTable (FConsoleCommand **table, const char *name, size_t namelen);
 static FConsoleCommand *ScanChainForName (FConsoleCommand *start, const char *name, size_t namelen, FConsoleCommand **prev);
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
-
-CVAR (Bool, lookspring, true, CVAR_ARCHIVE);	// Generate centerview when -mlook encountered?
-
-FConsoleCommand *Commands[FConsoleCommand::HASH_SIZE];
-FButtonStatus Button_Mlook, Button_Klook, Button_Use, Button_AltAttack,
-	Button_Attack, Button_Speed, Button_MoveRight, Button_MoveLeft,
-	Button_Strafe, Button_LookDown, Button_LookUp, Button_Back,
-	Button_Forward, Button_Right, Button_Left, Button_MoveDown,
-	Button_MoveUp, Button_Jump, Button_ShowScores, Button_Crouch,
-	Button_Zoom, Button_Reload,
-	Button_User1, Button_User2, Button_User3, Button_User4,
-	Button_AM_PanLeft, Button_AM_PanRight, Button_AM_PanDown, Button_AM_PanUp,
-	Button_AM_ZoomIn, Button_AM_ZoomOut;
-
 bool ParsingKeyConf, UnsafeExecutionContext;
+FString StoredWarp;
 
-
-// To add new actions, go to the console and type "key <action name>".
-// This will give you the key value to use in the first column. Then
-// insert your new action into this list so that the keys remain sorted
-// in ascending order. No two keys can be identical. If yours matches
-// an existing key, change the name of your action.
-
-FActionMap ActionMaps[] =
-{
-	{ &Button_AM_PanLeft,	0x0d52d67b, "am_panleft"},
-	{ &Button_User2,		0x125f5226, "user2" },
-	{ &Button_Jump,			0x1eefa611, "jump" },
-	{ &Button_Right,		0x201f1c55, "right" },
-	{ &Button_Zoom,			0x20ccc4d5, "zoom" },
-	{ &Button_Back,			0x23a99cd7, "back" },
-	{ &Button_AM_ZoomIn,	0x41df90c2, "am_zoomin"},
-	{ &Button_Reload,		0x426b69e7, "reload" },
-	{ &Button_LookDown,		0x4463f43a, "lookdown" },
-	{ &Button_AM_ZoomOut,	0x51f7a334, "am_zoomout"},
-	{ &Button_User4,		0x534c30ee, "user4" },
-	{ &Button_Attack,		0x5622bf42, "attack" },
-	{ &Button_User1,		0x577712d0, "user1" },
-	{ &Button_Klook,		0x57c25cb2, "klook" },
-	{ &Button_Forward,		0x59f3e907, "forward" },
-	{ &Button_MoveDown,		0x6167ce99, "movedown" },
-	{ &Button_AltAttack,	0x676885b8, "altattack" },
-	{ &Button_MoveLeft,		0x6fa41b84, "moveleft" },
-	{ &Button_MoveRight,	0x818f08e6, "moveright" },
-	{ &Button_AM_PanRight,	0x8197097b, "am_panright"},
-	{ &Button_AM_PanUp,		0x8d89955e, "am_panup"} ,
-	{ &Button_Mlook,		0xa2b62d8b, "mlook" },
-	{ &Button_Crouch,		0xab2c3e71, "crouch" },
-	{ &Button_Left,			0xb000b483, "left" },
-	{ &Button_LookUp,		0xb62b1e49, "lookup" },
-	{ &Button_User3,		0xb6f8fe92, "user3" },
-	{ &Button_Strafe,		0xb7e6a54b, "strafe" },
-	{ &Button_AM_PanDown,	0xce301c81, "am_pandown"},
-	{ &Button_ShowScores,	0xd5897c73, "showscores" },
-	{ &Button_Speed,		0xe0ccb317, "speed" },
-	{ &Button_Use,			0xe0cfc260, "use" },
-	{ &Button_MoveUp,		0xfdd701c7, "moveup" },
-};
-#define NUM_ACTIONS countof(ActionMaps)
+FConsoleCommand* Commands[FConsoleCommand::HASH_SIZE];
 
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
@@ -273,152 +188,6 @@ static const char *KeyConfCommands[] =
 };
 
 // CODE --------------------------------------------------------------------
-
-
-static int ListActionCommands (const char *pattern)
-{
-	char matcher[16];
-	unsigned int i;
-	int count = 0;
-
-	for (i = 0; i < NUM_ACTIONS; ++i)
-	{
-		if (pattern == NULL || CheckWildcards (pattern,
-			(mysnprintf (matcher, countof(matcher), "+%s", ActionMaps[i].Name), matcher)))
-		{
-			Printf ("+%s\n", ActionMaps[i].Name);
-			count++;
-		}
-		if (pattern == NULL || CheckWildcards (pattern,
-			(mysnprintf (matcher, countof(matcher), "-%s", ActionMaps[i].Name), matcher)))
-		{
-			Printf ("-%s\n", ActionMaps[i].Name);
-			count++;
-		}
-	}
-	return count;
-}
-
-
-// FindButton scans through the actionbits[] array
-// for a matching key and returns an index or -1 if
-// the key could not be found. This uses binary search,
-// so actionbits[] must be sorted in ascending order.
-
-FButtonStatus *FindButton (unsigned int key)
-{
-	const FActionMap *bit;
-
-	bit = BinarySearch<FActionMap, unsigned int>
-			(ActionMaps, NUM_ACTIONS, &FActionMap::Key, key);
-	return bit ? bit->Button : NULL;
-}
-
-bool FButtonStatus::PressKey (int keynum)
-{
-	int i, open;
-
-	keynum &= KEY_DBLCLICKED-1;
-
-	if (keynum == 0)
-	{ // Issued from console instead of a key, so force on
-		Keys[0] = 0xffff;
-		for (i = MAX_KEYS-1; i > 0; --i)
-		{
-			Keys[i] = 0;
-		}
-	}
-	else
-	{
-		for (i = MAX_KEYS-1, open = -1; i >= 0; --i)
-		{
-			if (Keys[i] == 0)
-			{
-				open = i;
-			}
-			else if (Keys[i] == keynum)
-			{ // Key is already down; do nothing
-				return false;
-			}
-		}
-		if (open < 0)
-		{ // No free key slots, so do nothing
-			Printf ("More than %u keys pressed for a single action!\n", MAX_KEYS);
-			return false;
-		}
-		Keys[open] = keynum;
-	}
-	uint8_t wasdown = bDown;
-	bDown = bWentDown = true;
-	// Returns true if this key caused the button to go down.
-	return !wasdown;
-}
-
-bool FButtonStatus::ReleaseKey (int keynum)
-{
-	int i, numdown, match;
-	uint8_t wasdown = bDown;
-
-	keynum &= KEY_DBLCLICKED-1;
-
-	if (keynum == 0)
-	{ // Issued from console instead of a key, so force off
-		for (i = MAX_KEYS-1; i >= 0; --i)
-		{
-			Keys[i] = 0;
-		}
-		bWentUp = true;
-		bDown = false;
-	}
-	else
-	{
-		for (i = MAX_KEYS-1, numdown = 0, match = -1; i >= 0; --i)
-		{
-			if (Keys[i] != 0)
-			{
-				++numdown;
-				if (Keys[i] == keynum)
-				{
-					match = i;
-				}
-			}
-		}
-		if (match < 0)
-		{ // Key was not down; do nothing
-			return false;
-		}
-		Keys[match] = 0;
-		bWentUp = true;
-		if (--numdown == 0)
-		{
-			bDown = false;
-		}
-	}
-	// Returns true if releasing this key caused the button to go up.
-	return wasdown && !bDown;
-}
-
-void ResetButtonTriggers ()
-{
-	for (int i = NUM_ACTIONS-1; i >= 0; --i)
-	{
-		ActionMaps[i].Button->ResetTriggers ();
-	}
-}
-
-void ResetButtonStates ()
-{
-	for (int i = NUM_ACTIONS-1; i >= 0; --i)
-	{
-		FButtonStatus *button = ActionMaps[i].Button;
-
-		if (button != &Button_Mlook && button != &Button_Klook)
-		{
-			button->ReleaseKey (0);
-		}
-		button->ResetTriggers ();
-	}
-}
 
 void C_DoCommand (const char *cmd, int keynum)
 {
@@ -467,22 +236,18 @@ void C_DoCommand (const char *cmd, int keynum)
 	// Check if this is an action
 	if (*beg == '+' || *beg == '-')
 	{
-		FButtonStatus *button;
-
-		button = FindButton (MakeKey (beg + 1, end - beg - 1));
-		if (button != NULL)
+		auto button = buttonMap.FindButton(beg + 1, int(end - beg - 1));
+		if (button != nullptr)
 		{
 			if (*beg == '+')
 			{
 				button->PressKey (keynum);
+				if (button->PressHandler) button->PressHandler();
 			}
 			else
 			{
 				button->ReleaseKey (keynum);
-				if (button == &Button_Mlook && lookspring)
-				{
-					Net_WriteByte (DEM_CENTERVIEW);
-				}
+				if (button->ReleaseHandler) button->ReleaseHandler();
 			}
 			return;
 		}
@@ -506,7 +271,7 @@ void C_DoCommand (const char *cmd, int keynum)
 			)
 		{
 			FCommandLine args (beg);
-			com->Run (args, players[consoleplayer].mo, keynum);
+			com->Run (args, keynum);
 		}
 		else
 		{
@@ -543,18 +308,6 @@ void C_DoCommand (const char *cmd, int keynum)
 			Printf ("Unknown command \"%.*s\"\n", (int)len, beg);
 		}
 	}
-}
-
-// This is only accessible to the special menu item to run CCMDs.
-DEFINE_ACTION_FUNCTION(DOptionMenuItemCommand, DoCommand)
-{
-	if (CurrentMenu == nullptr) return 0;
-	PARAM_PROLOGUE;
-	PARAM_STRING(cmd);
-	PARAM_BOOL(unsafe);
-	UnsafeExecutionScope scope(unsafe);
-	C_DoCommand(cmd);
-	return 0;
 }
 
 void AddCommandString (const char *text, int keynum)
@@ -705,33 +458,13 @@ FConsoleCommand* FConsoleCommand::FindByName (const char* name)
 FConsoleCommand::FConsoleCommand (const char *name, CCmdRun runFunc)
 	: m_RunFunc (runFunc)
 {
-	static bool firstTime = true;
-
-	if (firstTime)
-	{
-		char tname[16];
-		unsigned int i;
-
-		firstTime = false;
-
-		// Add all the action commands for tab completion
-		for (i = 0; i < NUM_ACTIONS; i++)
-		{
-			strcpy (&tname[1], ActionMaps[i].Name);
-			tname[0] = '+';
-			C_AddTabCommand (tname);
-			tname[0] = '-';
-			C_AddTabCommand (tname);
-		}
-	}
-
 	int ag = strcmp (name, "kill");
 	if (ag == 0)
 		ag=0;
-	m_Name = copystring (name);
+	m_Name = name;
 
 	if (!AddToHash (Commands))
-		Printf ("FConsoleCommand c'tor: %s exists\n", name);
+		Printf ("Adding CCMD %s twice.\n", name);
 	else
 		C_AddTabCommand (name);
 }
@@ -742,15 +475,14 @@ FConsoleCommand::~FConsoleCommand ()
 	if (m_Next)
 		m_Next->m_Prev = m_Prev;
 	C_RemoveTabCommand (m_Name);
-	delete[] m_Name;
 }
 
-void FConsoleCommand::Run (FCommandLine &argv, AActor *who, int key)
+void FConsoleCommand::Run(FCommandLine &argv, int key)
 {
-	m_RunFunc (argv, who, key);
+	m_RunFunc (argv, key);
 }
 
-void FUnsafeConsoleCommand::Run (FCommandLine &args, AActor *instigator, int key)
+void FUnsafeConsoleCommand::Run(FCommandLine &args, int key)
 {
 	if (UnsafeExecutionContext)
 	{
@@ -758,7 +490,7 @@ void FUnsafeConsoleCommand::Run (FCommandLine &args, AActor *instigator, int key
 		return;
 	}
 
-	FConsoleCommand::Run (args, instigator, key);
+	FConsoleCommand::Run (args, key);
 }
 
 FConsoleAlias::FConsoleAlias (const char *name, const char *command, bool noSave)
@@ -840,7 +572,7 @@ FString BuildString (int argc, FString *argv)
 
 void FConsoleCommand::PrintCommand()
 {
-	Printf("%s\n", m_Name);
+	Printf("%s\n", m_Name.GetChars());
 }
 
 FString SubstituteAliasParams (FString &command, FCommandLine &args)
@@ -965,11 +697,11 @@ void FConsoleAlias::PrintAlias ()
 {
 	if (m_Command[0].IsNotEmpty())
 	{
-		Printf (TEXTCOLOR_YELLOW "%s : %s\n", m_Name, m_Command[0].GetChars());
+		Printf (TEXTCOLOR_YELLOW "%s : %s\n", m_Name.GetChars(), m_Command[0].GetChars());
 	}
 	if (m_Command[1].IsNotEmpty())
 	{
-		Printf (TEXTCOLOR_ORANGE "%s : %s\n", m_Name, m_Command[1].GetChars());
+		Printf (TEXTCOLOR_ORANGE "%s : %s\n", m_Name.GetChars(), m_Command[1].GetChars());
 	}
 }
 
@@ -1066,7 +798,7 @@ CCMD (alias)
 				}
 				else
 				{
-					Printf ("%s is a normal command\n", alias->m_Name);
+					Printf ("%s is a normal command\n", alias->m_Name.GetChars());
 				}
 			}
 		}
@@ -1082,7 +814,7 @@ CCMD (alias)
 				}
 				else
 				{
-					Printf ("%s is a normal command\n", alias->m_Name);
+					Printf ("%s is a normal command\n", alias->m_Name.GetChars());
 					alias = NULL;
 				}
 			}
@@ -1103,7 +835,7 @@ CCMD (cmdlist)
 	int count;
 	const char *filter = (argv.argc() == 1 ? NULL : argv[1]);
 
-	count = ListActionCommands (filter);
+	count = buttonMap.ListActionCommands (filter);
 	count += DumpHash (Commands, false, filter);
 	Printf ("%d commands\n", count);
 }
@@ -1166,11 +898,11 @@ bool FConsoleAlias::IsAlias ()
 	return true;
 }
 
-void FConsoleAlias::Run (FCommandLine &args, AActor *who, int key)
+void FConsoleAlias::Run (FCommandLine &args, int key)
 {
 	if (bRunning)
 	{
-		Printf ("Alias %s tried to recurse.\n", m_Name);
+		Printf ("Alias %s tried to recurse.\n", m_Name.GetChars());
 		return;
 	}
 
@@ -1229,10 +961,10 @@ void FConsoleAlias::SafeDelete ()
 	}
 }
 
-void FUnsafeConsoleAlias::Run (FCommandLine &args, AActor *instigator, int key)
+void FUnsafeConsoleAlias::Run (FCommandLine &args, int key)
 {
 	UnsafeExecutionScope scope;
-	FConsoleAlias::Run(args, instigator, key);
+	FConsoleAlias::Run(args, key);
 }
 
 void FExecList::AddCommand(const char *cmd, const char *file)
@@ -1268,11 +1000,11 @@ void FExecList::ExecCommands() const
 	}
 }
 
-void FExecList::AddPullins(TArray<FString> &wads) const
+void FExecList::AddPullins(TArray<FString> &wads, FConfigFile *config) const
 {
 	for (unsigned i = 0; i < Pullins.Size(); ++i)
 	{
-		D_AddFile(wads, Pullins[i]);
+		D_AddFile(wads, Pullins[i], true, -1, config);
 	}
 }
 
@@ -1376,6 +1108,37 @@ void C_SearchForPullins(FExecList *exec, const char *file, FCommandLine &argv)
 		}
 		exec->Pullins.Push(argv[i]);
 	}
+}
+
+static TArray<FConsoleCommand*> dynccmds; // This needs to be explicitly deleted before shutdown - the names in here may not be valid during the exit handler.
+//
+// C_RegisterFunction() -- dynamically register a CCMD.
+//
+int C_RegisterFunction(const char* pszName, const char* pszDesc, int (*func)(CCmdFuncPtr))
+{
+	FString nname = pszName;
+	auto callback = [nname, pszDesc, func](FCommandLine& args, int key)
+	{
+		if (args.argc() > 0) args.operator[](0);
+		CCmdFuncParm param = { args.argc() - 1, nname.GetChars(), (const char**)args._argv + 1, args.cmd };
+		if (func(&param) != CCMD_OK)
+		{
+			Printf("%s\n", pszDesc);
+		}
+	};
+	auto ccmd = new FConsoleCommand(pszName, callback);
+	dynccmds.Push(ccmd);
+	return 0;
+}
+
+
+void C_ClearDynCCmds()
+{
+	for (auto ccmd : dynccmds)
+	{
+		delete ccmd;
+	}
+	dynccmds.Clear();
 }
 
 CCMD (pullin)

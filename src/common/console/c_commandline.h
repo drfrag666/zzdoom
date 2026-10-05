@@ -1,5 +1,6 @@
+#pragma once
 /*
-** c_console.h
+** c_dispatch.h
 **
 **---------------------------------------------------------------------------
 ** Copyright 1998-2006 Randy Heit
@@ -31,60 +32,27 @@
 **
 */
 
-#ifndef __C_CONSOLE__
-#define __C_CONSOLE__
+class FConfigFile;
+struct CCmdFuncParm;
 
-#include <stdarg.h>
-#include "basics.h"
 
-struct event_t;
-
-#define C_BLINKRATE			(TICRATE/2)
-
-typedef enum cstate_t 
+// Class that can parse command lines
+class FCommandLine
 {
-	c_up=0, c_down=1, c_falling=2, c_rising=3
-} 
-constate_e;
+	friend int C_RegisterFunction(const char* name, const char* help, int (*func)(CCmdFuncParm const* const));
+public:
+	FCommandLine (const char *commandline, bool no_escapes = false);
+	~FCommandLine ();
+	int argc ();
+	char *operator[] (int i);
+	const char *args () { return cmd; }
+	void Shift();
 
-enum
-{
-	PRINTLEVELS = 5
+private:
+	const char *cmd;
+	int _argc;
+	char **_argv;
+	long argsize;
+	bool noescapes;
 };
-extern int PrintColors[PRINTLEVELS + 2];
 
-extern constate_e ConsoleState;
-extern int ConBottom;
-
-// Initialize the console
-void C_InitConsole (int width, int height, bool ingame);
-void C_DeinitConsole ();
-void C_InitConback();
-
-// Adjust the console for a new screen mode
-void C_NewModeAdjust (void);
-
-void C_Ticker (void);
-
-void AddToConsole (int printlevel, const char *string);
-int PrintString (int printlevel, const char *string);
-int PrintStringHigh (const char *string);
-int VPrintf (int printlevel, const char *format, va_list parms) GCCFORMAT(2);
-
-void C_DrawConsole (bool hw2d);
-void C_ToggleConsole (void);
-void C_FullConsole (void);
-void C_HideConsole (void);
-void C_AdjustBottom (void);
-void C_FlushDisplay (void);
-
-class FFont;
-void C_MidPrint (FFont *font, const char *message, bool bold = false);
-
-bool C_Responder (event_t *ev);
-
-void C_AddTabCommand (const char *name);
-void C_RemoveTabCommand (const char *name);
-void C_ClearTabCommands();		// Removes all tab commands
-
-#endif

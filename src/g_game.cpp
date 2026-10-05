@@ -56,7 +56,7 @@
 #include "r_sky.h"
 #include "g_game.h"
 #include "sbar.h"
-#include "m_png.h"
+#include "common/textures/m_png.h"
 #include "a_keys.h"
 #include "cmdlib.h"
 #include "d_net.h"
@@ -80,6 +80,8 @@
 #include "g_hub.h"
 #include "g_levellocals.h"
 #include "events.h"
+#include "c_buttons.h"
+#include "d_buttons.h"
 
 
 static FRandom pr_dmspawn ("DMSpawn");
@@ -423,11 +425,11 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, DisplayNameTag, DisplayNameTag)
 
 CCMD (invnext)
 {
-	if (who != NULL)
+	if (players[consoleplayer].mo != nullptr)
 	{
 		IFVM(PlayerPawn, InvNext)
 		{
-			VMValue param = who;
+			VMValue param = players[consoleplayer].mo;
 			VMCall(func, &param, 1, nullptr, 0);
 		}
 	}
@@ -435,11 +437,11 @@ CCMD (invnext)
 
 CCMD(invprev)
 {
-	if (who != NULL)
+	if (players[consoleplayer].mo != nullptr)
 	{
 		IFVM(PlayerPawn, InvPrev)
 		{
-			VMValue param = who;
+			VMValue param = players[consoleplayer].mo;
 			VMCall(func, &param, 1, nullptr, 0);
 		}
 	}
@@ -470,9 +472,9 @@ CCMD(invquery)
 
 CCMD (use)
 {
-	if (argv.argc() > 1 && who != NULL)
+	if (argv.argc() > 1 && players[consoleplayer].mo != NULL)
 	{
-		SendItemUse = who->FindInventory(argv[1]);
+		SendItemUse = players[consoleplayer].mo->FindInventory(argv[1]);
 	}
 }
 
@@ -493,19 +495,19 @@ CCMD (weapdrop)
 
 CCMD (drop)
 {
-	if (argv.argc() > 1 && who != NULL)
+	if (argv.argc() > 1 && players[consoleplayer].mo != NULL)
 	{
-		SendItemDrop = who->FindInventory(argv[1]);
+		SendItemDrop = players[consoleplayer].mo->FindInventory(argv[1]);
 		SendItemDropAmount = argv.argc() > 2 ? atoi(argv[2]) : -1;
 	}
 }
 
 CCMD (useflechette)
 { 
-	if (who == nullptr) return;
-	IFVIRTUALPTRNAME(who, NAME_PlayerPawn, GetFlechetteItem)
+	if (players[consoleplayer].mo == nullptr) return;
+	IFVIRTUALPTRNAME(players[consoleplayer].mo, NAME_PlayerPawn, GetFlechetteItem)
 	{
-		VMValue params[] = { who };
+		VMValue params[] = { players[consoleplayer].mo };
 		AActor *cls;
 		VMReturn ret((void**)&cls);
 		VMCall(func, params, 1, &ret, 1);
@@ -516,15 +518,17 @@ CCMD (useflechette)
 
 CCMD (select)
 {
+	if (!players[consoleplayer].mo) return;
+	auto user = players[consoleplayer].mo;
 	if (argv.argc() > 1)
 	{
-		auto item = who->FindInventory(argv[1]);
+		auto item = user->FindInventory(argv[1]);
 		if (item != NULL)
 		{
-			who->PointerVar<AActor>(NAME_InvSel) = item;
+			user->PointerVar<AActor>(NAME_InvSel) = item;
 		}
 	}
-	who->player->inventorytics = 5*TICRATE;
+	user->player->inventorytics = 5*TICRATE;
 }
 
 static inline int joyint(double val)
@@ -576,15 +580,15 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 
 	cmd->consistancy = consistancy[consoleplayer][(maketic/ticdup)%BACKUPTICS];
 
-	strafe = Button_Strafe.bDown;
-	speed = Button_Speed.bDown ^ (int)cl_run;
+	strafe = buttonMap.ButtonDown(Button_Strafe);
+	speed = buttonMap.ButtonDown(Button_Speed) ^ (int)cl_run;
 
 	forward = side = fly = 0;
 
 	// [RH] only use two stage accelerative turning on the keyboard
 	//		and not the joystick, since we treat the joystick as
 	//		the analog device it is.
-	if (Button_Left.bDown || Button_Right.bDown)
+	if (buttonMap.ButtonDown(Button_Left) || buttonMap.ButtonDown(Button_Right))
 		turnheld += ticdup;
 	else
 		turnheld = 0;
@@ -592,9 +596,9 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	// let movement keys cancel each other out
 	if (strafe)
 	{
-		if (Button_Right.bDown)
+		if (buttonMap.ButtonDown(Button_Right))
 			side += sidemove[speed];
-		if (Button_Left.bDown)
+		if (buttonMap.ButtonDown(Button_Left))
 			side -= sidemove[speed];
 	}
 	else
@@ -604,77 +608,77 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 		if (turnheld < SLOWTURNTICS)
 			tspeed += 2;		// slow turn
 		
-		if (Button_Right.bDown)
+		if (buttonMap.ButtonDown(Button_Right))
 		{
 			G_AddViewAngle (*angleturn[tspeed]);
 		}
-		if (Button_Left.bDown)
+		if (buttonMap.ButtonDown(Button_Left))
 		{
 			G_AddViewAngle (-*angleturn[tspeed]);
 		}
 	}
 
-	if (Button_LookUp.bDown)
+	if (buttonMap.ButtonDown(Button_LookUp))
 	{
 		G_AddViewPitch (lookspeed[speed]);
 	}
-	if (Button_LookDown.bDown)
+	if (buttonMap.ButtonDown(Button_LookDown))
 	{
 		G_AddViewPitch (-lookspeed[speed]);
 	}
 
-	if (Button_MoveUp.bDown)
+	if (buttonMap.ButtonDown(Button_MoveUp))
 		fly += flyspeed[speed];
-	if (Button_MoveDown.bDown)
+	if (buttonMap.ButtonDown(Button_MoveDown))
 		fly -= flyspeed[speed];
 
-	if (Button_Klook.bDown)
+	if (buttonMap.ButtonDown(Button_Klook))
 	{
-		if (Button_Forward.bDown)
+		if (buttonMap.ButtonDown(Button_Forward))
 			G_AddViewPitch (lookspeed[speed]);
-		if (Button_Back.bDown)
+		if (buttonMap.ButtonDown(Button_Back))
 			G_AddViewPitch (-lookspeed[speed]);
 	}
 	else
 	{
-		if (Button_Forward.bDown)
+		if (buttonMap.ButtonDown(Button_Forward))
 			forward += forwardmove[speed];
-		if (Button_Back.bDown)
+		if (buttonMap.ButtonDown(Button_Back))
 			forward -= forwardmove[speed];
 	}
 
-	if (Button_MoveRight.bDown)
+	if (buttonMap.ButtonDown(Button_MoveRight))
 		side += sidemove[speed];
-	if (Button_MoveLeft.bDown)
+	if (buttonMap.ButtonDown(Button_MoveLeft))
 		side -= sidemove[speed];
 
 	// buttons
-	if (Button_Attack.bDown)		cmd->ucmd.buttons |= BT_ATTACK;
-	if (Button_AltAttack.bDown)		cmd->ucmd.buttons |= BT_ALTATTACK;
-	if (Button_Use.bDown)			cmd->ucmd.buttons |= BT_USE;
-	if (Button_Jump.bDown)			cmd->ucmd.buttons |= BT_JUMP;
-	if (Button_Crouch.bDown)		cmd->ucmd.buttons |= BT_CROUCH;
-	if (Button_Zoom.bDown)			cmd->ucmd.buttons |= BT_ZOOM;
-	if (Button_Reload.bDown)		cmd->ucmd.buttons |= BT_RELOAD;
+	if (buttonMap.ButtonDown(Button_Attack))		cmd->ucmd.buttons |= BT_ATTACK;
+	if (buttonMap.ButtonDown(Button_AltAttack))		cmd->ucmd.buttons |= BT_ALTATTACK;
+	if (buttonMap.ButtonDown(Button_Use))			cmd->ucmd.buttons |= BT_USE;
+	if (buttonMap.ButtonDown(Button_Jump))			cmd->ucmd.buttons |= BT_JUMP;
+	if (buttonMap.ButtonDown(Button_Crouch))		cmd->ucmd.buttons |= BT_CROUCH;
+	if (buttonMap.ButtonDown(Button_Zoom))			cmd->ucmd.buttons |= BT_ZOOM;
+	if (buttonMap.ButtonDown(Button_Reload))		cmd->ucmd.buttons |= BT_RELOAD;
 
-	if (Button_User1.bDown)			cmd->ucmd.buttons |= BT_USER1;
-	if (Button_User2.bDown)			cmd->ucmd.buttons |= BT_USER2;
-	if (Button_User3.bDown)			cmd->ucmd.buttons |= BT_USER3;
-	if (Button_User4.bDown)			cmd->ucmd.buttons |= BT_USER4;
+	if (buttonMap.ButtonDown(Button_User1))			cmd->ucmd.buttons |= BT_USER1;
+	if (buttonMap.ButtonDown(Button_User2))			cmd->ucmd.buttons |= BT_USER2;
+	if (buttonMap.ButtonDown(Button_User3))			cmd->ucmd.buttons |= BT_USER3;
+	if (buttonMap.ButtonDown(Button_User4))			cmd->ucmd.buttons |= BT_USER4;
 
-	if (Button_Speed.bDown)			cmd->ucmd.buttons |= BT_SPEED;
-	if (Button_Strafe.bDown)		cmd->ucmd.buttons |= BT_STRAFE;
-	if (Button_MoveRight.bDown)		cmd->ucmd.buttons |= BT_MOVERIGHT;
-	if (Button_MoveLeft.bDown)		cmd->ucmd.buttons |= BT_MOVELEFT;
-	if (Button_LookDown.bDown)		cmd->ucmd.buttons |= BT_LOOKDOWN;
-	if (Button_LookUp.bDown)		cmd->ucmd.buttons |= BT_LOOKUP;
-	if (Button_Back.bDown)			cmd->ucmd.buttons |= BT_BACK;
-	if (Button_Forward.bDown)		cmd->ucmd.buttons |= BT_FORWARD;
-	if (Button_Right.bDown)			cmd->ucmd.buttons |= BT_RIGHT;
-	if (Button_Left.bDown)			cmd->ucmd.buttons |= BT_LEFT;
-	if (Button_MoveDown.bDown)		cmd->ucmd.buttons |= BT_MOVEDOWN;
-	if (Button_MoveUp.bDown)		cmd->ucmd.buttons |= BT_MOVEUP;
-	if (Button_ShowScores.bDown)	cmd->ucmd.buttons |= BT_SHOWSCORES;
+	if (buttonMap.ButtonDown(Button_Speed))			cmd->ucmd.buttons |= BT_SPEED;
+	if (buttonMap.ButtonDown(Button_Strafe))		cmd->ucmd.buttons |= BT_STRAFE;
+	if (buttonMap.ButtonDown(Button_MoveRight))		cmd->ucmd.buttons |= BT_MOVERIGHT;
+	if (buttonMap.ButtonDown(Button_MoveLeft))		cmd->ucmd.buttons |= BT_MOVELEFT;
+	if (buttonMap.ButtonDown(Button_LookDown))		cmd->ucmd.buttons |= BT_LOOKDOWN;
+	if (buttonMap.ButtonDown(Button_LookUp))		cmd->ucmd.buttons |= BT_LOOKUP;
+	if (buttonMap.ButtonDown(Button_Back))			cmd->ucmd.buttons |= BT_BACK;
+	if (buttonMap.ButtonDown(Button_Forward))		cmd->ucmd.buttons |= BT_FORWARD;
+	if (buttonMap.ButtonDown(Button_Right))			cmd->ucmd.buttons |= BT_RIGHT;
+	if (buttonMap.ButtonDown(Button_Left))			cmd->ucmd.buttons |= BT_LEFT;
+	if (buttonMap.ButtonDown(Button_MoveDown))		cmd->ucmd.buttons |= BT_MOVEDOWN;
+	if (buttonMap.ButtonDown(Button_MoveUp))		cmd->ucmd.buttons |= BT_MOVEUP;
+	if (buttonMap.ButtonDown(Button_ShowScores))	cmd->ucmd.buttons |= BT_SHOWSCORES;
 
 	// Handle joysticks/game controllers.
 	float joyaxes[NUM_JOYAXIS];
@@ -682,12 +686,12 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	I_GetAxes(joyaxes);
 
 	// Remap some axes depending on button state.
-	if (Button_Strafe.bDown || (Button_Mlook.bDown && lookstrafe))
+	if (buttonMap.ButtonDown(Button_Strafe) || (buttonMap.ButtonDown(Button_Mlook) && lookstrafe))
 	{
 		joyaxes[JOYAXIS_Side] = joyaxes[JOYAXIS_Yaw];
 		joyaxes[JOYAXIS_Yaw] = 0;
 	}
-	if (Button_Mlook.bDown)
+	if (buttonMap.ButtonDown(Button_Mlook))
 	{
 		joyaxes[JOYAXIS_Pitch] = joyaxes[JOYAXIS_Forward];
 		joyaxes[JOYAXIS_Forward] = 0;
@@ -707,7 +711,7 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	fly += joyint(joyaxes[JOYAXIS_Up] * 2048);
 
 	// Handle mice.
-	if (!Button_Mlook.bDown && !freelook)
+	if (!buttonMap.ButtonDown(Button_Mlook) && !freelook)
 	{
 		forward += (int)((float)mousey * m_forward);
 	}

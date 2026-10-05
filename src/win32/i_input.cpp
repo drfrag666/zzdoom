@@ -88,6 +88,7 @@
 #include "engineerrors.h"
 #include "i_system.h"
 #include "g_levellocals.h"
+#include "c_buttons.h"
 
 int32_t refreshfreq = -1;
 
@@ -801,7 +802,7 @@ void I_GetEvent ()
 void I_StartTic ()
 {
 	BlockMouseMove--;
-	ResetButtonTriggers ();
+	buttonMap.ResetButtonTriggers ();
 	I_CheckGUICapture ();
 	EventHandlerResultForNativeMouse = primaryLevel->localEventManager->CheckRequireMouse();
 	I_CheckNativeMouse (false, EventHandlerResultForNativeMouse);
