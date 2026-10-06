@@ -45,14 +45,13 @@
 #include "c_dispatch.h"
 #include "templates.h"
 #include "stats.h"
+#include "cmdlib.h"
 #include "c_cvars.h"
 #include "c_console.h"
-#include "vm.h"
 #include "v_text.h"
 #include "i_sound.h"
 #include "i_soundfont.h"
 #include "s_music.h"
-#include "doomstat.h"
 #include "filereadermusicinterface.h"
 
 
@@ -61,9 +60,7 @@ void I_InitSoundFonts();
 
 EXTERN_CVAR (Int, snd_samplerate)
 EXTERN_CVAR (Int, snd_mididevice)
-
-static bool ungzip(uint8_t *data, int size, std::vector<uint8_t> &newdata);
-
+EXTERN_CVAR(Float, snd_mastervolume)
 int		nomusic = 0;
 
 //==========================================================================
@@ -73,7 +70,7 @@ int		nomusic = 0;
 // Maximum volume of MOD/stream music.
 //==========================================================================
 
-CUSTOM_CVAR (Float, snd_musicvolume, 0.5f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+CUSTOM_CVARD(Float, snd_musicvolume, 0.5, CVAR_ARCHIVE|CVAR_GLOBALCONFIG, "controls music volume")
 {
 	if (self < 0.f)
 		self = 0.f;
@@ -98,6 +95,12 @@ CUSTOM_CVAR (Float, snd_musicvolume, 0.5f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 			S_RestartMusic();
 		}
 	}
+}
+
+CUSTOM_CVARD(Bool, mus_enabled, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG, "enables/disables music")
+{
+	if (self) S_RestartMusic();
+	else S_StopMusic(true);
 }
 
 //==========================================================================
@@ -159,7 +162,7 @@ static void mus_sfclose(void* handle)
 	reinterpret_cast<FSoundFontReader*>(handle)->close();
 }
 
-
+#ifndef ZMUSIC_LITE
 //==========================================================================
 //
 // Pass some basic working data to the music backend
@@ -206,7 +209,7 @@ static void SetupDMXGUS()
 	ZMusic_SetDmxGus(data.GetMem(), (uint32_t)data.GetSize());
 }
 
-
+#endif
 
 //==========================================================================
 //
@@ -214,7 +217,7 @@ static void SetupDMXGUS()
 //
 //==========================================================================
 
-void I_InitMusic (void)
+void I_InitMusic(void)
 {
     I_InitSoundFonts();
 
@@ -235,9 +238,11 @@ void I_InitMusic (void)
 	callbacks.SF_Close = mus_sfclose;
 
 	ZMusic_SetCallbacks(&callbacks);
+#ifndef ZMUSIC_LITE
 	SetupGenMidi();
 	SetupDMXGUS();
 	SetupWgOpn();
+#endif
 }
 
 
@@ -360,7 +365,7 @@ UNSAFE_CCMD (writewave)
 		if (source == nullptr) return;
 
 		EMidiDevice dev = MDEV_DEFAULT;
-
+#ifndef ZMUSIC_LITE
 		if (argv.argc() >= 6)
 		{
 			if (!stricmp(argv[5], "WildMidi")) dev = MDEV_WILDMIDI;
@@ -376,6 +381,7 @@ UNSAFE_CCMD (writewave)
 				return;
 			}
 		}
+#endif
 		// We must stop the currently playing music to avoid interference between two synths. 
 		auto savedsong = mus_playing;
 		S_StopMusic(true);

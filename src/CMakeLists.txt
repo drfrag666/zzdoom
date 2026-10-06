@@ -565,13 +565,15 @@ file( GLOB HEADER_FILES
 	menu/*.h
 	sound/*.h
 	sound/backend/*.h*
-	sound/music/*.h*
 	posix/*.h
 	posix/cocoa/*.h
 	posix/sdl/*.h
 	win32/*.h
 	r_data/*.h
 	r_data/models/*.h
+	common/audio/sound/thirdparty/*.h
+	common/audio/sound/*.h
+	common/audio/music/*.h*
 	common/console/*.h
 	common/utility/*.h
 	common/engine/*.h
@@ -587,7 +589,6 @@ file( GLOB HEADER_FILES
 	scripting/zscript/*.h
 	scripting/vm/*.h
 	sound/midisources/*.h
-	sound/thirdparty/*.h
 	rendering/*.h
 	rendering/2d/*.h
 	rendering/swrenderer/*.h
@@ -714,8 +715,6 @@ set( VM_JIT_SOURCES
 set( FASTMATH_SOURCES
 	rendering/swrenderer/r_all.cpp
 	rendering/polyrenderer/poly_all.cpp
-	sound/music/music_midi_base.cpp
-	sound/backend/oalsound.cpp
 	r_data/models/models.cpp
 	common/utility/matrix.cpp
 )
@@ -777,12 +776,9 @@ set (PCH_SOURCES
 	rendering/r_sky.cpp
 	rendering/r_videoscale.cpp
 	sound/s_advsound.cpp
-	sound/s_environment.cpp
 	sound/s_reverbedit.cpp
 	sound/s_sndseq.cpp
 	sound/s_doomsound.cpp
-	sound/s_sound.cpp
-	sound/s_music.cpp
 	serializer.cpp
 	scriptutil.cpp
 	st_stuff.cpp
@@ -948,12 +944,17 @@ set (PCH_SOURCES
 	scripting/zscript/ast.cpp
 	scripting/zscript/zcc_compile.cpp
 	scripting/zscript/zcc_parser.cpp
-	sound/music/i_music.cpp
-	sound/music/i_soundfont.cpp
-	sound/backend/i_sound.cpp
-	sound/music/music_config.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	events.cpp
+	common/audio/sound/i_sound.cpp
+	common/audio/sound/oalsound.cpp
+	common/audio/sound/s_environment.cpp
+	common/audio/sound/s_sound.cpp
+	common/audio/music/music_midi_base.cpp
+	common/audio/music/music.cpp
+	common/audio/music/i_music.cpp
+	common/audio/music/i_soundfont.cpp
+	common/audio/music/music_config.cpp
 	common/thirdparty/sfmt/SFMT.cpp
 	common/textures/m_png.cpp
 	common/console/c_commandline.cpp
@@ -995,6 +996,7 @@ set (PCH_SOURCES
 	common/filesystem/resourcefile.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
+	common/engine/i_interface.cpp
 	
 	utility/GuillotineBinPack.cpp
 	utility/SkylineBinPack.cpp
@@ -1079,6 +1081,8 @@ endif()
 target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa lzma ${ZMUSIC_LIBRARIES} )
 
 include_directories( .
+	common/audio/sound
+	common/audio/music
 	common/thirdparty
 	common/textures
 	common/filesystem
@@ -1097,7 +1101,6 @@ include_directories( .
 	rendering/2d
 	r_data
 	sound
-	sound/music
 	sound/backend
 	xlat
 	utility
@@ -1198,9 +1201,6 @@ install(TARGETS zdoom
 		COMPONENT "Game executable")
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
-source_group("Audio Files\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/backend/.+")
-source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")
-source_group("Audio Files\\Third-party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/thirdparty/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
 source_group("Game Data\\Fonts" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/fonts/.+")
 source_group("Game Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/textures/.+")
@@ -1242,6 +1242,10 @@ source_group("Scripting\\Compiler backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_
 source_group("Scripting\\VM" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/vm/.+")
 source_group("Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/.+")
 source_group("Common" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/.+")
+source_group("Common\\Audio" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/audio/.+")
+source_group("Common\\Audio\\Sound" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/audio/sound/.+")
+source_group("Common\\Audio\\Sound\\Third-party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/audio/sound/thirdparty/.+")
+source_group("Common\\Audio\\Music" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/audio/music.+")
 source_group("Common\\Console" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/console/.+")
 source_group("Common\\Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/utility/.+")
 source_group("Common\\Engine" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/engine/.+")

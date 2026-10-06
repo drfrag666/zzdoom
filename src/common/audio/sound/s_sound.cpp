@@ -40,6 +40,7 @@
 #include "s_soundinternal.h"
 #include "m_swap.h"
 #include "superfasthash.h"
+#include "s_music.h"
 
 
 enum
@@ -58,6 +59,7 @@ int sfx_empty = -1;
 
 void SoundEngine::Init(TArray<uint8_t> &curve)
 {
+	StopAllChannels();
 	// Free all channels for use.
 	while (Channels != NULL)
 	{
@@ -152,12 +154,8 @@ void SoundEngine::CacheMarkedSounds()
 
 void SoundEngine::CacheSound (sfxinfo_t *sfx)
 {
-	if (GSnd)
+	if (GSnd && !sfx->bTentative)
 	{
-		if (sfx->bPlayerReserve)
-		{
-			return;
-		}
 		sfxinfo_t *orig = sfx;
 		while (!sfx->bRandomHeader && sfx->link != sfxinfo_t::NO_LINK)
 		{
@@ -277,7 +275,7 @@ TArray<FSoundChan*> SoundEngine::AllActiveChannels()
 		// If the sound is forgettable, this is as good a time as
 		// any to forget about it. And if it's a UI sound, it shouldn't
 		// be stored in the savegame.
-		if (!(chan->ChanFlags & (CHANF_FORGETTABLE | CHANF_UI)))
+		if (!(chan->ChanFlags & (CHANF_FORGETTABLE | CHANF_UI | CHANF_TRANSIENT)))
 		{
 			chans.Push(chan);
 		}
@@ -460,9 +458,8 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 		near_limit = 0;
 	}
 
-	// If this sound doesn't like playing near itself, don't play it if
-	// that's what would happen. (Does this really need the SOURCE_Actor restriction?)
-	if (near_limit > 0 && CheckSoundLimit(sfx, pos, near_limit, limit_range, type, type == SOURCE_Actor? source : nullptr, channel))
+	// If this sound doesn't like playing near itself, don't play it if that's what would happen.
+	if (near_limit > 0 && CheckSoundLimit(sfx, pos, near_limit, limit_range, type, source, channel))
 	{
 		chanflags |= CHANF_EVICTED;
 	}
@@ -586,7 +583,7 @@ FSoundChan *SoundEngine::StartSound(int type, const void *source,
 		GSnd->MarkStartTime(chan);
 		chanflags |= CHANF_EVICTED;
 	}
-	if (attenuation > 0)
+	if (attenuation > 0 && type != SOURCE_None)
 	{
 		chanflags |= CHANF_IS3D | CHANF_JUSTSTARTED;
 	}
@@ -1389,10 +1386,6 @@ void SoundEngine::StopChannel(FSoundChan *chan)
 		if (!(chan->ChanFlags & CHANF_EVICTED))
 		{
 			chan->ChanFlags |= CHANF_FORGETTABLE;
-			if (chan->SourceType == SOURCE_Actor)
-			{
-				chan->Source = NULL;
-			}
 		}
 		if (GSnd) GSnd->StopChannel(chan);
 	}
@@ -1516,14 +1509,11 @@ int SoundEngine::AddSoundLump(const char* logicalname, int lump, int CurrentPitc
 	newsfx.NearLimit = nearlimit;
 	newsfx.LimitRange = 256 * 256;
 	newsfx.bRandomHeader = false;
-	newsfx.bPlayerReserve = false;
 	newsfx.bLoadRAW = false;
-	newsfx.bPlayerCompat = false;
 	newsfx.b16bit = false;
 	newsfx.bUsed = false;
 	newsfx.bSingular = false;
 	newsfx.bTentative = false;
-	newsfx.bPlayerSilent = false;
 	newsfx.ResourceId = resid;
 	newsfx.RawRate = 0;
 	newsfx.link = sfxinfo_t::NO_LINK;
@@ -1534,13 +1524,6 @@ int SoundEngine::AddSoundLump(const char* logicalname, int lump, int CurrentPitc
 
 	if (resid >= 0) ResIdMap[resid] = S_sfx.Size() - 1;
 	return (int)S_sfx.Size()-1;
-}
-
-int SoundEngine::AddSfx(sfxinfo_t &sfx)
-{
-	S_sfx.Push(sfx);
-	if (sfx.ResourceId >= 0) ResIdMap[sfx.ResourceId] = S_sfx.Size() - 1;
-	return (int)S_sfx.Size() - 1;
 }
 
 
@@ -1694,3 +1677,11 @@ void SoundEngine::AddRandomSound(int Owner, TArray<uint32_t> list)
 	S_sfx[Owner].bRandomHeader = true;
 	S_sfx[Owner].NearLimit = -1;
 }
+
+void S_SoundReset()
+{
+	S_StopMusic(true);
+	soundEngine->Reset();
+	S_RestartMusic();
+}
+

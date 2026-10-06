@@ -1285,7 +1285,7 @@ void C_FullConsole ()
 		gamestate = GS_FULLCONSOLE;
 		primaryLevel->Music = "";
 		S_Start ();
-		S_StartMusic();
+		S_StopMusic(true);
 		P_FreeLevelData ();
 		V_SetBlend (0,0,0,0);
 	}

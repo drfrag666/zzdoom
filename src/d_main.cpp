@@ -109,6 +109,7 @@
 #include "md5.h"
 #include "c_buttons.h"
 #include "d_buttons.h"
+#include "i_interface.h"
 
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
@@ -153,6 +154,7 @@ void DrawFullscreenSubtitle(const char *text);
 void D_Cleanup();
 void FreeSBarInfoScript();
 void I_UpdateWindowTitle();
+void S_ParseMusInfo();
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
@@ -2546,6 +2548,19 @@ static const char *DoomButtons[] =
 CVAR(Bool, lookspring, true, CVAR_ARCHIVE);	// Generate centerview when -mlook encountered?
 EXTERN_CVAR(String, language)
 
+CUSTOM_CVAR(Int, mouse_capturemode, 1, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
+{
+	if (self < 0)
+	{
+		self = 0;
+	}
+	else if (self > 2)
+	{
+		self = 2;
+	}
+}
+
+
 void Mlook_ReleaseHandler()
 {
 	if (lookspring)
@@ -2564,6 +2579,56 @@ bool StrTable_ValidFilter(const char* str)
 	if (gameinfo.gametype == GAME_Strife && (gameinfo.flags & GI_SHAREWARE) && !stricmp(str, "strifeteaser")) return true;
 	return stricmp(str, GameNames[gameinfo.gametype]) == 0;
 }
+
+bool System_WantGuiCapture()
+{
+	bool wantCapt;
+
+	if (menuactive == MENU_Off)
+	{
+		wantCapt = ConsoleState == c_down || ConsoleState == c_falling || chatmodeon;
+	}
+	else
+	{
+		wantCapt = (menuactive == MENU_On || menuactive == MENU_OnNoPause);
+	}
+
+	// [ZZ] check active event handlers that want the UI processing
+	if (!wantCapt && primaryLevel->localEventManager->CheckUiProcessors())
+		wantCapt = true;
+
+	return wantCapt;
+}
+
+bool System_WantLeftButton()
+{
+	return (gamestate == GS_DEMOSCREEN || gamestate == GS_TITLELEVEL);
+}
+
+bool System_NetGame()
+{
+	return netgame;
+}
+
+bool System_WantNativeMouse()
+{
+	return primaryLevel->localEventManager->CheckRequireMouse();
+}
+
+static bool System_CaptureModeInGame()
+{
+	switch (mouse_capturemode)
+	{
+	default:
+	case 0:
+		return gamestate == GS_LEVEL;
+	case 1:
+		return gamestate == GS_LEVEL || gamestate == GS_INTERMISSION || gamestate == GS_FINALE;
+	case 2:
+		return true;
+	}
+}
+
 
 //==========================================================================
 //
@@ -2593,6 +2658,16 @@ static int D_DoomMain_Internal (void)
 		StrTable_GetGender
 	};
 	GStrings.SetCallbacks(&stblcb);
+
+	static SystemCallbacks syscb =
+	{
+		System_WantGuiCapture,
+		System_WantLeftButton,
+		System_NetGame,
+		System_WantNativeMouse,
+		System_CaptureModeInGame,
+	};
+	sysCallbacks = &syscb;
 	
 	std::set_new_handler(NewFailure);
 	const char *batchout = Args->CheckValue("-errorlog");
@@ -2609,6 +2684,7 @@ static int D_DoomMain_Internal (void)
 	else if (batchout != NULL && *batchout != 0)
 	{
 		batchrun = true;
+		nosound = true;
 		execLogfile(batchout, true);
 		Printf("Command line: ");
 		for (int i = 0; i < Args->NumArgs(); i++)

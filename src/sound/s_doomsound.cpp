@@ -70,11 +70,6 @@
 
 
 FBoolCVar noisedebug("noise", false, 0);	// [RH] Print sound debugging info?
-CUSTOM_CVAR(Int, snd_channels, 128, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)	// number of channels available
-{
-	if (self < 64) self = 64;
-}
-CVAR(Bool, snd_waterreverb, true, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 
 
 static FString LastLocalSndInfo;
@@ -90,12 +85,127 @@ class DoomSoundEngine : public SoundEngine
 	TArray<uint8_t> ReadSound(int lumpnum);
 	int PickReplacement(int refid);
 	FSoundID ResolveSound(const void *ent, int type, FSoundID soundid, float &attenuation) override;
+	void CacheSound(sfxinfo_t* sfx) override;
+	void StopChannel(FSoundChan* chan) override;
+	int AddSoundLump(const char* logicalname, int lump, int CurrentPitchMask, int resid = -1, int nearlimit = 2) override
+	{
+		auto ndx = SoundEngine::AddSoundLump(logicalname, lump, CurrentPitchMask, resid, nearlimit);
+		S_sfx[ndx].UserData.Resize(1);
+		S_sfx[ndx].UserData[0] = 0;
+		return ndx;
+	}
+	bool CheckSoundLimit(sfxinfo_t* sfx, const FVector3& pos, int near_limit, float limit_range, int sourcetype, const void* actor, int channel) override
+	{
+		if (sourcetype != SOURCE_Actor) actor = nullptr; //ZDoom did this.
+		return SoundEngine::CheckSoundLimit(sfx, pos, near_limit, limit_range, sourcetype, actor, channel);
+	}
+
 
 public:
 	DoomSoundEngine() = default;
 	void NoiseDebug(void);
 	void PrintSoundList();
 };
+
+
+//==========================================================================
+//
+// LookupMusic
+//
+// resolves aliases and special names
+//
+//==========================================================================
+
+static FString LookupMusic(const char* musicname, int& order)
+{
+	if (strnicmp(musicname, ",CD,", 4) == 0)
+	{
+		static bool warned = false;
+		if (!warned)
+			Printf(TEXTCOLOR_RED "CD Audio no longer supported\n");
+		warned = true;
+		return "";
+	}
+
+	// allow specifying "*" as a placeholder to play the level's default music.
+	if (musicname != nullptr && !strcmp(musicname, "*"))
+	{
+		if (gamestate == GS_LEVEL || gamestate == GS_TITLELEVEL)
+		{
+			musicname = primaryLevel->Music.GetChars();
+			order = primaryLevel->musicorder;
+		}
+		else
+		{
+			musicname = nullptr;
+		}
+	}
+
+	if (musicname == nullptr || musicname[0] == 0)
+	{
+		// got nothing, return nothing.
+		return "";
+	}
+	if (*musicname == '/') musicname++;
+
+	FString DEH_Music;
+	if (musicname[0] == '$')
+	{
+		// handle dehacked replacement.
+		// Any music name defined this way needs to be prefixed with 'D_' because
+		// Doom.exe does not contain the prefix so these strings don't either.
+		const char* mus_string = GStrings[musicname + 1];
+		if (mus_string != nullptr)
+		{
+			DEH_Music << "D_" << mus_string;
+			musicname = DEH_Music;
+		}
+	}
+
+	FName* aliasp = MusicAliases.CheckKey(musicname);
+	if (aliasp != nullptr)
+	{
+		if (*aliasp == NAME_None)
+		{
+			order = -1;
+			return "";	// flagged to be ignored
+		}
+		musicname = aliasp->GetChars();
+	}
+	return musicname;
+}
+
+//==========================================================================
+//
+// OpenMusic
+//
+// opens a FileReader for the music - used as a callback to keep
+// implementation details out of the core player.
+//
+//==========================================================================
+
+static FileReader OpenMusic(const char* musicname)
+{
+	FileReader reader;
+	if (!FileExists(musicname))
+	{
+		int lumpnum;
+		if ((lumpnum = fileSystem.CheckNumForFullName(musicname, true, ns_music)) == -1)
+		{
+			Printf("Music \"%s\" not found\n", musicname);
+		}
+		else if (fileSystem.FileLength(lumpnum) != 0)
+		{
+			reader = fileSystem.ReopenFileReader(lumpnum);
+		}
+	}
+	else
+	{
+		// Load an external file.
+		reader.OpenFile(musicname);
+	}
+	return reader;
+}
 
 //==========================================================================
 //
@@ -107,6 +217,10 @@ public:
 
 void S_Init()
 {
+	// Hook up the music player with the engine specific customizations.
+	static MusicCallbacks cb = { LookupMusic, OpenMusic };
+	S_SetMusicCallbacks(&cb);
+
 	// Must be up before I_InitSound.
 	if (!soundEngine)
 	{
@@ -114,6 +228,7 @@ void S_Init()
 	}
 
 	I_InitSound();
+	I_InitMusic();
 
 	// Heretic and Hexen have sound curve lookup tables. Doom does not.
 	int curvelump = fileSystem.CheckNumForName("SNDCURVE");
@@ -322,9 +437,21 @@ DEFINE_ACTION_FUNCTION(DObject, S_StartSound)
 //
 //==========================================================================
 
+void DoomSoundEngine::CacheSound(sfxinfo_t* sfx)
+{
+	if (!(sfx->UserData[0] & SND_PlayerReserve)) SoundEngine::CacheSound(sfx);
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
 FSoundID DoomSoundEngine::ResolveSound(const void * ent, int type, FSoundID soundid, float &attenuation)
 {
-	if (isPlayerReserve(soundid))
+	auto sfx = &S_sfx[soundid];
+	if (sfx->UserData[0] & SND_PlayerReserve)
 	{
 		AActor *src;
 		if (type != SOURCE_Actor) src = nullptr;
@@ -358,6 +485,21 @@ static bool VerifyActorSound(AActor* ent, FSoundID& sound_id, int& channel, ECha
 		channel = CHAN_WEAPON;
 	}
 	return true;
+}
+
+//==========================================================================
+//
+// Common checking code for the actor sound functions
+//
+//==========================================================================
+
+void DoomSoundEngine::StopChannel(FSoundChan* chan)
+{
+	if (chan && chan->SysChannel != NULL && !(chan->ChanFlags & CHANF_EVICTED) && chan->SourceType == SOURCE_Actor)
+	{
+		chan->Source = NULL;
+	}
+	SoundEngine::StopChannel(chan);
 }
 
 
@@ -1252,7 +1394,7 @@ void DoomSoundEngine::PrintSoundList()
 			}
 			Printf("}\n");
 		}
-		else if (sfx->bPlayerReserve)
+		else if (sfx->UserData[0] & SND_PlayerReserve)
 		{
 			Printf("%3d. %s <<player sound %d>>\n", i, sfx->name.GetChars(), sfx->link);
 		}
@@ -1413,7 +1555,6 @@ DEFINE_ACTION_FUNCTION(DObject, S_ResumeSound)
 }
 
 
-
 CCMD (snd_status)
 {
 	GSnd->PrintStatus ();
@@ -1422,13 +1563,6 @@ CCMD (snd_status)
 CCMD (snd_reset)
 {
 	S_SoundReset();
-}
-
-void S_SoundReset()
-{
-	S_StopMusic(true);
-	soundEngine->Reset();
-	S_RestartMusic();
 }
 
 CCMD (snd_listdrivers)
@@ -1440,3 +1574,5 @@ ADD_STAT (sound)
 {
 	return GSnd->GatherStats ();
 }
+
+
