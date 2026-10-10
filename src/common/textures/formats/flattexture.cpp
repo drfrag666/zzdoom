@@ -1,11 +1,9 @@
 /*
-** emptytexture.cpp
-** Texture class for empty placeholder textures
-** (essentially patches with dimensions and offsets of (0,0) )
-** These need special treatment because a texture size of 0 is illegal
+** flattexture.cpp
+** Texture class for standard Doom flats
 **
 **---------------------------------------------------------------------------
-** Copyright 2009 Christoph Oelckers
+** Copyright 2004-2006 Randy Heit
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -38,37 +36,33 @@
 #include "doomtype.h"
 #include "files.h"
 #include "filesystem.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 //==========================================================================
 //
-// 
+// A texture defined between F_START and F_END markers
 //
 //==========================================================================
 
-class FEmptyTexture : public FWorldTexture
+class FFlatTexture : public FWorldTexture
 {
-	uint8_t Pixel = 0;
 public:
-	FEmptyTexture (int lumpnum);
-	uint8_t *MakeTexture(FRenderStyle style) override;
+	FFlatTexture (int lumpnum);
+	uint8_t *MakeTexture (FRenderStyle style) override;
 };
 
+
+
 //==========================================================================
 //
-// 
+// Since there is no way to detect the validity of a flat
+// they can't be used anywhere else but between F_START and F_END
 //
 //==========================================================================
 
-FTexture *EmptyTexture_TryCreate(FileReader & file, int lumpnum)
+FTexture *FlatTexture_TryCreate(FileReader & file, int lumpnum)
 {
-	char check[8];
-	if (file.GetLength() != 8) return NULL;
-	file.Seek(0, FileReader::SeekSet);
-	if (file.Read(check, 8) != 8) return NULL;
-	if (memcmp(check, "\0\0\0\0\0\0\0\0", 8)) return NULL;
-
-	return new FEmptyTexture(lumpnum);
+	return new FFlatTexture(lumpnum);
 }
 
 //==========================================================================
@@ -77,14 +71,29 @@ FTexture *EmptyTexture_TryCreate(FileReader & file, int lumpnum)
 //
 //==========================================================================
 
-FEmptyTexture::FEmptyTexture (int lumpnum)
+FFlatTexture::FFlatTexture (int lumpnum)
 : FWorldTexture(NULL, lumpnum)
 {
-	bMasked = true;
-	WidthBits = HeightBits = 1;
-	Width = Height = 1;
-	WidthMask = 0;
-	PixelsAreStatic = 3;
+	int area;
+	int bits;
+
+	area = fileSystem.FileLength (lumpnum);
+
+	switch (area)
+	{
+	default:
+	case 64*64:		bits = 6;	break;
+	case 8*8:		bits = 3;	break;
+	case 16*16:		bits = 4;	break;
+	case 32*32:		bits = 5;	break;
+	case 128*128:	bits = 7;	break;
+	case 256*256:	bits = 8;	break;
+	}
+
+	bMasked = false;
+	WidthBits = HeightBits = bits;
+	Width = Height = 1 << bits;
+	WidthMask = (1 << bits) - 1;
 }
 
 //==========================================================================
@@ -93,8 +102,16 @@ FEmptyTexture::FEmptyTexture (int lumpnum)
 //
 //==========================================================================
 
-uint8_t *FEmptyTexture::MakeTexture(FRenderStyle style)
+uint8_t *FFlatTexture::MakeTexture (FRenderStyle style)
 {
-	return &Pixel;
+	auto lump = fileSystem.OpenFileReader (SourceLump);
+	auto Pixels = new uint8_t[Width*Height];
+	auto numread = lump.Read (Pixels, Width*Height);
+	if (numread < Width*Height)
+	{
+		memset (Pixels + numread, 0xBB, Width*Height - numread);
+	}
+	FTexture::FlipSquareBlockRemap(Pixels, Width, Height, GetRemap(style));
+	return Pixels;
 }
 

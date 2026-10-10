@@ -35,7 +35,7 @@
 
 #include "doomtype.h"
 #include "v_video.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 FCanvasTexture::FCanvasTexture (const char *name, int width, int height)
 {

@@ -39,7 +39,7 @@
 #include "v_palette.h"
 #include "v_video.h"
 #include "bitmap.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 
 // posts are runs of non masked source pixels

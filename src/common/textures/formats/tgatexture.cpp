@@ -39,7 +39,7 @@
 #include "templates.h"
 #include "bitmap.h"
 #include "v_video.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 
 //==========================================================================

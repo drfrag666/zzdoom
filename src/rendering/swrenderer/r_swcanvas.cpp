@@ -41,7 +41,7 @@
 #include "r_swcolormaps.h"
 #include "colormatcher.h"
 #include "r_swcanvas.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "r_data/voxels.h"
 #include "drawers/r_draw_rgba.h"
 

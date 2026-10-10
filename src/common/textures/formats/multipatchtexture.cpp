@@ -49,7 +49,7 @@
 #include "v_video.h"
 #include "v_text.h"
 #include "cmdlib.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "r_data/colormaps.h"
 #include "engineerrors.h"
 

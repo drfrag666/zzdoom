@@ -45,7 +45,7 @@ extern "C"
 #include "v_text.h"
 #include "bitmap.h"
 #include "v_video.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 
 struct FLumpSourceMgr : public jpeg_source_mgr

@@ -115,6 +115,7 @@ EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
 void DrawHUD();
 void I_DetectOS();
+void UpdateGenericUI(bool cvar);
 
 
 // MACROS ------------------------------------------------------------------
@@ -2955,6 +2956,7 @@ static int D_DoomMain_Internal (void)
 
 		StartScreen->Progress();
 		V_InitFonts();
+		UpdateGenericUI(false);
 
 		// [CW] Parse any TEAMINFO lumps.
 		if (!batchrun) Printf ("ParseTeamInfo: Load team definitions.\n");

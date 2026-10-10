@@ -39,7 +39,7 @@
 #include "templates.h"
 #include "m_png.h"
 #include "bitmap.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 //==========================================================================
 //

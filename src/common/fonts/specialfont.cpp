@@ -35,7 +35,7 @@
 
 #include "v_font.h"
 #include "textures.h"
-#include "textures/formats/fontchars.h"
+#include "fontchars.h"
 
 #include "fontinternals.h"
 

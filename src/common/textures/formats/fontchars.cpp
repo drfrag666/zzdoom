@@ -38,7 +38,7 @@
 #include "filesystem.h"
 #include "v_palette.h"
 #include "v_video.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "bitmap.h"
 #include "fontchars.h"
 #include "engineerrors.h"

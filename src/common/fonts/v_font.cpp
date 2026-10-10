@@ -49,7 +49,7 @@
 #include "cmdlib.h"
 #include "sc_man.h"
 #include "hu_stuff.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "gstrings.h"
 #include "v_text.h"
 #include "vm.h"
@@ -70,7 +70,6 @@
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
 static int TranslationMapCompare (const void *a, const void *b);
-void UpdateGenericUI(bool cvar);
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
@@ -78,7 +77,7 @@ extern int PrintColors[];
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
 
-FFont *FFont::FirstFont = NULL;
+FFont *FFont::FirstFont = nullptr;
 int NumTextColors;
 
 // PRIVATE DATA DEFINITIONS ------------------------------------------------
@@ -806,7 +805,7 @@ void V_InitFonts()
 		BigFont = V_GetFont("BigFont", "ZBIGFONT");
 	}
 
-	if (gameinfo.gametype & GAME_Raven)
+	if (fileSystem.CheckNumForName("FONTB_S") >= 0)
 	{
 		OriginalBigFont = new FFont("OriginalBigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
 	}
@@ -832,7 +831,7 @@ void V_InitFonts()
 	}
 	if (!(IntermissionFont = FFont::FindFont("IntermissionFont")))
 	{
-		if (gameinfo.gametype & GAME_DoomChex)
+		if (fileSystem.CheckNumForName("WINUM0") >= 0)
 		{
 			IntermissionFont = FFont::FindFont("IntermissionFont_Doom");
 		}
@@ -864,7 +863,6 @@ void V_InitFonts()
 		BigFont = OriginalBigFont;
 	}
 	AlternativeSmallFont = OriginalSmallFont;
-	UpdateGenericUI(false);
 }
 
 void V_ClearFonts()

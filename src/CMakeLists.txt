@@ -558,7 +558,6 @@ file( GLOB HEADER_FILES
 	gamedata/*.h
 	gamedata/resourcefiles/*.h
 	gamedata/fonts/*.h
-	gamedata/textures/*.h
 	gamedata/xlat/*.h
 	intermission/*.h
 	maploader/*.h
@@ -577,6 +576,7 @@ file( GLOB HEADER_FILES
 	common/console/*.h
 	common/utility/*.h
 	common/engine/*.h
+	common/fonts/*.h
 	common/filesystem/*.h
 	common/textures/*.h
 	common/thirdparty/*.h
@@ -864,33 +864,6 @@ set (PCH_SOURCES
 	menu/videomenu.cpp
 	gamedata/textures/animations.cpp
 	gamedata/textures/anim_switches.cpp
-	gamedata/textures/bitmap.cpp
-	gamedata/textures/texture.cpp
-	gamedata/textures/texturemanager.cpp
-	gamedata/textures/skyboxtexture.cpp
-	gamedata/textures/formats/automaptexture.cpp
-	gamedata/textures/formats/buildtexture.cpp
-	gamedata/textures/formats/canvastexture.cpp
-	gamedata/textures/formats/ddstexture.cpp
-	gamedata/textures/formats/flattexture.cpp
-	gamedata/textures/formats/fontchars.cpp
-	gamedata/textures/formats/imgztexture.cpp
-	gamedata/textures/formats/jpegtexture.cpp
-	gamedata/textures/formats/md5check.cpp
-	gamedata/textures/formats/multipatchtexture.cpp
-	gamedata/textures/formats/patchtexture.cpp
-	gamedata/textures/formats/pcxtexture.cpp
-	gamedata/textures/formats/pngtexture.cpp
-	gamedata/textures/formats/rawpagetexture.cpp
-	gamedata/textures/formats/emptytexture.cpp
-	gamedata/textures/formats/shadertexture.cpp
-	gamedata/textures/formats/tgatexture.cpp
-	gamedata/textures/formats/worldtexture.cpp
-	gamedata/fonts/singlelumpfont.cpp
-	gamedata/fonts/singlepicfont.cpp
-	gamedata/fonts/specialfont.cpp
-	gamedata/fonts/font.cpp
-	gamedata/fonts/v_font.cpp
 	gamedata/fonts/v_text.cpp	
 	gamedata/p_xlat.cpp
 	gamedata/xlat/parse_xlat.cpp
@@ -912,7 +885,6 @@ set (PCH_SOURCES
 	r_data/r_translate.cpp
 	r_data/sprites.cpp
 	r_data/voxels.cpp
-	r_data/renderstyle.cpp
 	r_data/r_interpolate.cpp
 	r_data/r_vanillatrans.cpp
 	r_data/r_sections.cpp
@@ -956,7 +928,34 @@ set (PCH_SOURCES
 	common/audio/music/i_soundfont.cpp
 	common/audio/music/music_config.cpp
 	common/thirdparty/sfmt/SFMT.cpp
+	common/fonts/singlelumpfont.cpp
+	common/fonts/singlepicfont.cpp
+	common/fonts/specialfont.cpp
+	common/fonts/font.cpp
+	common/fonts/v_font.cpp
+	common/textures/bitmap.cpp
 	common/textures/m_png.cpp
+	common/textures/texture.cpp
+	common/textures/texturemanager.cpp
+	common/textures/skyboxtexture.cpp
+	common/textures/formats/automaptexture.cpp
+	common/textures/formats/buildtexture.cpp
+	common/textures/formats/canvastexture.cpp
+	common/textures/formats/ddstexture.cpp
+	common/textures/formats/flattexture.cpp
+	common/textures/formats/fontchars.cpp
+	common/textures/formats/imgztexture.cpp
+	common/textures/formats/jpegtexture.cpp
+	common/textures/formats/md5check.cpp
+	common/textures/formats/multipatchtexture.cpp
+	common/textures/formats/patchtexture.cpp
+	common/textures/formats/pcxtexture.cpp
+	common/textures/formats/pngtexture.cpp
+	common/textures/formats/rawpagetexture.cpp
+	common/textures/formats/emptytexture.cpp
+	common/textures/formats/shadertexture.cpp
+	common/textures/formats/tgatexture.cpp
+	common/textures/formats/worldtexture.cpp
 	common/console/c_commandline.cpp
 	common/console/c_buttons.cpp
 	common/console/c_bind.cpp
@@ -997,6 +996,8 @@ set (PCH_SOURCES
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
 	common/engine/i_interface.cpp
+	common/engine/renderstyle.cpp
+	common/engine/v_colortables.cpp
 	
 	utility/GuillotineBinPack.cpp
 	utility/SkylineBinPack.cpp
@@ -1085,10 +1086,12 @@ include_directories( .
 	common/audio/music
 	common/thirdparty
 	common/textures
+	common/textures/formats
 	common/filesystem
 	common/utility
 	common/console
 	common/engine
+	common/fonts
 	g_statusbar
 	console
 	playsim
@@ -1203,8 +1206,6 @@ install(TARGETS zdoom
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
 source_group("Game Data\\Fonts" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/fonts/.+")
-source_group("Game Data\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/textures/.+")
-source_group("Game Data\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/textures/formats/.+")
 source_group("Intermission" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/intermission/.+")
 source_group("Map Loader" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/maploader/.+")
 source_group("Menu" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/menu/.+")
@@ -1249,7 +1250,10 @@ source_group("Common\\Audio\\Music" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_
 source_group("Common\\Console" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/console/.+")
 source_group("Common\\Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/utility/.+")
 source_group("Common\\Engine" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/engine/.+")
+source_group("Common\\Fonts" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/fonts/.+")
 source_group("Common\\File System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/filesystem/.+")
+source_group("Common\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/textures/.+")
+source_group("Common\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/textures/formats/.+")
 source_group("Common\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/.+")
 source_group("Common\\Third Party\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/math/.+")
 source_group("Common\\Third Party\\RapidJSON" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/rapidjson/.+")

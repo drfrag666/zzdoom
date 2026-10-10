@@ -1,9 +1,11 @@
 /*
-** automaptexture.cpp
-** Texture class for Raven's automap parchment
+** emptytexture.cpp
+** Texture class for empty placeholder textures
+** (essentially patches with dimensions and offsets of (0,0) )
+** These need special treatment because a texture size of 0 is illegal
 **
 **---------------------------------------------------------------------------
-** Copyright 2004-2006 Randy Heit
+** Copyright 2009 Christoph Oelckers
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -30,43 +32,43 @@
 ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
-** This texture type is only used as a last resort when everything else has failed for creating 
-** the AUTOPAGE texture. That's because Raven used a raw lump of non-standard proportions to define it.
 **
 */
 
 #include "doomtype.h"
 #include "files.h"
 #include "filesystem.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 //==========================================================================
 //
-// A raw 320x? graphic used by Heretic and Hexen for the automap parchment
+// 
 //
 //==========================================================================
 
-class FAutomapTexture : public FWorldTexture
+class FEmptyTexture : public FWorldTexture
 {
+	uint8_t Pixel = 0;
 public:
-	FAutomapTexture(int lumpnum);
-	uint8_t *MakeTexture (FRenderStyle style);
+	FEmptyTexture (int lumpnum);
+	uint8_t *MakeTexture(FRenderStyle style) override;
 };
 
-
-
 //==========================================================================
 //
-// This texture type will only be used for the AUTOPAGE lump if no other
-// format matches.
+// 
 //
 //==========================================================================
 
-FTexture *AutomapTexture_TryCreate(FileReader &data, int lumpnum)
+FTexture *EmptyTexture_TryCreate(FileReader & file, int lumpnum)
 {
-	if (data.GetLength() < 320) return nullptr;
-	if (!fileSystem.CheckFileName(lumpnum, "AUTOPAGE")) return nullptr;
-	return new FAutomapTexture(lumpnum);
+	char check[8];
+	if (file.GetLength() != 8) return NULL;
+	file.Seek(0, FileReader::SeekSet);
+	if (file.Read(check, 8) != 8) return NULL;
+	if (memcmp(check, "\0\0\0\0\0\0\0\0", 8)) return NULL;
+
+	return new FEmptyTexture(lumpnum);
 }
 
 //==========================================================================
@@ -75,12 +77,14 @@ FTexture *AutomapTexture_TryCreate(FileReader &data, int lumpnum)
 //
 //==========================================================================
 
-FAutomapTexture::FAutomapTexture (int lumpnum)
+FEmptyTexture::FEmptyTexture (int lumpnum)
 : FWorldTexture(NULL, lumpnum)
 {
-	Width = 320;
-	Height = uint16_t(fileSystem.FileLength(lumpnum) / 320);
-	CalcBitSize ();
+	bMasked = true;
+	WidthBits = HeightBits = 1;
+	Width = Height = 1;
+	WidthMask = 0;
+	PixelsAreStatic = 3;
 }
 
 //==========================================================================
@@ -89,23 +93,8 @@ FAutomapTexture::FAutomapTexture (int lumpnum)
 //
 //==========================================================================
 
-uint8_t *FAutomapTexture::MakeTexture (FRenderStyle style)
+uint8_t *FEmptyTexture::MakeTexture(FRenderStyle style)
 {
-	int x, y;
-	FileData data = fileSystem.ReadFile (SourceLump);
-	const uint8_t *indata = (const uint8_t *)data.GetMem();
-
-	auto Pixels = new uint8_t[Width * Height];
-
-	const uint8_t *remap = GetRemap(style);
-	for (x = 0; x < Width; ++x)
-	{
-		for (y = 0; y < Height; ++y)
-		{
-			auto p = indata[x + 320 * y];
-			Pixels[x*Height + y] = remap[p];
-		}
-	}
-	return Pixels;
+	return &Pixel;
 }
 

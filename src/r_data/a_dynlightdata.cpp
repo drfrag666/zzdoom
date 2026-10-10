@@ -52,7 +52,7 @@
 #include "g_levellocals.h"
 #include "a_dynlight.h"
 #include "serializer.h"
-#include "textures/skyboxtexture.h"
+#include "skyboxtexture.h"
 
 int ScriptDepth;
 

@@ -38,7 +38,7 @@
 #include "filesystem.h"
 #include "v_video.h"
 #include "bitmap.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 bool checkIMGZPalette(FileReader &file);
 

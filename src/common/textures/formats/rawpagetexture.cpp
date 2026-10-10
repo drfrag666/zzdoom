@@ -37,7 +37,7 @@
 #include "files.h"
 #include "filesystem.h"
 #include "v_palette.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 
 //==========================================================================

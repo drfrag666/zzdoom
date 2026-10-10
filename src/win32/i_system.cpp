@@ -85,8 +85,8 @@
 #include "doomstat.h"
 #include "v_palette.h"
 #include "i_system.h"
-#include "textures/bitmap.h"
-#include "textures/textures.h"
+#include "bitmap.h"
+#include "textures.h"
 
 #include "optwin32.h"
 

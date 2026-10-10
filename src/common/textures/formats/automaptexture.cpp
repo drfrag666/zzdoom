@@ -1,6 +1,6 @@
 /*
-** flattexture.cpp
-** Texture class for standard Doom flats
+** automaptexture.cpp
+** Texture class for Raven's automap parchment
 **
 **---------------------------------------------------------------------------
 ** Copyright 2004-2006 Randy Heit
@@ -30,39 +30,43 @@
 ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **---------------------------------------------------------------------------
 **
+** This texture type is only used as a last resort when everything else has failed for creating 
+** the AUTOPAGE texture. That's because Raven used a raw lump of non-standard proportions to define it.
 **
 */
 
 #include "doomtype.h"
 #include "files.h"
 #include "filesystem.h"
-#include "textures/textures.h"
+#include "textures.h"
 
 //==========================================================================
 //
-// A texture defined between F_START and F_END markers
+// A raw 320x? graphic used by Heretic and Hexen for the automap parchment
 //
 //==========================================================================
 
-class FFlatTexture : public FWorldTexture
+class FAutomapTexture : public FWorldTexture
 {
 public:
-	FFlatTexture (int lumpnum);
-	uint8_t *MakeTexture (FRenderStyle style) override;
+	FAutomapTexture(int lumpnum);
+	uint8_t *MakeTexture (FRenderStyle style);
 };
 
 
 
 //==========================================================================
 //
-// Since there is no way to detect the validity of a flat
-// they can't be used anywhere else but between F_START and F_END
+// This texture type will only be used for the AUTOPAGE lump if no other
+// format matches.
 //
 //==========================================================================
 
-FTexture *FlatTexture_TryCreate(FileReader & file, int lumpnum)
+FTexture *AutomapTexture_TryCreate(FileReader &data, int lumpnum)
 {
-	return new FFlatTexture(lumpnum);
+	if (data.GetLength() < 320) return nullptr;
+	if (!fileSystem.CheckFileName(lumpnum, "AUTOPAGE")) return nullptr;
+	return new FAutomapTexture(lumpnum);
 }
 
 //==========================================================================
@@ -71,29 +75,12 @@ FTexture *FlatTexture_TryCreate(FileReader & file, int lumpnum)
 //
 //==========================================================================
 
-FFlatTexture::FFlatTexture (int lumpnum)
+FAutomapTexture::FAutomapTexture (int lumpnum)
 : FWorldTexture(NULL, lumpnum)
 {
-	int area;
-	int bits;
-
-	area = fileSystem.FileLength (lumpnum);
-
-	switch (area)
-	{
-	default:
-	case 64*64:		bits = 6;	break;
-	case 8*8:		bits = 3;	break;
-	case 16*16:		bits = 4;	break;
-	case 32*32:		bits = 5;	break;
-	case 128*128:	bits = 7;	break;
-	case 256*256:	bits = 8;	break;
-	}
-
-	bMasked = false;
-	WidthBits = HeightBits = bits;
-	Width = Height = 1 << bits;
-	WidthMask = (1 << bits) - 1;
+	Width = 320;
+	Height = uint16_t(fileSystem.FileLength(lumpnum) / 320);
+	CalcBitSize ();
 }
 
 //==========================================================================
@@ -102,16 +89,23 @@ FFlatTexture::FFlatTexture (int lumpnum)
 //
 //==========================================================================
 
-uint8_t *FFlatTexture::MakeTexture (FRenderStyle style)
+uint8_t *FAutomapTexture::MakeTexture (FRenderStyle style)
 {
-	auto lump = fileSystem.OpenFileReader (SourceLump);
-	auto Pixels = new uint8_t[Width*Height];
-	auto numread = lump.Read (Pixels, Width*Height);
-	if (numread < Width*Height)
+	int x, y;
+	FileData data = fileSystem.ReadFile (SourceLump);
+	const uint8_t *indata = (const uint8_t *)data.GetMem();
+
+	auto Pixels = new uint8_t[Width * Height];
+
+	const uint8_t *remap = GetRemap(style);
+	for (x = 0; x < Width; ++x)
 	{
-		memset (Pixels + numread, 0xBB, Width*Height - numread);
+		for (y = 0; y < Height; ++y)
+		{
+			auto p = indata[x + 320 * y];
+			Pixels[x*Height + y] = remap[p];
+		}
 	}
-	FTexture::FlipSquareBlockRemap(Pixels, Width, Height, GetRemap(style));
 	return Pixels;
 }
 

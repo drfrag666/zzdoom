@@ -35,7 +35,7 @@
 #include <v_video.h>
 #include <s_sound.h>
 #include "r_state.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "stats.h"
 #include "vmintern.h"
 #include "types.h"

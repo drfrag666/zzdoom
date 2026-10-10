@@ -37,6 +37,8 @@
 #include "doomtype.h"
 #include "filesystem.h"
 #include "vectors.h"
+#include "palentry.h"
+#include "name.h"
 
 class DCanvas;
 struct FRemapTable;

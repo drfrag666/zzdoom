@@ -44,7 +44,7 @@
 #include "scene/r_opaque_pass.h"
 #include "scene/r_3dfloors.h"
 #include "scene/r_portal.h"
-#include "textures/textures.h"
+#include "textures.h"
 #include "r_data/voxels.h"
 #include "drawers/r_draw_rgba.h"
 #include "polyrenderer/poly_renderer.h"

@@ -36,11 +36,12 @@
 #define __TEXTURES_H
 
 #include "doomtype.h"
+#include "basics.h"
 #include "vectors.h"
 #include "v_palette.h"
 #include "v_video.h"
 #include "colormatcher.h"
-#include "r_data/renderstyle.h"
+#include "renderstyle.h"
 #include "r_data/r_translate.h"
 #include <vector>
 
