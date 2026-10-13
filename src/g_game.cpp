@@ -68,7 +68,7 @@
 #include "r_utility.h"
 #include "a_morph.h"
 #include "p_spec.h"
-#include "serializer.h"
+#include "serializer_doom.h"
 #include "vm.h"
 #include "dobjgc.h"
 #include "gi.h"
@@ -1048,7 +1048,29 @@ bool G_Responder (event_t *ev)
 			ev->type == EV_Mouse);
 }
 
+//==========================================================================
+//
+// FRandom :: StaticSumSeeds
+//
+// This function produces a uint32_t that can be used to check the consistancy
+// of network games between different machines. Only a select few RNGs are
+// used for the sum, because not all RNGs are important to network sync.
+//
+//==========================================================================
 
+extern FRandom pr_spawnmobj;
+extern FRandom pr_acs;
+extern FRandom pr_chase;
+extern FRandom pr_damagemobj;
+
+static uint32_t StaticSumSeeds()
+{
+	return
+		pr_spawnmobj.Seed() +
+		pr_acs.Seed() +
+		pr_chase.Seed() +
+		pr_damagemobj.Seed();
+}
 
 //
 // G_Ticker
@@ -1167,7 +1189,7 @@ void G_Ticker ()
 
 	// [RH] Include some random seeds and player stuff in the consistancy
 	// check, not just the player's x position like BOOM.
-	uint32_t rngsum = FRandom::StaticSumSeeds ();
+	uint32_t rngsum = StaticSumSeeds ();
 
 	//Added by MC: For some of that bot stuff. The main bot function.
 	primaryLevel->BotInfo.Main (primaryLevel);
@@ -1911,7 +1933,7 @@ void G_DoLoadGame ()
 	SaveVersion = 0;
 
 	void *data = info->Lock();
-	FSerializer arc(nullptr);
+	FSerializer arc;
 	if (!arc.OpenReader((const char *)data, info->LumpSize))
 	{
 		LoadGameError("TXT_FAILEDTOREADSG");
@@ -2293,8 +2315,8 @@ void G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, c
 	}
 
 	BufferWriter savepic;
-	FSerializer savegameinfo(nullptr);		// this is for displayable info about the savegame
-	FSerializer savegameglobals(nullptr);	// and this for non-level related info that must be saved.
+	FSerializer savegameinfo;		// this is for displayable info about the savegame
+	FSerializer savegameglobals;	// and this for non-level related info that must be saved.
 
 	savegameinfo.OpenWriter(true);
 	savegameglobals.OpenWriter(save_formatted);

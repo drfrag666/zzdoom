@@ -53,6 +53,7 @@
 #include "v_font.h"
 #include "swrenderer/r_renderer.h"
 #include "serializer.h"
+#include "serialize_obj.h"
 #include "r_utility.h"
 #include "d_player.h"
 #include "p_local.h"

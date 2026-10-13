@@ -537,8 +537,8 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/xlat_parser.c ${CMAKE_CUR
 	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/gamedata/xlat/xlat_parser.y )
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h
-	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/zcc-parse.lemon
-	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/zcc-parse.lemon )
+	COMMAND lemon -C${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/zcc-parse.lemon
+	DEPENDS lemon ${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/zcc-parse.lemon )
 
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
 	COMMAND re2c --no-generation-date -s -o ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h ${CMAKE_CURRENT_SOURCE_DIR}/common/engine/sc_man_scanner.re
@@ -577,17 +577,23 @@ file( GLOB HEADER_FILES
 	common/utility/*.h
 	common/engine/*.h
 	common/fonts/*.h
+	common/objects/*.h
 	common/filesystem/*.h
 	common/textures/*.h
 	common/thirdparty/*.h
 	common/thirdparty/rapidjson/*.h
-	common/thirdparty/math./*h
+	common/thirdparty/math/*h
+	common/scripting/core/*h
+	common/scripting/vm/*h
+	common/scripting/jit/*h
+	common/scripting/interface/*.h
+	common/scripting/backend/*.h
+	common/scripting/frontend/*.h
 	utility/*.h
 	scripting/*.h
 	scripting/backend/*.h
 	scripting/decorate/*.h
 	scripting/zscript/*.h
-	scripting/vm/*.h
 	sound/midisources/*.h
 	rendering/*.h
 	rendering/2d/*.h
@@ -690,21 +696,21 @@ set( NOT_COMPILED_SOURCE_FILES
 	gamedata/xlat/xlat_parser.y
 	xlat_parser.c
 	xlat_parser.h
-	scripting/zscript/zcc-parse.lemon
+	common/scripting/frontend/zcc-parse.lemon
 	zcc-parse.c
 	zcc-parse.h
 	win32/zdoom.natvis
 )
 
 set( VM_JIT_SOURCES
-	scripting/vm/jit.cpp
-	scripting/vm/jit_runtime.cpp
-	scripting/vm/jit_call.cpp
-	scripting/vm/jit_flow.cpp
-	scripting/vm/jit_load.cpp
-	scripting/vm/jit_math.cpp
-	scripting/vm/jit_move.cpp
-	scripting/vm/jit_store.cpp
+	common/scripting/jit/jit.cpp
+	common/scripting/jit/jit_runtime.cpp
+	common/scripting/jit/jit_call.cpp
+	common/scripting/jit/jit_flow.cpp
+	common/scripting/jit/jit_load.cpp
+	common/scripting/jit/jit_math.cpp
+	common/scripting/jit/jit_move.cpp
+	common/scripting/jit/jit_store.cpp
 )
 
 # This is disabled for now because I cannot find a way to give the .pch file a different name.
@@ -736,9 +742,6 @@ set (PCH_SOURCES
 	d_net.cpp
 	d_netinfo.cpp
 	d_protocol.cpp
-	dobject.cpp
-	dobjgc.cpp
-	dobjtype.cpp
 	doomstat.cpp
 	g_cvars.cpp
 	g_dumpinfo.cpp
@@ -779,7 +782,7 @@ set (PCH_SOURCES
 	sound/s_reverbedit.cpp
 	sound/s_sndseq.cpp
 	sound/s_doomsound.cpp
-	serializer.cpp
+	serializer_doom.cpp
 	scriptutil.cpp
 	st_stuff.cpp
 	r_data/v_palette.cpp
@@ -864,7 +867,6 @@ set (PCH_SOURCES
 	menu/videomenu.cpp
 	gamedata/textures/animations.cpp
 	gamedata/textures/anim_switches.cpp
-	gamedata/fonts/v_text.cpp	
 	gamedata/p_xlat.cpp
 	gamedata/xlat/parse_xlat.cpp
 	gamedata/xlat/parsecontext.cpp
@@ -893,29 +895,18 @@ set (PCH_SOURCES
 	r_data/models/models_voxel.cpp
 	r_data/models/models_ue1.cpp
 	r_data/models/models_obj.cpp
-	scripting/dictionary.cpp
-	scripting/symbols.cpp
 	scripting/vmiterators.cpp
 	scripting/vmthunks.cpp
 	scripting/vmthunks_actors.cpp
-	scripting/types.cpp
 	scripting/thingdef.cpp
 	scripting/thingdef_data.cpp
 	scripting/thingdef_properties.cpp
-	scripting/backend/codegen.cpp
-	scripting/backend/scopebarrier.cpp
-	scripting/backend/dynarrays.cpp
-	scripting/backend/vmbuilder.cpp
-	scripting/backend/vmdisasm.cpp
+	scripting/backend/codegen_doom.cpp
 	scripting/decorate/olddecorations.cpp
 	scripting/decorate/thingdef_exp.cpp
 	scripting/decorate/thingdef_parse.cpp
 	scripting/decorate/thingdef_states.cpp
-	scripting/vm/vmexec.cpp
-	scripting/vm/vmframe.cpp
-	scripting/zscript/ast.cpp
-	scripting/zscript/zcc_compile.cpp
-	scripting/zscript/zcc_parser.cpp
+	scripting/zscript/zcc_compile_doom.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	events.cpp
 	common/audio/sound/i_sound.cpp
@@ -933,6 +924,7 @@ set (PCH_SOURCES
 	common/fonts/specialfont.cpp
 	common/fonts/font.cpp
 	common/fonts/v_font.cpp
+	common/fonts/v_text.cpp	
 	common/textures/bitmap.cpp
 	common/textures/m_png.cpp
 	common/textures/texture.cpp
@@ -993,22 +985,42 @@ set (PCH_SOURCES
 	common/filesystem/file_whres.cpp
 	common/filesystem/file_directory.cpp
 	common/filesystem/resourcefile.cpp
+	common/engine/stats.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
 	common/engine/i_interface.cpp
 	common/engine/renderstyle.cpp
 	common/engine/v_colortables.cpp
+	common/engine/serializer.cpp
+	common/engine/m_random.cpp
+	common/objects/dobject.cpp
+	common/objects/dobjgc.cpp
+	common/objects/dobjtype.cpp
+	common/scripting/core/dictionary.cpp
+	common/scripting/core/dynarrays.cpp
+	common/scripting/core/symbols.cpp
+	common/scripting/core/types.cpp
+	common/scripting/core/scopebarrier.cpp
+	common/scripting/core/vmdisasm.cpp
+	common/scripting/core/imports.cpp
+	common/scripting/vm/vmexec.cpp
+	common/scripting/vm/vmframe.cpp
+	common/scripting/interface/stringformat.cpp
+	#common/scripting/interface/exports.cpp
+	common/scripting/frontend/ast.cpp
+	common/scripting/frontend/zcc_compile.cpp
+	common/scripting/frontend/zcc_parser.cpp
+	common/scripting/backend/vmbuilder.cpp
+	common/scripting/backend/codegen.cpp
 	
 	utility/GuillotineBinPack.cpp
 	utility/SkylineBinPack.cpp
-	utility/m_random.cpp
 	utility/nodebuilder/nodebuild.cpp
 	utility/nodebuilder/nodebuild_classify_nosse2.cpp
 	utility/nodebuilder/nodebuild_events.cpp
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
-	utility/stats.cpp
 	utility/m_bbox.cpp
 	utility/v_collection.cpp
 )
@@ -1029,7 +1041,7 @@ endif()
 add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${HEADER_FILES}
 	${NOT_COMPILED_SOURCE_FILES}
-	__autostart.cpp
+	common/objects/__autostart.cpp
 	${SYSTEM_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
@@ -1055,7 +1067,7 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	common/thirdparty/math/tan.c
 	common/thirdparty/math/tanh.c
 	common/thirdparty/math/fastsin.cpp
-	zzautozend.cpp
+	common/objects/zzautozend.cpp
 )
 
 set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
@@ -1092,6 +1104,13 @@ include_directories( .
 	common/console
 	common/engine
 	common/fonts
+	common/objects
+	common/scripting/vm
+	common/scripting/jit
+	common/scripting/core
+	common/scripting/interface
+	common/scripting/frontend
+	common/scripting/backend
 	g_statusbar
 	console
 	playsim
@@ -1109,7 +1128,7 @@ include_directories( .
 	utility
 	utility/nodebuilder
 	scripting
-	scripting/vm
+	scripting/zscript
 	rendering
 	../libraries/gdtoa
 	${CMAKE_BINARY_DIR}/libraries/gdtoa
@@ -1238,9 +1257,8 @@ source_group("Platforms\\Unix Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE
 source_group("Platforms\\SDL Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/posix/sdl/.+")
 source_group("Platforms\\Win32 Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/win32/.+")
 source_group("Scripting\\Decorate frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/decorate/.+")
-source_group("Scripting\\ZScript frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h)
+source_group("Scripting\\ZScript frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/zscript/.+")
 source_group("Scripting\\Compiler backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/backend/.+")
-source_group("Scripting\\VM" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/vm/.+")
 source_group("Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/scripting/.+")
 source_group("Common" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/.+")
 source_group("Common\\Audio" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/audio/.+")
@@ -1250,8 +1268,16 @@ source_group("Common\\Audio\\Music" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_
 source_group("Common\\Console" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/console/.+")
 source_group("Common\\Utility" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/utility/.+")
 source_group("Common\\Engine" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/engine/.+")
+source_group("Common\\Objects" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/objects/.+")
 source_group("Common\\Fonts" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/fonts/.+")
 source_group("Common\\File System" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/filesystem/.+")
+source_group("Common\\Scripting" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/.+")
+source_group("Common\\Scripting\\Interface" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/interface/.+")
+source_group("Common\\Scripting\\Frontend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/frontend/.+" FILES ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.c ${CMAKE_CURRENT_BINARY_DIR}/zcc-parse.h)
+source_group("Common\\Scripting\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/backend/.+")
+source_group("Common\\Scripting\\Core" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/core/.+")
+source_group("Common\\Scripting\\JIT" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/jit/.+")
+source_group("Common\\Scripting\\VM" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/scripting/vm/.+")
 source_group("Common\\Textures" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/textures/.+")
 source_group("Common\\Textures\\Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/textures/formats/.+")
 source_group("Common\\Third Party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/common/thirdparty/.+")

@@ -36,7 +36,8 @@
 #include "c_dispatch.h"
 
 #include "g_level.h"
-#include "serializer.h"
+#include "serializer_doom.h"
+#include "serialize_obj.h"
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "vm.h"

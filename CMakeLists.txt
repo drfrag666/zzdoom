@@ -81,7 +81,7 @@ function( add_pk3 PK3_NAME PK3_DIR )
 	# Phase 1: Create a list of all source files for this PK3 archive, except
 	#  for a couple of strife image file names that confuse CMake.
 	file(GLOB_RECURSE PK3_SRCS ${PK3_DIR}/*)
-	# Exclude from the source list some gzdoom .png files with brackets in the
+	# Exclude from the source list some files with brackets in the
 	# file names here, because they confuse CMake.
 	# This only affects the list of source files shown in the IDE.
 	# It does not actually remove the files from the PK3 archive.
@@ -208,7 +208,6 @@ endif()
 #	find_package( asmjit )
 #endif()
 
-
 if( MSVC )
 	# Eliminate unreferenced functions and data
 	# Perform identical COMDAT folding
@@ -217,7 +216,7 @@ if( MSVC )
 	# String pooling
 	# Function-level linking
 	# Disable run-time type information
-	set( ALL_C_FLAGS "/GF /Gy /GR- /permissive-" )
+	set( ALL_C_FLAGS "/GF /Gy /permissive-" )
 
 	# Use SSE 2 as minimum always as the true color drawers needs it for __vectorcall
 	#set( ALL_C_FLAGS "${ALL_C_FLAGS} /arch:SSE2") # This is already the default
@@ -263,7 +262,6 @@ if( MSVC )
 	string(REPLACE "/MD " " " CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_MINSIZEREL} )
 	string(REPLACE "/MD " " " CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELWITHDEBINFO} )
 	string(REPLACE "/MDd " " " CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG} )
-	string(REPLACE " /GR" " " CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} )
 else()
 	set( REL_LINKER_FLAGS "" )
 	set( ALL_C_FLAGS "-ffp-contract=off" )
@@ -329,7 +327,7 @@ if( ZLIB_FOUND AND NOT FORCE_INTERNAL_ZLIB )
 	message( STATUS "Using system zlib, includes found at ${ZLIB_INCLUDE_DIR}" )
 else()
 	message( STATUS "Using internal zlib" )
-	set( SKIP_INSTALL_ALL TRUE ) # Avoid installing zlib alongside zdoom
+	set( SKIP_INSTALL_ALL TRUE ) # Avoid installing zlib
 	add_subdirectory( libraries/zlib )
 	set( ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libraries/zlib )
 	set( ZLIB_LIBRARIES z )

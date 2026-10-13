@@ -1559,6 +1559,8 @@ struct FTranslatedLineTarget
 };
 
 
+void StaticPointerSubstitution(AActor* old, AActor* notOld);
+
 #define S_FREETARGMOBJ	1
 
 #endif // __P_MOBJ_H__

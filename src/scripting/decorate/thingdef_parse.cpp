@@ -43,7 +43,8 @@
 #include "a_pickups.h"
 #include "thingdef.h"
 #include "a_morph.h"
-#include "backend/codegen.h"
+#include "codegen.h"
+#include "backend/codegen_doom.h"
 #include "filesystem.h"
 #include "v_text.h"
 #include "m_argv.h"
@@ -53,7 +54,7 @@
 #endif // !_MSC_VER
 
 void ParseOldDecoration(FScanner &sc, EDefinitionType def, PNamespace *ns);
-CVAR(Bool, strictdecorate, false, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
+EXTERN_CVAR(Bool, strictdecorate);
 
 
 //==========================================================================
@@ -77,7 +78,8 @@ PClassActor *DecoDerivedClass(const FScriptPosition &sc, PClassActor *parent, FN
 	{
 		sc.Message(MSG_ERROR, "Parent class %s of %s not accessible to DECORATE", parent->TypeName.GetChars(), typeName.GetChars());
 	}
-	PClassActor *type = static_cast<PClassActor *>(parent->CreateDerivedClass(typeName, parent->Size));
+	bool newlycreated;
+	PClassActor *type = static_cast<PClassActor *>(parent->CreateDerivedClass(typeName, parent->Size, &newlycreated));
 	if (type == nullptr)
 	{
 		FString newname = typeName.GetChars();
@@ -94,14 +96,15 @@ PClassActor *DecoDerivedClass(const FScriptPosition &sc, PClassActor *parent, FN
 			// Due to backwards compatibility issues this cannot be an unconditional error.
 			sc.Message(MSG_WARNING, "Tried to define class '%s' more than once. Renaming class to '%s'", typeName.GetChars(), newname.GetChars());
 		}
-		type = static_cast<PClassActor *>(parent->CreateDerivedClass(newname, parent->Size));
+		type = static_cast<PClassActor *>(parent->CreateDerivedClass(newname, parent->Size, &newlycreated));
 		if (type == nullptr)
 		{
 			// This we cannot handle cleanly anymore. Let's just abort and forget about the odd mod out that was this careless.
 			sc.Message(MSG_FATAL, "Tried to define class '%s' more than twice in the same file.", typeName.GetChars());
 		}
 	}
-	
+	if (newlycreated) type->InitializeDefaults();
+
 	if (type != nullptr)
 	{
 		// [ZZ] DECORATE classes are always play

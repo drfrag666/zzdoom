@@ -73,7 +73,7 @@
 #include "a_sharedglobal.h"
 #include "r_utility.h"
 #include "p_spec.h"
-#include "serializer.h"
+#include "serializer_doom.h"
 #include "vm.h"
 #include "events.h"
 #include "i_music.h"
@@ -1481,7 +1481,7 @@ int FLevelLocals::FinishTravel ()
 		pawn->flags2 &= ~MF2_BLASTED;
 		if (oldpawn != nullptr)
 		{
-			DObject::StaticPointerSubstitution (oldpawn, pawn);
+			StaticPointerSubstitution (oldpawn, pawn);
 			oldpawn->Destroy();
 		}
 		if (pawndup != NULL)

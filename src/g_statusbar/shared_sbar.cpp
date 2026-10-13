@@ -49,6 +49,7 @@
 #include "d_net.h"
 #include "d_player.h"
 #include "serializer.h"
+#include "serialize_obj.h"
 #include "r_utility.h"
 #include "cmdlib.h"
 #include "g_levellocals.h"
@@ -286,6 +287,7 @@ void ST_CreateStatusBar(bool bTitleLevel)
 		StatusBar->Destroy();
 		StatusBar = NULL;
 	}
+	GC::AddMarkerFunc([]() { GC::Mark(StatusBar); });
 
 	bool shouldWarn = true;
 

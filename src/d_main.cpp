@@ -110,6 +110,7 @@
 #include "c_buttons.h"
 #include "d_buttons.h"
 #include "i_interface.h"
+#include "scriptutil.h"
 
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
@@ -2630,6 +2631,32 @@ static bool System_CaptureModeInGame()
 	}
 }
 
+static void Doom_CastSpriteIDToString(FString* a, unsigned int b) 
+{ 
+	*a = (b >= sprites.Size()) ? "TNT1" : sprites[b].name; 
+}
+
+
+extern DThinker* NextToThink;
+
+static void GC_MarkGameRoots()
+{
+	GC::Mark(DIntermissionController::CurrentIntermission);
+	GC::Mark(staticEventManager.FirstEventHandler);
+	GC::Mark(staticEventManager.LastEventHandler);
+	for (auto Level : AllLevels())
+		Level->Mark();
+
+	// Mark players.
+	for (int i = 0; i < MAXPLAYERS; i++)
+	{
+		if (playeringame[i])
+			players[i].PropagateMark();
+	}
+
+	// NextToThink must not be freed while thinkers are ticking.
+	GC::Mark(NextToThink);
+}
 
 //==========================================================================
 //
@@ -2646,6 +2673,9 @@ static int D_DoomMain_Internal (void)
 	FString *args;
 	int argcount;	
 	FIWadManager *iwad_man;
+
+	GC::AddMarkerFunc(GC_MarkGameRoots);
+	VM_CastSpriteIDToString = Doom_CastSpriteIDToString;
 
 	// Set up the button list. Mlook and Klook need a bit of extra treatment.
 	buttonMap.SetButtons(DoomButtons, countof(DoomButtons));
@@ -3304,6 +3334,12 @@ void D_Cleanup()
 	
 	GC::DelSoftRootHead();
 	
+	for (auto& p : players)
+	{
+		p.PendingWeapon = nullptr;
+	}
+	PClassActor::AllActorClasses.Clear();
+	ScriptUtil::Clear();
 	PClass::StaticShutdown();
 	
 	GC::FullGC();					// perform one final garbage collection after shutdown

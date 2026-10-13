@@ -54,7 +54,7 @@
 #include "v_video.h"
 #include "i_system.h"
 #include "c_buttons.h"
-#include "scripting/types.h"
+#include "types.h"
 
 int DMenu::InMenu;
 static ScaleOverrider *CurrentScaleOverrider;
@@ -914,6 +914,7 @@ void M_Init (void)
 	try
 	{
 		M_ParseMenuDefs();
+		GC::AddMarkerFunc(M_MarkMenus);
 	}
 	catch (CVMAbortException &err)
 	{
