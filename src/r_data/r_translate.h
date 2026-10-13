@@ -113,7 +113,7 @@ void R_DeinitTranslationTables();
 void R_BuildPlayerTranslation (int player);		// [RH] Actually create a player's translation table.
 void R_GetPlayerTranslation (int color, const struct FPlayerColorSet *colorset, class FPlayerSkin *skin, struct FRemapTable *table);
 
-extern const uint8_t IcePalette[16][3];
+extern uint8_t IcePalette[16][3];
 
 int CreateBloodTranslation(PalEntry color);
 

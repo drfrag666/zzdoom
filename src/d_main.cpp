@@ -112,6 +112,10 @@
 #include "i_interface.h"
 #include "scriptutil.h"
 
+#ifdef __unix__
+#include "i_system.h"  // for SHARE_DIR
+#endif // __unix__
+
 EXTERN_CVAR(Bool, hud_althud)
 EXTERN_CVAR(Bool, cl_customizeinvulmap)
 void DrawHUD();
