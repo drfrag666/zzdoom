@@ -361,7 +361,11 @@ void M_StartControlPanel (bool makeSound, bool scaleoverride)
 	BackbuttonTime = 0;
 	BackbuttonAlpha = 0;
 	if (scaleoverride && !CurrentScaleOverrider) CurrentScaleOverrider = new ScaleOverrider;
-	else if (!scaleoverride && CurrentScaleOverrider) delete CurrentScaleOverrider;
+	else if (!scaleoverride && CurrentScaleOverrider)
+	{
+		delete CurrentScaleOverrider;
+		CurrentScaleOverrider = nullptr;
+	}
 }
 
 //=============================================================================
