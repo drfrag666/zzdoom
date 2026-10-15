@@ -75,6 +75,7 @@
 #include "st_start.h"
 #include "i_interface.h"
 #include "startupinfo.h"
+#include "printf.h"
 
 #include "optwin32.h"
 
