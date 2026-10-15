@@ -30,6 +30,7 @@
 
 #include "doomtype.h"
 #include "gametype.h"
+#include "startupinfo.h"
 
 struct event_t;
 
@@ -44,8 +45,6 @@ struct CRestartException
 {
 	char dummy;
 };
-
-int D_DoomMain (void);
 
 
 void D_Display ();
@@ -66,31 +65,6 @@ extern const char *D_DrawIcon;
 // [SP] Store the capabilities of the renderer in a global variable, to prevent excessive per-frame processing
 extern uint32_t r_renderercaps;
 
-
-struct WadStuff
-{
-	FString Path;
-	FString Name;
-};
-
-struct FStartupInfo
-{
-	FString Name;
-	uint32_t FgColor;			// Foreground color for title banner
-	uint32_t BkColor;			// Background color for title banner
-	FString Song;
-	int Type;
-	int LoadLights = -1;
-	int LoadBrightmaps = -1;
-	enum
-	{
-		DefaultStartup,
-		DoomStartup,
-		HereticStartup,
-		HexenStartup,
-		StrifeStartup,
-	};
-};
 
 struct FIWADInfo
 {
@@ -125,8 +99,6 @@ struct FFoundWadInfo
 	{
 	}
 };
-
-extern FStartupInfo DoomStartupInfo;
 
 //==========================================================================
 //

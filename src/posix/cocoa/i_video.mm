@@ -37,7 +37,6 @@
 
 #include "bitmap.h"
 #include "c_dispatch.h"
-#include "doomstat.h"
 #include "hardware.h"
 #include "i_system.h"
 #include "m_argv.h"
@@ -53,8 +52,9 @@
 #include "v_video.h"
 #include "version.h"
 #include "videomodes.h"
-#include "engineerrors.h"
+#include "printf.h"
 
+extern bool ToggleFullscreen;
 
 @implementation NSWindow(ExitAppOnClose)
 

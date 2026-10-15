@@ -55,10 +55,13 @@ typedef enum
 #endif
 
 #include "c_cvars.h"
-#include "d_main.h"
 #include "i_module.h"
 #include "i_system.h"
 #include "version.h"
+#include "startupinfo.h"
+#include "cmdlib.h"
+#include "i_interface.h"
+#include "printf.h"
 
 EXTERN_CVAR (Bool, queryiwad);
 

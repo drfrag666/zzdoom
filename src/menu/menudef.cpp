@@ -1075,7 +1075,7 @@ void M_ParseMenuDefs()
 //
 //=============================================================================
 
-void M_StartupEpisodeMenu(FGameStartup *gs)
+void M_StartupEpisodeMenu(FNewGameStartup *gs)
 {
 	// Build episode menu
 	bool success = false;
@@ -1632,7 +1632,7 @@ DEFINE_ACTION_FUNCTION(DMenu, UpdateSkinOptions)
 //=============================================================================
 extern int restart;
 
-void M_StartupSkillMenu(FGameStartup *gs)
+void M_StartupSkillMenu(FNewGameStartup *gs)
 {
 	static int done = -1;
 	bool success = false;

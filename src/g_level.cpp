@@ -157,7 +157,7 @@ void G_DeferedInitNew (const char *mapname, int newskill)
 	gameaction = ga_newgame2;
 }
 
-void G_DeferedInitNew (FGameStartup *gs)
+void G_DeferedInitNew (FNewGameStartup *gs)
 {
 	if (gs->PlayerClass != NULL) playerclass = gs->PlayerClass;
 	d_mapname = AllEpisodes[gs->Episode].mEpisodeMap;

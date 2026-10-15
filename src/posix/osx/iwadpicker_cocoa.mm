@@ -34,13 +34,12 @@
  */
 
 #include "cmdlib.h"
-#include "d_main.h"
 #include "version.h"
 #include "c_cvars.h"
 #include "m_argv.h"
-#include "m_misc.h"
 #include "gameconfigfile.h"
 #include "engineerrors.h"
+#include "i_interface.h"
 
 #include <Cocoa/Cocoa.h>
 #include <wordexp.h>
@@ -385,8 +384,10 @@ static void RestartWithParameters(const WadStuff& wad, NSString* parameters)
 
 	defaultiwad = wad.Name;
 
-	GameConfig->DoGameSetup("Doom");
-	M_SaveDefaults(NULL);
+	GameConfig->ArchiveGlobalData();
+	GameConfig->WriteConfigFile();
+	delete GameConfig;
+	GameConfig = nullptr;
 
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
