@@ -180,7 +180,7 @@ extern int SessionState;
 extern bool VidResizing;
 
 EXTERN_CVAR (Bool, vid_fullscreen)
-EXTERN_CVAR (Float, Gamma)
+EXTERN_CVAR (Float, vid_gamma)
 EXTERN_CVAR (Bool, vid_vsync)
 EXTERN_CVAR (Float, transsouls)
 EXTERN_CVAR (Int, vid_refreshrate)

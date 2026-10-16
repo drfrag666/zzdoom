@@ -70,7 +70,7 @@ struct MiniModeInfo
 extern IVideo *Video;
 extern bool GUICapture;
 
-EXTERN_CVAR (Float, Gamma)
+EXTERN_CVAR (Float, vid_gamma)
 EXTERN_CVAR (Int, vid_maxfps)
 EXTERN_CVAR (Bool, cl_capfps)
 EXTERN_CVAR (Bool, vid_vsync)
@@ -87,21 +87,21 @@ CUSTOM_CVAR (Float, rgamma, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
 	if (screen != NULL)
 	{
-		screen->SetGamma (Gamma);
+		screen->SetGamma (vid_gamma);
 	}
 }
 CUSTOM_CVAR (Float, ggamma, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
 	if (screen != NULL)
 	{
-		screen->SetGamma (Gamma);
+		screen->SetGamma (vid_gamma);
 	}
 }
 CUSTOM_CVAR (Float, bgamma, 1.f, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 {
 	if (screen != NULL)
 	{
-		screen->SetGamma (Gamma);
+		screen->SetGamma (vid_gamma);
 	}
 }
 

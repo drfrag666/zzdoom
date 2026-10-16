@@ -558,7 +558,7 @@ extern DFrameBuffer *screen;
 #define SCREENHEIGHT (screen->GetHeight ())
 #define SCREENPITCH (screen->GetPitch ())
 
-EXTERN_CVAR (Float, Gamma)
+EXTERN_CVAR (Float, vid_gamma)
 
 
 // Allocates buffer screens, call before R_Init.

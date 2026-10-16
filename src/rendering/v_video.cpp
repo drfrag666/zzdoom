@@ -318,7 +318,7 @@ void DCanvas::GetScreenshotBuffer(const uint8_t *&buffer, int &pitch, ESSType &c
 	buffer = GetBuffer();
 	pitch = IsBgra() ? GetPitch() * 4 : GetPitch();
 	color_type = IsBgra() ? SS_BGRA : SS_PAL;
-	gamma = Gamma;
+	gamma = vid_gamma;
 }
 
 //==========================================================================
@@ -1007,7 +1007,7 @@ bool V_DoModeSetup (int width, int height, int bits)
 	}
 
 	screen = buff;
-	screen->SetGamma (Gamma);
+	screen->SetGamma (vid_gamma);
 
 	// Load fonts now so they can be packed into textures straight away,
 	// if D3DFB is being used for the display.

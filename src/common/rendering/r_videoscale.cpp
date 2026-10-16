@@ -36,15 +36,15 @@
 #include "v_video.h"
 #include "templates.h"
 #include "r_videoscale.h"
-
-#include "c_console.h"
-#include "menu/menu.h"
+#include "cmdlib.h"
+#include "i_interface.h"
+#include "printf.h"
 
 #define NUMSCALEMODES countof(vScaleTable)
-
 extern bool setsizeneeded;
 
 EXTERN_CVAR(Int, vid_aspect)
+
 CUSTOM_CVAR(Int, vid_scale_customwidth, VID_MIN_WIDTH, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (self < VID_MIN_WIDTH)

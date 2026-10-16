@@ -315,13 +315,13 @@ private:
 // ---------------------------------------------------------------------------
 
 
-EXTERN_CVAR(Float, Gamma)
+EXTERN_CVAR(Float, vid_gamma)
 
 CUSTOM_CVAR(Float, rgamma, 1.0f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (NULL != screen)
 	{
-		screen->SetGamma(Gamma);
+		screen->SetGamma(vid_gamma);
 	}
 }
 
@@ -329,7 +329,7 @@ CUSTOM_CVAR(Float, ggamma, 1.0f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (NULL != screen)
 	{
-		screen->SetGamma(Gamma);
+		screen->SetGamma(vid_gamma);
 	}
 }
 
@@ -337,7 +337,7 @@ CUSTOM_CVAR(Float, bgamma, 1.0f, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 {
 	if (NULL != screen)
 	{
-		screen->SetGamma(Gamma);
+		screen->SetGamma(vid_gamma);
 	}
 }
 

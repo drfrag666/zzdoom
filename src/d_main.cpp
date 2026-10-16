@@ -2766,6 +2766,7 @@ static int D_DoomMain_Internal (void)
 		System_WantNativeMouse,
 		System_CaptureModeInGame,
 		System_CrashInfo,
+		System_PlayStartupSound,
 	};
 	sysCallbacks = &syscb;
 	

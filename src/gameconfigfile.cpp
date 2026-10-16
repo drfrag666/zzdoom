@@ -47,6 +47,7 @@
 #include "doomstat.h"
 #include "gi.h"
 #include "d_main.h"
+#include "v_video.h"
 #if !defined _MSC_VER && !defined __APPLE__
 #include "i_system.h"  // for SHARE_DIR
 #endif // !_MSC_VER && !__APPLE__
@@ -62,6 +63,7 @@ EXTERN_CVAR (Color, am_wallcolor)
 EXTERN_CVAR (Color, am_fdwallcolor)
 EXTERN_CVAR (Color, am_cdwallcolor)
 EXTERN_CVAR (Bool, wi_percents)
+EXTERN_CVAR (Float, vid_gamma)
 
 FGameConfigFile::FGameConfigFile ()
 {
@@ -408,6 +410,16 @@ void FGameConfigFile::DoGlobalSetup ()
 				// Previously a true/false boolean. Now an on/off/auto tri-state with auto as the default.
 				FBaseCVar *var = FindCVar("snd_hrtf", NULL);
 				if (var != NULL) var->ResetToDefault();
+			}
+			if (last < 220)
+			{
+				auto var = FindCVar("Gamma", NULL);
+				if (var != NULL)
+				{
+					UCVarValue v = var->GetGenericRep(CVAR_Float);
+					vid_gamma = v.Float;
+				}
+
 			}
 		}
 	}
