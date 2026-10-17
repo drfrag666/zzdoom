@@ -64,6 +64,7 @@ EXTERN_CVAR (Color, am_fdwallcolor)
 EXTERN_CVAR (Color, am_cdwallcolor)
 EXTERN_CVAR (Bool, wi_percents)
 EXTERN_CVAR (Float, vid_gamma)
+EXTERN_CVAR (Bool, vid_fullscreen)
 
 FGameConfigFile::FGameConfigFile ()
 {
@@ -418,6 +419,12 @@ void FGameConfigFile::DoGlobalSetup ()
 				{
 					UCVarValue v = var->GetGenericRep(CVAR_Float);
 					vid_gamma = v.Float;
+				}
+				var = FindCVar("fullscreen", NULL);
+				if (var != NULL)
+				{
+					UCVarValue v = var->GetGenericRep(CVAR_Bool);
+					vid_fullscreen = v.Float;
 				}
 
 			}

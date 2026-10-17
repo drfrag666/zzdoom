@@ -35,17 +35,14 @@
 #define __V_VIDEO_H__
 
 #include "doomtype.h"
+#include "basics.h"
 #include "vectors.h"
-
 #include "doomdef.h"
 #include "m_png.h"
 #include "dobject.h"
 #include "renderstyle.h"
 #include "c_cvars.h"
 #include "v_colortables.h"
-
-static const int VID_MIN_WIDTH = 320;
-static const int VID_MIN_HEIGHT = 200;
 
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;

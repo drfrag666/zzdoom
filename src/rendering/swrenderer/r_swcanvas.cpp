@@ -42,7 +42,7 @@
 #include "colormatcher.h"
 #include "r_swcanvas.h"
 #include "textures.h"
-#include "r_data/voxels.h"
+#include "voxels.h"
 #include "drawers/r_draw_rgba.h"
 
 EXTERN_CVAR(Bool, r_blendmethod)

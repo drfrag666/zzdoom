@@ -31,6 +31,7 @@
 #include "doomtype.h"
 #include "gametype.h"
 #include "startupinfo.h"
+#include "c_cvars.h"
 
 struct event_t;
 
@@ -135,6 +136,7 @@ public:
 		if (num < mIWadInfos.Size()) return mIWadInfos[num].flags;
 		else return 0;
 	}
+
 
 };
 

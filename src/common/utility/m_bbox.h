@@ -29,10 +29,6 @@
 
 #include <float.h>
 #include "vectors.h"
-#include "m_fixed.h"
-
-struct line_t;
-struct node_t;
 
 enum
 {
@@ -94,10 +90,6 @@ public:
 	inline double Bottom () const { return m_Box[BOXBOTTOM]; }
 	inline double Left () const { return m_Box[BOXLEFT]; }
 	inline double Right () const { return m_Box[BOXRIGHT]; }
-
-	bool inRange(const line_t *ld) const;
-
-	int BoxOnLineSide (const line_t *ld) const;
 
 	void Set(int index, double value) {m_Box[index] = value;}
 

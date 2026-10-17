@@ -46,4 +46,5 @@ void InitSkyMap(FLevelLocals *Level);
 void R_InitSkyMap();
 void R_UpdateSky (uint64_t mstime);
 
+
 #endif //__R_SKY_H__

@@ -24,7 +24,7 @@
 
 #include "polyrenderer/drawers/poly_triangle.h"
 #include "matrix.h"
-#include "r_data/models/models.h"
+#include "models.h"
 
 void PolyRenderModel(PolyRenderThread *thread, const Mat4f &worldToClip, uint32_t stencilValue, float x, float y, float z, FSpriteModelFrame *smf, AActor *actor);
 void PolyRenderHUDModel(PolyRenderThread *thread, const Mat4f &worldToClip, uint32_t stencilValue, DPSprite *psp, float ofsx, float ofsy);

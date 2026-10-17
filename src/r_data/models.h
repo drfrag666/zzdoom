@@ -25,10 +25,11 @@
 
 #include "tarray.h"
 #include "matrix.h"
+#include "m_bbox.h"
 #include "actor.h"
 #include "dobject.h"
 #include "p_pspr.h"
-#include "r_data/voxels.h"
+#include "voxels.h"
 #include "info.h"
 #include "g_levellocals.h"
 

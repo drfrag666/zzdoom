@@ -22,7 +22,7 @@
 
 #include "filesystem.h"
 #include "cmdlib.h"
-#include "r_data/models/models_ue1.h"
+#include "model_ue1.h"
 
 float unpackuvert( uint32_t n, int c )
 {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "models.h"
 
 class FUE1Model : public FModel

@@ -38,9 +38,9 @@
 #include "d_player.h"
 #include "g_levellocals.h"
 #include "r_utility.h"
-#include "r_data/models/models.h"
-#include "r_data/models/models_ue1.h"
-#include "r_data/models/models_obj.h"
+#include "models.h"
+#include "model_ue1.h"
+#include "model_obj.h"
 #include "i_time.h"
 
 #ifdef _MSC_VER

@@ -22,7 +22,7 @@
 
 #include "filesystem.h"
 #include "cmdlib.h"
-#include "r_data/models/models.h"
+#include "models.h"
 
 #define MAX_QPATH 64
 

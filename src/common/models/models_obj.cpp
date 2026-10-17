@@ -20,7 +20,7 @@
 //--------------------------------------------------------------------------
 
 #include "filesystem.h"
-#include "r_data/models/models_obj.h"
+#include "model_obj.h"
 
 /**
  * Load an OBJ model
