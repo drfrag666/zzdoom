@@ -341,10 +341,6 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 
 		FixXMoves();
 	}
-
-	if (!noTranslate) LoadTranslations();
-
-
 }
 
 //==========================================================================

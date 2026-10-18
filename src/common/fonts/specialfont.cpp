@@ -127,10 +127,6 @@ FSpecialFont::FSpecialFont (const char *name, int first, int count, FTexture **l
 	{
 		ActiveColors = 0;
 	}
-	else
-	{
-		LoadTranslations();
-	}
 }
 
 //==========================================================================

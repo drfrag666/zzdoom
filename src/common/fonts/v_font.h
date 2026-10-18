@@ -82,6 +82,7 @@ extern int NumTextColors;
 
 class FFont
 {
+	friend void V_LoadTranslations();
 public:
 
 	enum EFontType
@@ -154,7 +155,7 @@ protected:
 	int TranslationType = 0;
 	int Displacement = 0;
 	char Cursor;
-	bool noTranslate;
+	bool noTranslate = false;
 	bool MixedCase = false;
 	struct CharData
 	{
@@ -162,7 +163,7 @@ protected:
 		int XMove;
 	};
 	TArray<CharData> Chars;
-	int ActiveColors;
+	int ActiveColors = -1;
 	TArray<FRemapTable> Ranges;
 	uint8_t PatchRemap[256];
 
@@ -188,6 +189,7 @@ EColorRange V_ParseFontColor (const uint8_t *&color_value, int normalcolor, int 
 FFont *V_GetFont(const char *fontname, const char *fontlumpname = nullptr);
 void V_InitFontColors();
 char* CleanseString(char* str);
+void V_LoadTranslations();
 
 
 #endif //__V_FONT_H__

@@ -256,7 +256,6 @@ void FSingleLumpFont::LoadFON1 (int lump, const uint8_t *data)
 	for(unsigned int i = 0;i < 0x2123;++i)
 		Chars[i].Pic = nullptr;
 
-	LoadTranslations();
 	LastChar = 0x2122;
 
 	// Move the Windows-1252 characters to their proper place.
@@ -376,8 +375,6 @@ void FSingleLumpFont::LoadFON2 (int lump, const uint8_t *data)
 			I_Error ("Overflow decompressing char %d (%c) of %s", i, i, FontName.GetChars());
 		}
 	}
-
-	LoadTranslations();
 }
 
 //==========================================================================
@@ -510,7 +507,6 @@ void FSingleLumpFont::LoadBMF(int lump, const uint8_t *data)
 	}
 
 	FixXMoves();
-	LoadTranslations();
 }
 
 //==========================================================================

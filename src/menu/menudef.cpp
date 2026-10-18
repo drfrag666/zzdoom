@@ -1116,7 +1116,7 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 
 			if (totalheight < 190 || AllEpisodes.Size() == 1)
 			{
-				int newtop = (200 - totalheight + topy) / 2;
+				int newtop = (200 - totalheight) / 2;
 				int topdelta = newtop - topy;
 				if (topdelta < 0)
 				{
@@ -1124,7 +1124,8 @@ void M_StartupEpisodeMenu(FNewGameStartup *gs)
 					{
 						ld->mItems[i]->OffsetPositionY(topdelta);
 					}
-					posy -= topdelta;
+					posy += topdelta;
+					ld->mYpos += topdelta;
 				}
 
 				if (!isOld) ld->mSelectedItem = ld->mItems.Size();
@@ -1713,7 +1714,7 @@ void M_StartupSkillMenu(FNewGameStartup *gs)
 
 				if (totalheight < 190 || MenuSkills.Size() == 1)
 				{
-					int newtop = (200 - totalheight + topy) / 2;
+					int newtop = (200 - totalheight) / 2;
 					int topdelta = newtop - topy;
 					if (topdelta < 0)
 					{
@@ -1721,7 +1722,7 @@ void M_StartupSkillMenu(FNewGameStartup *gs)
 						{
 							ld->mItems[i]->OffsetPositionY(topdelta);
 						}
-						ld->mYpos = y = posy - topdelta;
+						ld->mYpos = y = posy + topdelta;
 					}
 				}
 				else

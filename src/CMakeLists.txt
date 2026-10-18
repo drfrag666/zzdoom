@@ -882,7 +882,6 @@ set (PCH_SOURCES
 	intermission/intermission.cpp
 	intermission/intermission_parse.cpp
 	r_data/colormaps.cpp
-	r_data/cycler.cpp
 	r_data/a_dynlightdata.cpp
 	r_data/r_translate.cpp
 	r_data/sprites.cpp
@@ -928,6 +927,7 @@ set (PCH_SOURCES
 	common/textures/texture.cpp
 	common/textures/texturemanager.cpp
 	common/textures/skyboxtexture.cpp
+	common/textures/v_collection.cpp
 	common/textures/formats/automaptexture.cpp
 	common/textures/formats/buildtexture.cpp
 	common/textures/formats/canvastexture.cpp
@@ -975,7 +975,6 @@ set (PCH_SOURCES
 	common/utility/s_playlist.cpp
 	common/utility/zstrformat.cpp
 	common/utility/name.cpp
-	common/utility/m_bbox.cpp
 	common/thirdparty/md5.cpp
  	common/thirdparty/superfasthash.cpp
 	common/filesystem/filesystem.cpp
@@ -990,6 +989,7 @@ set (PCH_SOURCES
 	common/filesystem/file_whres.cpp
 	common/filesystem/file_directory.cpp
 	common/filesystem/resourcefile.cpp
+	common/engine/cycler.cpp
 	common/engine/stats.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
@@ -1028,7 +1028,6 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_extract.cpp
 	utility/nodebuilder/nodebuild_gl.cpp
 	utility/nodebuilder/nodebuild_utility.cpp
-	utility/v_collection.cpp
 )
 
 if( ${HAVE_VM_JIT} )
