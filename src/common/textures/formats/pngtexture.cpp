@@ -4,6 +4,7 @@
 **
 **---------------------------------------------------------------------------
 ** Copyright 2004-2007 Randy Heit
+** Copyright 2005-2019 Christoph Oelckers
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -254,7 +255,7 @@ FPNGTexture::FPNGTexture (FileReader &lump, int lumpnum, const FString &filename
 			break;
 
 		case MAKE_ID('P','L','T','E'):
-			PaletteSize = MIN<int> (len / 3, 256);
+			PaletteSize = std::min<int> (len / 3, 256);
 			StartOfPalette = (uint32_t)lump.Tell();
 			lump.Read (p.pngpal, PaletteSize * 3);
 			if (PaletteSize * 3 != (int)len)

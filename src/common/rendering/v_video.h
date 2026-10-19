@@ -44,6 +44,26 @@
 #include "c_cvars.h"
 #include "v_colortables.h"
 
+struct DoubleRect
+{
+	double left, top;
+	double width, height;
+
+
+	void Offset(double xofs, double yofs)
+	{
+		left += xofs;
+		top += yofs;
+	}
+	void Scale(double xfac, double yfac)
+	{
+		left *= xfac;
+		width *= xfac;
+		top *= yfac;
+		height *= yfac;
+	}
+};
+
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;
 extern int DisplayWidth, DisplayHeight, DisplayBits;
@@ -143,6 +163,7 @@ enum
 	DTA_Monospace,			// Fonts only: Use a fixed distance between characters.
 
 	DTA_FullscreenEx,
+	DTA_FullscreenScale,
 };
 
 enum EMonospacing : int
@@ -207,7 +228,7 @@ struct DrawParms
 	int maxstrlen;
 	bool fortext;
 	bool virtBottom;
-	uint8_t fsscalemode;
+	int8_t fsscalemode;
 	double srcx, srcy;
 	double srcwidth, srcheight;
 };
@@ -336,6 +357,7 @@ public:
 	void SetClipRect(int x, int y, int w, int h);
 	void GetClipRect(int *x, int *y, int *w, int *h);
 
+	void CalcFullscreenScale(double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);

@@ -796,9 +796,6 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 	cmd->ucmd.sidemove <<= 8;
 }
 
-//[Graf Zahl] This really helps if the mouse update rate can't be increased!
-CVAR (Bool,		smooth_mouse,	false,	CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
-
 static int LookAdjust(int look)
 {
 	look <<= 16;
@@ -856,7 +853,7 @@ void G_AddViewPitch (int look, bool mouse)
 	}
 	if (look != 0)
 	{
-		LocalKeyboardTurner = (!mouse || smooth_mouse);
+		LocalKeyboardTurner = !mouse;
 	}
 }
 
@@ -871,7 +868,7 @@ void G_AddViewAngle (int yaw, bool mouse)
 	LocalViewAngle -= yaw;
 	if (yaw != 0)
 	{
-		LocalKeyboardTurner = (!mouse || smooth_mouse);
+		LocalKeyboardTurner = !mouse;
 	}
 }
 

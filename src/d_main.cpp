@@ -3512,79 +3512,6 @@ UNSAFE_CCMD(restart)
 	wantToRestart = true;
 }
 
-//==========================================================================
-//
-// FStartupScreen Constructor
-//
-//==========================================================================
-
-FStartupScreen::FStartupScreen(int max_progress)
-{
-	MaxPos = max_progress;
-	CurPos = 0;
-	NotchPos = 0;
-}
-
-//==========================================================================
-//
-// FStartupScreen Destructor
-//
-//==========================================================================
-
-FStartupScreen::~FStartupScreen()
-{
-}
-
-//==========================================================================
-//
-// FStartupScreen :: LoadingStatus
-//
-// Used by Heretic for the Loading Status "window."
-//
-//==========================================================================
-
-void FStartupScreen::LoadingStatus(const char *message, int colors)
-{
-}
-
-//==========================================================================
-//
-// FStartupScreen :: AppendStatusLine
-//
-// Used by Heretic for the "status line" at the bottom of the screen.
-//
-//==========================================================================
-
-void FStartupScreen::AppendStatusLine(const char *status)
-{
-}
-
-//===========================================================================
-//
-// DeleteStartupScreen
-//
-// Makes sure the startup screen has been deleted before quitting.
-//
-//===========================================================================
-
-void DeleteStartupScreen()
-{
-	if (StartScreen != nullptr)
-	{
-		delete StartScreen;
-		StartScreen = nullptr;
-	}
-}
-
-
-
-void FStartupScreen::Progress(void) {}
-void FStartupScreen::NetInit(char const *,int) {}
-void FStartupScreen::NetProgress(int) {}
-void FStartupScreen::NetMessage(char const *,...) {}
-void FStartupScreen::NetDone(void) {}
-bool FStartupScreen::NetLoop(bool (*)(void *),void *) { return false; }
-
 DEFINE_FIELD_X(InputEventData, event_t, type)
 DEFINE_FIELD_X(InputEventData, event_t, subtype)
 DEFINE_FIELD_X(InputEventData, event_t, data1)
@@ -3600,20 +3527,47 @@ CUSTOM_CVAR(Int, I_FriendlyWindowTitle, 1, CVAR_GLOBALCONFIG|CVAR_ARCHIVE|CVAR_N
 
 void I_UpdateWindowTitle()
 {
+	FString titlestr;
 	switch (I_FriendlyWindowTitle)
 	{
 	case 1:
 		if (level.LevelName && level.LevelName.GetChars()[0])
 		{
-			FString titlestr;
 			titlestr.Format("%s - %s", level.LevelName.GetChars(), GameStartupInfo.Name.GetChars());
-			I_SetWindowTitle(titlestr.GetChars());
 			break;
 		}
 	case 2:
-		I_SetWindowTitle(GameStartupInfo.Name.GetChars());
+		titlestr = GameStartupInfo.Name;
 		break;
 	default:
 		I_SetWindowTitle(NULL);
+		return;
 	}
+
+	// Strip out any color escape sequences before setting a window title
+	TArray<char> copy(titlestr.Len() + 1);
+	const char* srcp = titlestr;
+	char* dstp = copy.Data();
+
+	while (*srcp != 0)
+	{
+
+		if (*srcp != TEXTCOLOR_ESCAPE)
+		{
+			*dstp++ = *srcp++;
+		}
+		else if (srcp[1] == '[')
+		{
+			srcp += 2;
+			while (*srcp != ']' && *srcp != 0) srcp++;
+			if (*srcp == ']') srcp++;
+		}
+		else
+		{
+			if (srcp[1] != 0) srcp += 2;
+			else break;
+		}
+	}
+	*dstp = 0;
+	I_SetWindowTitle(copy.Data());
 }

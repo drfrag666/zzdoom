@@ -173,6 +173,11 @@ else()
 		endif()
 	endif()
 
+	option( NO_SDL_JOYSTICK "Disable SDL joystick support (Not applicable to Windows)" OFF )
+	if ( NO_SDL_JOYSTICK )
+		add_definitions( -DNO_SDL_JOYSTICK=1 )
+	endif ( NO_SDL_JOYSTICK )
+
 	if( NO_GTK )
 		add_definitions( -DNO_GTK )
 	elseif( DYN_GTK )
@@ -369,6 +374,10 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC" )
 		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC" )
+	endif()
+	
+	if(${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -ljemalloc")
 	endif()
 
 	if( NOT NO_STRIP )
@@ -757,7 +766,6 @@ set (PCH_SOURCES
 	hu_scores.cpp
 	i_net.cpp
 	m_cheat.cpp
-	m_joy.cpp
 	m_misc.cpp
 	playsim/p_acs.cpp
 	playsim/p_actionfunctions.cpp
@@ -997,6 +1005,7 @@ set (PCH_SOURCES
 	common/engine/renderstyle.cpp
 	common/engine/v_colortables.cpp
 	common/engine/serializer.cpp
+	common/engine/m_joy.cpp
 	common/engine/m_random.cpp
 	common/objects/dobject.cpp
 	common/objects/dobjgc.cpp

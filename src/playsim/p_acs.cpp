@@ -10037,9 +10037,14 @@ scriptwait:
 				else
 				{
 					auto iterator = Level->GetActorIterator(tag);
-					AActor *actor;
+					TArray<AActor*> actorsToMorph;
 
-					while ( (actor = iterator.Next ()) )
+					while (AActor *actor = iterator.Next())
+					{
+						actorsToMorph.Push(actor);
+					}
+
+					for (AActor *actor : actorsToMorph)
 					{
 						changes += P_MorphActor(activator, actor, playerclass, monsterclass, duration, style, morphflash, unmorphflash);
 					}
@@ -10063,9 +10068,14 @@ scriptwait:
 				else
 				{
 					auto iterator = Level->GetActorIterator(tag);
-					AActor *actor;
+					TArray<AActor*> actorsToUnmorph;
 
-					while ( (actor = iterator.Next ()) )
+					while (AActor *actor = iterator.Next())
+					{
+						actorsToUnmorph.Push(actor);
+					}
+
+					for (AActor *actor : actorsToUnmorph)
 					{
 						changes += P_UnmorphActor(activator, actor, 0, force);
 					}
