@@ -360,6 +360,10 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 	OP(SS):
 		ASSERTA(a); ASSERTS(B); ASSERTKD(C);
 		GETADDR(PA,KC,X_WRITE_NIL);
+#ifdef _DEBUG
+		// Should never happen, if it does it indicates a compiler side problem.
+		if (((FString*)ptr)->GetChars() == nullptr) ThrowAbortException(X_OTHER, "Uninitialized string");
+#endif
 		*(FString *)ptr = reg.s[B];
 		NEXTOP;
 	OP(SS_R):
@@ -802,7 +806,7 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 	OP(BOUND):
 		if (reg.d[a] >= BC)
 		{
-			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", BC, reg.d[a]);
+			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Size = %u, current index = %u\n", BC, reg.d[a]);
 			return 0;
 		}
 		else if (reg.d[a] < 0)
@@ -816,7 +820,7 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 		ASSERTKD(BC);
 		if (reg.d[a] >= konstd[BC])
 		{
-			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", konstd[BC], reg.d[a]);
+			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Size = %u, current index = %u\n", konstd[BC], reg.d[a]);
 			return 0;
 		}
 		else if (reg.d[a] < 0)
@@ -830,7 +834,7 @@ static int ExecScriptFunc(VMFrameStack *stack, VMReturn *ret, int numret)
 		ASSERTD(B);
 		if (reg.d[a] >= reg.d[B])
 		{
-			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Max.index = %u, current index = %u\n", reg.d[B], reg.d[a]);
+			ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "Size = %u, current index = %u\n", reg.d[B], reg.d[a]);
 			return 0;
 		}
 		else if (reg.d[a] < 0)

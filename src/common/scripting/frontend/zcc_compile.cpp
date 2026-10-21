@@ -650,6 +650,7 @@ int ZCCCompiler::Compile()
 	CreateStructTypes();
 	CompileAllConstants();
 	CompileAllFields();
+	InitDefaults();
 	InitFunctions();
 	return FScriptPosition::ErrorCounter;
 }
@@ -1475,8 +1476,12 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 		auto name = field->Names;
 		do
 		{
-			if (fieldtype->Size == 0 && !(varflags & VARF_Native))	// Size not known yet.
+			if ((fieldtype->Size == 0 || !fieldtype->SizeKnown) && !(varflags & VARF_Native))	// Size not known yet.
 			{
+				if (type != nullptr)
+				{
+					type->SizeKnown = false;
+				}
 				return false;
 			}
 
@@ -1531,6 +1536,10 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 
 							if (OutNamespace->Symbols.AddSymbol(f) == nullptr)
 							{ // name is already in use
+								if (type != nullptr)
+								{
+									type->SizeKnown = false;
+								}
 								f->Destroy();
 								return false;
 							}
@@ -1564,6 +1573,12 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 		} while (name != field->Names);
 		Fields.Delete(0);
 	}
+
+	if (type != nullptr)
+	{
+		type->SizeKnown = Fields.Size() == 0;
+	}
+
 	return Fields.Size() == 0;
 }
 
@@ -1941,6 +1956,18 @@ void ZCCCompiler::SetImplicitArgs(TArray<PType*>* args, TArray<uint32_t>* argfla
 	}
 }
 
+
+void ZCCCompiler::InitDefaults()
+{
+	for (auto c : Classes)
+	{
+		if (c->ClassType()->ParentClass)
+		{
+			auto ti = c->ClassType();
+			ti->InitializeDefaults();
+		}
+	}
+}
 
 //==========================================================================
 //

@@ -790,7 +790,6 @@ set (PCH_SOURCES
 	rendering/r_utility.cpp
 	rendering/r_sky.cpp
 	sound/s_advsound.cpp
-	sound/s_reverbedit.cpp
 	sound/s_sndseq.cpp
 	sound/s_doomsound.cpp
 	serializer_doom.cpp
@@ -866,13 +865,14 @@ set (PCH_SOURCES
 	maploader/compatibility.cpp
 	maploader/postprocessor.cpp
 	menu/joystickmenu.cpp
-	menu/loadsavemenu.cpp
 	menu/menu.cpp
-	menu/menudef.cpp
 	menu/messagebox.cpp
 	menu/optionmenu.cpp
+	menu/doommenu.cpp
+	menu/loadsavemenu.cpp
 	menu/playermenu.cpp
 	menu/videomenu.cpp
+	menu/menudef.cpp
 	gamedata/textures/animations.cpp
 	gamedata/textures/anim_switches.cpp
 	gamedata/p_xlat.cpp
@@ -916,6 +916,7 @@ set (PCH_SOURCES
 	common/audio/sound/oalsound.cpp
 	common/audio/sound/s_environment.cpp
 	common/audio/sound/s_sound.cpp
+	common/audio/sound/s_reverbedit.cpp
 	common/audio/music/music_midi_base.cpp
 	common/audio/music/music.cpp
 	common/audio/music/i_music.cpp
@@ -998,6 +999,7 @@ set (PCH_SOURCES
 	common/filesystem/file_directory.cpp
 	common/filesystem/resourcefile.cpp
 	common/engine/cycler.cpp
+	common/engine/d_event.cpp
 	common/engine/stats.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
@@ -1022,7 +1024,7 @@ set (PCH_SOURCES
 	common/scripting/vm/vmexec.cpp
 	common/scripting/vm/vmframe.cpp
 	common/scripting/interface/stringformat.cpp
-	#common/scripting/interface/exports.cpp
+	common/scripting/interface/vmnatives.cpp
 	common/scripting/frontend/ast.cpp
 	common/scripting/frontend/zcc_compile.cpp
 	common/scripting/frontend/zcc_parser.cpp
@@ -1141,6 +1143,7 @@ include_directories( .
 	rendering/2d
 	r_data
 	sound
+	menu
 	sound/backend
 	xlat
 	utility
@@ -1205,6 +1208,15 @@ add_custom_command(TARGET zdoom POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different
 	${CMAKE_SOURCE_DIR}/fm_banks/gs-by-papiezak-and-sneakernets.wopn $<TARGET_FILE_DIR:zdoom>/fm_banks/gs-by-papiezak-and-sneakernets.wopn
 )
+
+if( WIN32 )
+	set( INSTALL_SOUNDFONT_PATH . CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
+else()
+	set( INSTALL_SOUNDFONT_PATH share/games/doom CACHE STRING "Directory where soundfonts and WOPL/WOPN banks will be placed during install." )
+endif()
+install(DIRECTORY "${PROJECT_BINARY_DIR}/soundfonts" "${PROJECT_BINARY_DIR}/fm_banks"
+		DESTINATION ${INSTALL_SOUNDFONT_PATH}
+		COMPONENT "Soundfont resources")
 
 if( CMAKE_COMPILER_IS_GNUCXX )
 	# GCC misoptimizes this file

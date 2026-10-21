@@ -62,6 +62,7 @@ struct wbstartstruct_t
 	FTextureID	LName0;
 	FTextureID	LName1;
 
+	int			totalkills;
 	int			maxkills;
 	int			maxitems;
 	int			maxsecret;

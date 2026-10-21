@@ -69,7 +69,7 @@
 #include "cmdlib.h"
 #include "d_net.h"
 #include "d_netinf.h"
-#include "menu/menu.h"
+#include "doommenu.h"
 #include "a_sharedglobal.h"
 #include "r_utility.h"
 #include "p_spec.h"
@@ -113,6 +113,8 @@ extern uint8_t globalfreeze, globalchangefreeze;
 void G_VerifySkill();
 void I_UpdateWindowTitle();
 
+
+CVAR(Int, sv_alwaystally, 0, CVAR_SERVERINFO)
 
 static FRandom pr_classchoice ("RandomPlayerClassChoice");
 
@@ -542,6 +544,26 @@ static bool		unloading;
 
 EXTERN_CVAR(Bool, sv_singleplayerrespawn)
 
+bool FLevelLocals::ShouldDoIntermission(cluster_info_t* nextcluster, cluster_info_t* thiscluster)
+{
+	// this is here to remove some code duplication
+
+	if ((sv_alwaystally == 2) || (deathmatch))
+		return true;
+
+	if ((sv_alwaystally == 0) && (flags & LEVEL_NOINTERMISSION))
+		return false;
+
+	bool withinSameCluster = (nextcluster == thiscluster);
+	bool clusterIsHub = (thiscluster->flags & CLUSTER_HUB);
+	bool hubNoIntermission = !(thiscluster->flags & CLUSTER_ALLOWINTERMISSION);
+
+	if (withinSameCluster && clusterIsHub && hubNoIntermission)
+		return false;
+
+	return true;
+}
+
 void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags, int nextSkill)
 {
 	if (!isPrimaryLevel()) return;	// only the primary level may exit.
@@ -644,7 +666,7 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 
 	if (thiscluster && (thiscluster->flags & CLUSTER_HUB))
 	{
-		if ((flags & LEVEL_NOINTERMISSION) || ((nextcluster == thiscluster) && !(thiscluster->flags & CLUSTER_ALLOWINTERMISSION)))
+		if (!ShouldDoIntermission(nextcluster, thiscluster))
 			NoWipe = 35;
 		D_DrawIcon = "TELEICON";
 	}
@@ -872,6 +894,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 	nextlevel = wminfo.next;
 
 	wminfo.next_ep = FindLevelInfo (wminfo.next)->cluster - 1;
+	wminfo.totalkills = killed_monsters;
 	wminfo.maxkills = total_monsters;
 	wminfo.maxitems = total_items;
 	wminfo.maxsecret = total_secrets;
@@ -960,9 +983,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 
 	finishstate = mode;
 
-	if (!deathmatch &&
-		((flags & LEVEL_NOINTERMISSION) ||
-		((nextcluster == thiscluster) && (thiscluster->flags & CLUSTER_HUB) && !(thiscluster->flags & CLUSTER_ALLOWINTERMISSION))))
+	if (!ShouldDoIntermission(nextcluster, thiscluster))
 	{
 		WorldDone ();
 		return false;
@@ -1379,6 +1400,7 @@ void FLevelLocals::StartTravel ()
 			if (Players[i]->health > 0)
 			{
 				pawn->UnlinkFromWorld (nullptr);
+				pawn->BlockingLine = nullptr;
 				int tid = pawn->tid;	// Save TID
 				pawn->SetTID(0);
 				pawn->tid = tid;		// Restore TID (but no longer linked into the hash chain)
@@ -1502,6 +1524,7 @@ int FLevelLocals::FinishTravel ()
 		{
 			inv->ChangeStatNum (STAT_INVENTORY);
 			inv->LinkToWorld (nullptr);
+			P_FindFloorCeiling(inv, FFCF_ONLYSPAWNPOS);
 
 			IFVIRTUALPTRNAME(inv, NAME_Inventory, Travelled)
 			{
@@ -1512,6 +1535,12 @@ int FLevelLocals::FinishTravel ()
 		if (ib_compatflags & BCOMPATF_RESETPLAYERSPEED)
 		{
 			pawn->Speed = pawn->GetDefault()->Speed;
+		}
+
+		IFVIRTUALPTRNAME(pawn, NAME_PlayerPawn, Travelled)
+		{
+			VMValue params[1] = { pawn };
+			VMCall(func, params, 1, nullptr, 0);
 		}
 		// [ZZ] we probably don't want to fire any scripts before all players are in, especially with runNow = true.
 		pawns[pawnsnum++] = pawn;

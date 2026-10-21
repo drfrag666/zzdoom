@@ -72,7 +72,7 @@
 #include "r_utility.h"
 #include "swrenderer/r_renderer.h"
 #include "g_game.h"
-#include "menu/menu.h"
+#include "menu.h"
 #include "vm.h"
 #include "r_videoscale.h"
 #include "i_time.h"

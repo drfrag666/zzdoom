@@ -362,36 +362,12 @@ FTexture *FTextureManager::FindTexture(const char *texname, ETextureType usetype
 
 //==========================================================================
 //
-// Defines how graphics substitution is handled.
-// 0: Never replace a text-containing graphic with a font-based text.
-// 1: Always replace, regardless of any missing information. Useful for testing the substitution without providing full data.
-// 2: Only replace for non-default texts, i.e. if some language redefines the string's content, use it instead of the graphic. Never replace a localized graphic.
-// 3: Only replace if the string is not the default and the graphic comes from the IWAD. Never replace a localized graphic.
-// 4: Like 1, but lets localized graphics pass.
-//
-// The default is 3, which only replaces known content with non-default texts.
-//
-//==========================================================================
-
-CUSTOM_CVAR(Int, cl_gfxlocalization, 3, CVAR_ARCHIVE)
-{
-	if (self < 0 || self > 4) self = 0;
-}
-
-//==========================================================================
-//
 // FTextureManager :: OkForLocalization
 //
 //==========================================================================
 
-bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitute)
+bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitute, int locmode)
 {
-	if (!texnum.isValid()) return false;
-	
-	// First the unconditional settings, 0='never' and 1='always'.
-	if (cl_gfxlocalization == 1 || gameinfo.forcetextinmenus) return false;
-	if (cl_gfxlocalization == 0 || gameinfo.forcenogfxsubstitution) return true;
-	
 	uint32_t langtable = 0;
 	if (*substitute == '$') substitute = GStrings.GetString(substitute+1, &langtable);
 	else return true;	// String literals from the source data should never override graphics from the same definition.
@@ -402,30 +378,17 @@ bool FTextureManager::OkForLocalization(FTextureID texnum, const char *substitut
 	if (localizedTex != texnum.GetIndex()) return true;	// Do not substitute a localized variant of the graphics patch.
 	
 	// For mode 4 we are done now.
-	if (cl_gfxlocalization == 4) return false;
+	if (locmode == 4) return false;
 	
 	// Mode 2 and 3 must reject any text replacement from the default language tables.
 	if ((langtable & MAKE_ID(255,0,0,0)) == MAKE_ID('*', 0, 0, 0)) return true;	// Do not substitute if the string comes from the default table.
-	if (cl_gfxlocalization == 2) return false;
+	if (locmode == 2) return false;
 	
 	// Mode 3 must also reject substitutions for non-IWAD content.
 	int file = fileSystem.GetFileContainer(Textures[texnum.GetIndex()].Texture->SourceLump);
 	if (file > fileSystem.GetMaxIwadNum()) return true;
 
 	return false;
-}
-
-static int OkForLocalization(int index, const FString &substitute)
-{
-	return TexMan.OkForLocalization(FSetTextureID(index), substitute);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, OkForLocalization, OkForLocalization)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(name);
-	PARAM_STRING(subst)
-	ACTION_RETURN_INT(OkForLocalization(name, subst));
 }
 
 //==========================================================================
@@ -1548,146 +1511,6 @@ void FTextureManager::AdjustSpriteOffsets()
 			}
 		}
 	}
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-DEFINE_ACTION_FUNCTION(_TexMan, GetName)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	auto tex = TexMan.ByIndex(texid);
-	FString retval;
-
-	if (tex != nullptr)
-	{
-		if (tex->Name.IsNotEmpty()) retval = tex->Name;
-		else
-		{
-			// Textures for full path names do not have their own name, they merely link to the source lump.
-			auto lump = tex->GetSourceLump();
-			if (fileSystem.GetLinkedTexture(lump) == tex)
-				retval = fileSystem.GetFileFullName(lump);
-		}
-	}
-	ACTION_RETURN_STRING(retval);
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-static int GetTextureSize(int texid, int *py)
-{
-	auto tex = TexMan.ByIndex(texid);
-	int x, y;
-	if (tex != nullptr)
-	{
-		x = tex->GetWidth();
-		y = tex->GetHeight();
-	}
-	else x = y = -1;
-	if (py) *py = y;
-	return x;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, GetSize, GetTextureSize)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	int x, y;
-	x = GetTextureSize(texid, &y);
-	if (numret > 0) ret[0].SetInt(x);
-	if (numret > 1) ret[1].SetInt(y);
-	return MIN(numret, 2);
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-static void GetScaledSize(int texid, DVector2 *pvec)
-{
-	auto tex = TexMan.ByIndex(texid);
-	double x, y;
-	if (tex != nullptr)
-	{
-		x = tex->GetScaledWidthDouble();
-		y = tex->GetScaledHeightDouble();
-	}
-	else x = y = -1;
-	if (pvec)
-	{
-		pvec->X = x;
-		pvec->Y = y;
-	}
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, GetScaledSize, GetScaledSize)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	DVector2 vec;
-	GetScaledSize(texid, &vec);
-	ACTION_RETURN_VEC2(vec);
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-static void GetScaledOffset(int texid, DVector2 *pvec)
-{
-	auto tex = TexMan.ByIndex(texid);
-	double x, y;
-	if (tex != nullptr)
-	{
-		x = tex->GetScaledLeftOffsetDouble(0);
-		y = tex->GetScaledTopOffsetDouble(0);
-	}
-	else x = y = -1;
-	if (pvec)
-	{
-		pvec->X = x;
-		pvec->Y = y;
-	}
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, GetScaledOffset, GetScaledOffset)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	DVector2 vec;
-	GetScaledOffset(texid, &vec);
-	ACTION_RETURN_VEC2(vec);
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-static int CheckRealHeight(int texid)
-{
-	auto tex = TexMan.ByIndex(texid);
-	if (tex != nullptr) return tex->CheckRealHeight();
-	else return -1;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(_TexMan, CheckRealHeight, CheckRealHeight)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(texid);
-	ACTION_RETURN_INT(CheckRealHeight(texid));
 }
 
 //==========================================================================

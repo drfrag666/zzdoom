@@ -34,7 +34,7 @@
 #include "m_argv.h"
 #include "v_video.h"
 
-#include "d_event.h"
+#include "d_eventbase.h"
 #include "d_gui.h"
 #include "c_buttons.h"
 #include "c_console.h"
@@ -226,14 +226,10 @@ static void MouseRead ()
 	}
 
 	SDL_GetRelativeMouseState (&x, &y);
-	if (!m_noprescale)
-	{
-		x *= 3;
-		y *= 2;
-	}
+
 	if (x | y)
 	{
-		PostMouseMove (x, -y);
+		PostMouseMove (m_noprescale ? x : x << 2, -y);
 	}
 }
 

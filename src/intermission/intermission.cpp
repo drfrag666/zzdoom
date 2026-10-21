@@ -46,12 +46,13 @@
 #include "r_state.h"
 #include "c_bind.h"
 #include "p_conversation.h"
-#include "menu/menu.h"
+#include "menu.h"
 #include "d_net.h"
 #include "g_levellocals.h"
 #include "utf8.h"
 #include "templates.h"
 #include "s_music.h"
+#include "doommenu.h"
 
 FIntermissionDescriptorList IntermissionDescriptors;
 
@@ -1023,7 +1024,11 @@ void F_StartIntermission(FIntermissionDescriptor *desc, bool deleteme, uint8_t s
 void F_StartIntermission(FName seq, uint8_t state)
 {
 	FIntermissionDescriptor **pdesc = IntermissionDescriptors.CheckKey(seq);
-	if (pdesc != NULL)
+	if (pdesc == nullptr)
+	{
+		gameaction = ga_nothing;
+	}
+	else
 	{
 		F_StartIntermission(*pdesc, false, state);
 	}

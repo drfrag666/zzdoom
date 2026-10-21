@@ -60,8 +60,9 @@
 #include "templates.h"
 #include "c_dispatch.h"
 #include "r_utility.h"
-#include "menu/menu.h"
+#include "menu.h"
 #include "stats.h"
+#include "printf.h"
 
 // MACROS ------------------------------------------------------------------
 

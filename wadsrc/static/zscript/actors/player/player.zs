@@ -1634,6 +1634,8 @@ class PlayerPawn : Actor
 			if (player.hazardcount)
 			{
 				player.hazardcount--;
+				if (player.hazardinterval <= 0)
+					player.hazardinterval = 32; // repair invalid hazardinterval
 				if (!(Level.maptime % player.hazardinterval) && player.hazardcount > 16*TICRATE)
 					player.mo.DamageMobj (NULL, NULL, 5, player.hazardtype);
 			}
@@ -2429,6 +2431,18 @@ class PlayerPawn : Actor
 		else player.air_finished = int.max;
 		return wasdrowning;
 	}
+
+	//===========================================================================
+	//
+	// PlayerPawn :: Travelled
+	//
+	// Called when the player moves to another map, in case it needs to do
+	// special reinitialization. This is called after all carried items have
+	// executed their respective Travelled() virtuals too.
+	//
+	//===========================================================================
+
+	virtual void Travelled() {}
 
 	//----------------------------------------------------------------------------
 	//

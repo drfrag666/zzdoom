@@ -38,7 +38,7 @@
 #include "c_console.h"
 #include "c_cvars.h"
 #include "c_dispatch.h"
-#include "d_event.h"
+#include "d_eventbase.h"
 #include "c_buttons.h"
 #include "d_gui.h"
 #include "dikeys.h"
@@ -480,8 +480,7 @@ void ProcessMouseMoveInGame(NSEvent* theEvent)
 
 	if (!m_noprescale)
 	{
-		x *= 3;
-		y *= 2;
+		x <<= 2;
 	}
 
 	event_t event = {};

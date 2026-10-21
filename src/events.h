@@ -3,7 +3,6 @@
 #include "dobject.h"
 #include "serializer.h"
 #include "d_event.h"
-#include "d_gui.h"
 #include "sbar.h"
 
 class DStaticEventHandler;
@@ -98,6 +97,7 @@ public:
 
 	//
 	void PlayerEntered(int num, bool fromhub);
+	void PlayerSpawned(int num);
 	void PlayerRespawned(int num);
 	void PlayerDied(int num);
 	void PlayerDisconnected(int num);
@@ -173,39 +173,6 @@ struct FPlayerEvent
 	int PlayerNumber;
 	// we set this to true if level was reopened (RETURN scripts)
 	bool IsReturn;
-};
-
-struct FUiEvent
-{
-	// this essentially translates event_t UI events to ZScript.
-	EGUIEvent Type;
-	// for keys/chars/whatever
-	FString KeyString;
-	int KeyChar;
-	// for mouse
-	int MouseX;
-	int MouseY;
-	// global (?)
-	bool IsShift;
-	bool IsCtrl;
-	bool IsAlt;
-
-	FUiEvent(const event_t *ev);
-};
-
-struct FInputEvent
-{
-	// this translates regular event_t events to ZScript (not UI, UI events are sent via DUiEvent and only if requested!)
-	EGenericEvent Type = EV_None;
-	// for keys
-	int KeyScan;
-	FString KeyString;
-	int KeyChar;
-	// for mouse
-	int MouseX;
-	int MouseY;
-
-	FInputEvent(const event_t *ev);
 };
 
 struct FConsoleEvent 
@@ -297,6 +264,8 @@ struct EventManager
 	void RenderUnderlay(EHudState state);
 	// this executes when a player enters the level (once). PlayerEnter+inhub = RETURN
 	void PlayerEntered(int num, bool fromhub);
+	// this executes at the same time as ENTER scripts
+	void PlayerSpawned(int num);
 	// this executes when a player respawns. includes resurrect cheat.
 	void PlayerRespawned(int num);
 	// this executes when a player dies (partially duplicating worldthingdied, but whatever)

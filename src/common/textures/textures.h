@@ -510,7 +510,7 @@ public:
 	}
 	
 	FTexture *FindTexture(const char *texname, ETextureType usetype = ETextureType::MiscPatch, BITFIELD flags = TEXMAN_TryAny);
-	bool OkForLocalization(FTextureID texnum, const char *substitute);
+	bool OkForLocalization(FTextureID texnum, const char *substitute, int locmode);
 
 	// Get texture with translation
 	FTexture *operator() (FTextureID texnum, bool withpalcheck=false)

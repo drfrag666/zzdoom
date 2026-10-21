@@ -12,6 +12,7 @@ struct SystemCallbacks
 	void (*CrashInfo)(char* buffer, size_t bufflen, const char* lfstr);
 	void (*PlayStartupSound)(const char* name);
 	FString(*GetLocationDescription)();
+	void (*MenuDim)();
 };
 
 extern SystemCallbacks *sysCallbacks;
@@ -25,3 +26,4 @@ struct WadStuff
 
 extern FString endoomName;
 extern bool batchrun;
+extern float menuBlurAmount;

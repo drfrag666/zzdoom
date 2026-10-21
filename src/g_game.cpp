@@ -38,7 +38,7 @@
 #include "intermission/intermission.h"
 #include "m_argv.h"
 #include "m_misc.h"
-#include "menu/menu.h"
+#include "menu.h"
 #include "m_crc32.h"
 #include "p_saveg.h"
 #include "p_tick.h"
@@ -82,6 +82,7 @@
 #include "events.h"
 #include "c_buttons.h"
 #include "d_buttons.h"
+#include "doommenu.h"
 
 
 static FRandom pr_dmspawn ("DMSpawn");
@@ -161,6 +162,8 @@ bool			playeringame[MAXPLAYERS];
 
 int 			consoleplayer;			// player taking events
 int 			gametic;
+
+time_t 			epochoffset = 0;		// epoch start in seconds (0 = January 1st, 1970)
 
 CVAR(Bool, demo_compress, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG);
 FString			newdemoname;
@@ -964,6 +967,10 @@ CCMD (spycancel)
 //
 bool G_Responder (event_t *ev)
 {
+	// check events
+	if (ev->type != EV_Mouse && primaryLevel->localEventManager->Responder(ev)) // [ZZ] ZScript ate the event // update 07.03.17: mouse events are handled directly
+		return true;
+	
 	// any other key pops up menu if in demos
 	// [RH] But only if the key isn't bound to a "special" command
 	if (gameaction == ga_nothing && 
@@ -1805,8 +1812,11 @@ void G_DoPlayerPop(int playernum)
 
 void G_ScreenShot (const char *filename)
 {
-	shotfile = filename;
-	gameaction = ga_screenshot;
+	if (gameaction == ga_nothing)
+	{
+		shotfile = filename;
+		gameaction = ga_screenshot;
+	}
 }
 
 
@@ -3066,7 +3076,10 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, MakeScreenShot)
 
 void G_MakeAutoSave()
 {
-	gameaction = ga_autosave;
+	if (gameaction == ga_nothing)
+	{
+		gameaction = ga_autosave;
+	}
 }
 
 DEFINE_ACTION_FUNCTION(FLevelLocals, MakeAutoSave)
@@ -3080,7 +3093,6 @@ DEFINE_GLOBAL(playeringame)
 DEFINE_GLOBAL(PlayerClasses)
 DEFINE_GLOBAL_NAMED(Skins, PlayerSkins)
 DEFINE_GLOBAL(consoleplayer)
-DEFINE_GLOBAL_NAMED(PClass::AllClasses, AllClasses)
 DEFINE_GLOBAL_NAMED(PClassActor::AllActorClasses, AllActorClasses)
 DEFINE_GLOBAL_NAMED(primaryLevel, Level)
 DEFINE_GLOBAL(validcount)
