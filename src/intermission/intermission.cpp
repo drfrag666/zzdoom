@@ -254,12 +254,9 @@ void DIntermissionScreen::Drawer ()
 		if (CheckOverlay(i))
 			screen->DrawTexture (TexMan[mOverlays[i].mPic], mOverlays[i].x, mOverlays[i].y, DTA_320x200, true, TAG_DONE);
 	}
-	if (mSubtitle)
-	{
-		const char *sub = mSubtitle.GetChars();
-		if (sub && *sub == '$') sub = GStrings[sub + 1];
-		if (sub) DrawFullscreenSubtitle(sub);
-	}
+	const char *sub = mSubtitle.GetChars();
+	if (sub && *sub == '$') sub = GStrings[sub + 1];
+	if (sub) DrawFullscreenSubtitle(sub);
 }
 
 void DIntermissionScreen::OnDestroy()

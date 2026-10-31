@@ -764,7 +764,6 @@ set (PCH_SOURCES
 	gameconfigfile.cpp
 	gitinfo.cpp
 	hu_scores.cpp
-	i_net.cpp
 	m_cheat.cpp
 	m_misc.cpp
 	playsim/p_acs.cpp
@@ -984,6 +983,7 @@ set (PCH_SOURCES
 	common/utility/s_playlist.cpp
 	common/utility/zstrformat.cpp
 	common/utility/name.cpp
+	common/thirdparty/base64.cpp
 	common/thirdparty/md5.cpp
  	common/thirdparty/superfasthash.cpp
 	common/filesystem/filesystem.cpp
@@ -996,6 +996,7 @@ set (PCH_SOURCES
 	common/filesystem/file_zip.cpp
 	common/filesystem/file_pak.cpp
 	common/filesystem/file_whres.cpp
+	common/filesystem/file_ssi.cpp
 	common/filesystem/file_directory.cpp
 	common/filesystem/resourcefile.cpp
 	common/engine/cycler.cpp
@@ -1003,6 +1004,7 @@ set (PCH_SOURCES
 	common/engine/stats.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
+	common/engine/i_net.cpp
 	common/engine/i_interface.cpp
 	common/engine/renderstyle.cpp
 	common/engine/v_colortables.cpp

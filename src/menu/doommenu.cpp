@@ -497,6 +497,11 @@ CCMD(reset2saved)
 	R_SetViewSize (screenblocks);
 }
 
+CCMD(resetb2defaults)
+{
+	C_SetDefaultBindings ();
+}
+
 
 //=============================================================================
 //
@@ -919,7 +924,7 @@ void M_CreateGameMenus()
 	}
 }
 
-DEFINE_ACTION_FUNCTION(DMenu, UpdateColorsets)
+DEFINE_ACTION_FUNCTION(DNewPlayerMenu, UpdateColorsets)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(playerClass, FPlayerClass);
@@ -945,7 +950,7 @@ DEFINE_ACTION_FUNCTION(DMenu, UpdateColorsets)
 	return 0;
 }
 
-DEFINE_ACTION_FUNCTION(DMenu, UpdateSkinOptions)
+DEFINE_ACTION_FUNCTION(DNewPlayerMenu, UpdateSkinOptions)
 {
 	PARAM_PROLOGUE;
 	PARAM_POINTER(playerClass, FPlayerClass);

@@ -81,7 +81,6 @@ extern FString	savegamefile;
 
 extern short consistancy[MAXPLAYERS][BACKUPTICS];
 
-doomcom_t		doomcom;
 #define netbuffer (doomcom.data)
 
 enum { NET_PeerToPeer, NET_PacketServer };

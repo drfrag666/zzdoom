@@ -187,7 +187,6 @@ extern int BorderNeedRefresh;
 extern int BorderTopRefresh;
 
 
-EXTERN_CVAR (Float, mouse_sensitivity)
 //?
 // debug flag to cancel adaptiveness
 extern	bool	 		singletics; 	

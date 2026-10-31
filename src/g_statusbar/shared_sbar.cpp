@@ -1213,7 +1213,7 @@ void DBaseStatusBar::DrawLog ()
 	if (text.IsNotEmpty())
 	{
 		// This uses the same scaling as regular HUD messages
-		auto scale = active_con_scaletext(generic_ui || log_vgafont);
+		auto scale = active_con_scaletext(generic_ui); // generic_ui || log_vgafont
 		hudwidth = SCREENWIDTH / scale;
 		hudheight = SCREENHEIGHT / scale;
 		FFont *font = (generic_ui || log_vgafont)? NewSmallFont : SmallFont;

@@ -54,8 +54,6 @@ bool GUICapture;
 static bool NativeMouse = true;
 
 CVAR (Bool,  use_mouse,				true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
-CVAR (Bool,  m_noprescale,			false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
-CVAR (Bool,	 m_filter,				false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 CVAR (Bool, i_soundinbackground, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 
@@ -168,7 +166,7 @@ static const TMap<SDL_Scancode, uint8_t> KeyScanToDIK(InitKeyScanMap());
 
 static void I_CheckGUICapture ()
 {
-	bool wantCapt = sysCallbacks && sysCallbacks->WantGuiCapture && sysCallbacks->WantGuiCapture();
+	bool wantCapt = sysCallbacks.WantGuiCapture && sysCallbacks.WantGuiCapture();
 
 	if (wantCapt != GUICapture)
 	{
@@ -192,30 +190,6 @@ void I_ReleaseMouseCapture()
 	SDL_SetRelativeMouseMode (SDL_FALSE);
 }
 
-static void PostMouseMove (int x, int y)
-{
-	static int lastx = 0, lasty = 0;
-	event_t ev = { 0,0,0,0,0,0,0 };
-	
-	if (m_filter)
-	{
-		ev.x = (x + lastx) / 2;
-		ev.y = (y + lasty) / 2;
-	}
-	else
-	{
-		ev.x = x;
-		ev.y = y;
-	}
-	lastx = x;
-	lasty = y;
-	if (ev.x | ev.y)
-	{
-		ev.type = EV_Mouse;
-		D_PostEvent (&ev);
-	}
-}
-
 static void MouseRead ()
 {
 	int x, y;
@@ -226,21 +200,17 @@ static void MouseRead ()
 	}
 
 	SDL_GetRelativeMouseState (&x, &y);
-
-	if (x | y)
-	{
-		PostMouseMove (m_noprescale ? x : x << 2, -y);
-	}
+	PostMouseMove (x, y);
 }
 
 static void I_CheckNativeMouse ()
 {
 	bool focus = SDL_GetKeyboardFocus() != NULL;
 	
-	bool captureModeInGame = sysCallbacks && sysCallbacks->CaptureModeInGame && sysCallbacks->CaptureModeInGame();
+	bool captureModeInGame = sysCallbacks.CaptureModeInGame && sysCallbacks.CaptureModeInGame();
 	bool wantNative = !focus || (!use_mouse || GUICapture || !captureModeInGame);
 
-	if (!wantNative && sysCallbacks && sysCallbacks->WantNativeMouse && sysCallbacks->WantNativeMouse())
+	if (!wantNative && sysCallbacks.WantNativeMouse && sysCallbacks.WantNativeMouse())
 		wantNative = true;
 
 	if (wantNative != NativeMouse)
@@ -506,13 +476,10 @@ void MessagePump (const SDL_Event &sev)
 
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:
-		if (!GUICapture)
-		{
-			event.type = sev.type == SDL_JOYBUTTONDOWN ? EV_KeyDown : EV_KeyUp;
-			event.data1 = KEY_FIRSTJOYBUTTON + sev.jbutton.button;
-			if(event.data1 != 0)
-				D_PostEvent(&event);
-		}
+		event.type = sev.type == SDL_JOYBUTTONDOWN ? EV_KeyDown : EV_KeyUp;
+		event.data1 = KEY_FIRSTJOYBUTTON + sev.jbutton.button;
+		if(event.data1 != 0)
+			D_PostEvent(&event);
 		break;
 	}
 }

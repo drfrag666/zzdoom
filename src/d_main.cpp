@@ -330,7 +330,6 @@ void D_GrabCVarDefaults()
 			}
 
 			CurrentFindCVar = sc.String;
-
 			if (lumpversion < 220)
 			{
 				CurrentFindCVar.ToLower();
@@ -349,9 +348,19 @@ void D_GrabCVarDefaults()
 				if (strcmp(CurrentFindCVar, "cd_drive") == 0)
 					break;
 			}
+			if (lumpversion < 221)
+			{
+				// removed cvar
+				// this one doesn't matter as much, since it depended on platform-specific values,
+				// and is something the user should change anyhow, so, let's just throw this value
+				// out.
+				if (strcmp(CurrentFindCVar, "mouse_sensitivity") == 0)
+					break;
+				if (strcmp(CurrentFindCVar, "m_noprescale") == 0)
+					break;
+			}
 
 			var = FindCVar(CurrentFindCVar, NULL);
-
 			if (var != NULL)
 			{
 				if (var->GetFlags() & CVAR_ARCHIVE)
@@ -375,47 +384,9 @@ void D_GrabCVarDefaults()
 	}
 }
 
-//==========================================================================
-//
-// D_PostEvent
-//
-// Called by the I/O functions when input is detected.
-//
-//==========================================================================
 
-void D_PostEvent (const event_t *ev)
-{
-	// Do not post duplicate consecutive EV_DeviceChange events.
-	if (ev->type == EV_DeviceChange && events[eventhead].type == EV_DeviceChange)
-	{
-		return;
-	}
-	events[eventhead] = *ev;
-	if (ev->type == EV_Mouse && menuactive == MENU_Off && ConsoleState != c_down && ConsoleState != c_falling && !primaryLevel->localEventManager->Responder(ev) && !paused)
-	{
-		if (buttonMap.ButtonDown(Button_Mlook) || freelook)
-		{
-			int look = int(ev->y * m_pitch * mouse_sensitivity * 16.0);
-			if (invertmouse)
-				look = -look;
-			G_AddViewPitch (look, true);
-			events[eventhead].y = 0;
-		}
-		if (!buttonMap.ButtonDown(Button_Strafe) && !lookstrafe)
-		{
-			int turn = int(ev->x * m_yaw * mouse_sensitivity * 8.0);
-			if (invertmousex)
-				turn = -turn;
-			G_AddViewAngle (turn, true);
-			events[eventhead].x = 0;
-		}
-		if ((events[eventhead].x | events[eventhead].y) == 0)
-		{
-			return;
-		}
-	}
-	eventhead = (eventhead+1)&(MAXEVENTS-1);
-}
+CVAR(Float, m_pitch, 1.f, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)		// Mouse speeds
+CVAR(Float, m_yaw, 1.f, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
 
 //==========================================================================
 //
@@ -2565,6 +2536,33 @@ bool System_WantLeftButton()
 	return (gamestate == GS_DEMOSCREEN || gamestate == GS_TITLELEVEL);
 }
 
+static bool System_DispatchEvent(event_t* ev)
+{
+	if (ev->type == EV_Mouse && menuactive == MENU_Off && ConsoleState != c_down && ConsoleState != c_falling && !primaryLevel->localEventManager->Responder(ev) && !paused)
+	{
+		if (buttonMap.ButtonDown(Button_Mlook) || freelook)
+		{
+			int look = int(ev->y * m_pitch * 16.0);
+			if (invertmouse) look = -look;
+			G_AddViewPitch(look, true);
+			ev->y = 0;
+		}
+		if (!buttonMap.ButtonDown(Button_Strafe) && !lookstrafe)
+		{
+			int turn = int(ev->x * m_yaw * 8.0);
+			if (invertmousex)
+				turn = -turn;
+			G_AddViewAngle(turn, true);
+			ev->x = 0;
+		}
+		if (ev->x == 0 && ev->y == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool System_NetGame()
 {
 	return netgame;
@@ -2603,6 +2601,11 @@ FString System_GetLocationDescription()
 	return FStringf("Map %s: \"%s\",\nx = %1.4f, y = %1.4f, z = %1.4f, angle = %1.4f, pitch = %1.4f\n",
 		Level->MapName.GetChars(), Level->LevelName.GetChars(), vp.Pos.X, vp.Pos.Y, vp.Pos.Z, vp.Angles.Yaw.Degrees, vp.Angles.Pitch.Degrees);
 
+}
+
+FString System_GetPlayerName(int node)
+{
+	return players[node].userinfo.GetName();
 }
 
 //==========================================================================
@@ -2658,6 +2661,41 @@ void System_CrashInfo(char* buffer, size_t bufflen, const char *lfstr)
 }
 
 void System_M_Dim();
+
+static void FixUnityStatusBar()
+{
+	if (gameinfo.flags & GI_FIXUNITYSBAR)
+	{
+		FTexture* sbartex = TexMan.FindTexture("stbar", ETextureType::MiscPatch);
+
+		// texture not found, we're not here to operate on a non-existent texture so just exit
+		if (!sbartex)
+			return;
+
+		// where is this texture located? if it's not in an iwad, then exit
+		int lumpnum = sbartex->GetSourceLump();
+		if (lumpnum >= 0 && lumpnum < fileSystem.GetNumEntries())
+		{
+			int wadno = fileSystem.GetFileContainer(lumpnum);
+			if (!(wadno >= fileSystem.GetIwadNum() && wadno <= fileSystem.GetMaxIwadNum()))
+				return;
+		}
+
+		// only adjust offsets if none already exist
+		if (sbartex->GetWidth() > 320 &&
+			!sbartex->GetLeftOffset(0) && !sbartex->GetTopOffset(0))
+		{
+			sbartex->SetOffsets(0, (sbartex->GetWidth() - 320) / 2, 0);
+			sbartex->SetOffsets(1, (sbartex->GetWidth() - 320) / 2, 0);
+		}
+	}
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
 
 static void Doom_CastSpriteIDToString(FString* a, unsigned int b) 
 { 
@@ -2718,8 +2756,7 @@ static int D_DoomMain_Internal (void)
 	};
 	GStrings.SetCallbacks(&stblcb);
 
-	static SystemCallbacks syscb =
-	{
+	sysCallbacks = {
 		System_WantGuiCapture,
 		System_WantLeftButton,
 		System_NetGame,
@@ -2729,8 +2766,10 @@ static int D_DoomMain_Internal (void)
 		System_PlayStartupSound,
 		System_GetLocationDescription,
 		System_M_Dim,
+		System_GetPlayerName,
+		System_DispatchEvent,
 	};
-	sysCallbacks = &syscb;
+
 	
 	std::set_new_handler(NewFailure);
 	const char *batchout = Args->CheckValue("-errorlog");
@@ -2798,16 +2837,6 @@ static int D_DoomMain_Internal (void)
 	GameConfig->DoAutoloadSetup(iwad_man);
 
 	// reinit from here
-
-	ConsoleCallbacks cb = {
-		D_UserInfoChanged,
-		D_SendServerInfoChange,
-		D_SendServerFlagChange,
-		G_GetUserCVar,
-		[]() { return gamestate != GS_FULLCONSOLE && gamestate != GS_STARTUP; }
-	};
-
-	C_InstallHandlers(&cb);
 
 	do
 	{
@@ -3036,6 +3065,8 @@ static int D_DoomMain_Internal (void)
 		if (!batchrun) Printf ("Texman.Init: Init texture manager.\n");
 		TexMan.Init();
 		C_InitConback();
+
+		FixUnityStatusBar();
 
 		StartScreen->Progress();
 		V_InitFonts();
@@ -3292,6 +3323,17 @@ int GameMain()
 {
 	int ret = 0;
 	GameTicRate = TICRATE;
+
+	ConsoleCallbacks cb = {
+		D_UserInfoChanged,
+		D_SendServerInfoChange,
+		D_SendServerFlagChange,
+		G_GetUserCVar,
+		[]() { return gamestate != GS_FULLCONSOLE && gamestate != GS_STARTUP; }
+	};
+
+	C_InstallHandlers(&cb);
+
 	try
 	{
 		ret = D_DoomMain_Internal();
@@ -3459,7 +3501,7 @@ void I_UpdateWindowTitle()
 	switch (I_FriendlyWindowTitle)
 	{
 	case 1:
-		if (level.LevelName && level.LevelName.GetChars()[0])
+		if (level.LevelName.IsNotEmpty())
 		{
 			titlestr.Format("%s - %s", level.LevelName.GetChars(), GameStartupInfo.Name.GetChars());
 			break;

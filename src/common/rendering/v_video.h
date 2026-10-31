@@ -64,6 +64,34 @@ struct DoubleRect
 	}
 };
 
+struct IntRect
+{
+	int left, top;
+	int width, height;
+
+
+	void Offset(int xofs, int yofs)
+	{
+		left += xofs;
+		top += yofs;
+	}
+
+	void AddToRect(int x, int y)
+	{
+		if (x < left)
+			left = x;
+		if (x > left + width)
+			width = x - left;
+
+		if (y < top)
+			top = y;
+		if (y > top + height)
+			height = y - top;
+	}
+
+
+};
+
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;
 extern int DisplayWidth, DisplayHeight, DisplayBits;
@@ -87,11 +115,38 @@ enum FTextureFormat : uint32_t;
 //     uint32_t ti_Data;
 // };
 
-#define TAG_DONE	(0)  /* Used to indicate the end of the Tag list */
-#define TAG_END		(0)  /* Ditto									*/
-						 /* list pointed to in ti_Data 				*/
+enum tags : uint32_t
+{
+	TAG_DONE = (0),  /* Used to indicate the end of the Tag list */
+	TAG_END = (0),  /* Ditto									*/
+	/* list pointed to in ti_Data 				*/
 
-#define TAG_USER	((uint32_t)(1u<<30))
+	TAG_USER = ((uint32_t)(1u << 30))
+};
+
+enum
+{
+	FSMode_None = 0,
+	FSMode_ScaleToFit = 1,
+	FSMode_ScaleToFill = 2,
+	FSMode_ScaleToFit43 = 3,
+	FSMode_ScaleToScreen = 4,
+	FSMode_ScaleToFit43Top = 5,
+	FSMode_ScaleToFit43Bottom = 6,
+	FSMode_ScaleToHeight = 7,
+
+
+	FSMode_Max,
+	
+	// These all use ScaleToFit43, their purpose is to cut down on verbosity because they imply the virtual screen size.
+	FSMode_Predefined = 1000,
+	FSMode_Fit320x200 = 1000,
+	FSMode_Fit320x240,
+	FSMode_Fit640x400,
+	FSMode_Fit640x480,
+	FSMode_Fit320x200Top,
+	FSMode_Predefined_Max,
+};
 
 enum
 {
@@ -158,12 +213,27 @@ enum
 	DTA_SrcWidth,
 	DTA_SrcHeight,
 	DTA_LegacyRenderStyle,	// takes an old-style STYLE_* constant instead of an FRenderStyle
-
+	DTA_Burn,				// activates the burn shader for this element
 	DTA_Spacing,			// Strings only: Additional spacing between characters
 	DTA_Monospace,			// Fonts only: Use a fixed distance between characters.
 
 	DTA_FullscreenEx,
 	DTA_FullscreenScale,
+	DTA_ScaleX,
+	DTA_ScaleY,
+
+	DTA_ViewportX,			// Defines the viewport on the screen that should be rendered to.
+	DTA_ViewportY,
+	DTA_ViewportWidth,
+	DTA_ViewportHeight,
+	DTA_CenterOffsetRel,	// Apply texture offsets relative to center, instead of top left. This is standard alignment for Build's 2D content.
+	DTA_TopLeft,			// always align to top left. Added to have a boolean condition for this alignment.
+	DTA_Pin,				// Pin a non-widescreen image to the left/right edge of the screen.
+	DTA_Rotate,
+	DTA_FlipOffsets,		// Flips offsets when using DTA_FlipX and DTA_FlipY, this cannot be automatic due to unexpected behavior with unoffsetted graphics.
+	DTA_Indexed,			// Use an indexed texture combined with the given translation.
+	DTA_CleanTop,			// Like DTA_Clean but aligns to the top of the screen instead of the center.
+
 };
 
 enum EMonospacing : int
@@ -228,9 +298,15 @@ struct DrawParms
 	int maxstrlen;
 	bool fortext;
 	bool virtBottom;
+	bool burn;
+	bool flipoffsets;
+	bool indexed;
 	int8_t fsscalemode;
 	double srcx, srcy;
 	double srcwidth, srcheight;
+	double patchscalex, patchscaley;
+	double rotateangle;
+	IntRect viewport;
 };
 
 struct Va_List
@@ -357,7 +433,7 @@ public:
 	void SetClipRect(int x, int y, int w, int h);
 	void GetClipRect(int *x, int *y, int *w, int *h);
 
-	void CalcFullscreenScale(double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;
+	void CalcFullscreenScale(DrawParms *parms, double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);

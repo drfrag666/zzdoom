@@ -271,6 +271,12 @@ public:
 	double GetScaledLeftOffsetDouble(int adjusted) { return _LeftOffset[adjusted] / Scale.X; }
 	double GetScaledTopOffsetDouble(int adjusted) { return _TopOffset[adjusted] / Scale.Y; }
 
+	void SetOffsets(int which, int x, int y)
+	{
+		_LeftOffset[which] = x;
+		_TopOffset[which] = y;
+	}
+
 	// Interfaces for the different renderers. Everything that needs to check renderer-dependent offsets
 	// should use these, so that if changes are needed, this is the only place to edit.
 

@@ -1118,7 +1118,7 @@ LONG WINAPI CatchAllExceptions (LPEXCEPTION_POINTERS info)
 	char *custominfo = (char *)HeapAlloc (GetProcessHeap(), 0, 16384);
 
 	CrashPointers = *info;
-	if (sysCallbacks && sysCallbacks->CrashInfo && custominfo) sysCallbacks->CrashInfo(custominfo, 16384, "\r\n");
+	if (sysCallbacks.CrashInfo && custominfo) sysCallbacks.CrashInfo(custominfo, 16384, "\r\n");
 	CreateCrashLog (custominfo, (DWORD)strlen(custominfo), ConWindow);
 
 	// If the main thread crashed, then make it clean up after itself.

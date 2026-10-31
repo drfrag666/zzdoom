@@ -293,6 +293,7 @@ void AActor::Serialize(FSerializer &arc)
 		A("meleestate", MeleeState)
 		A("missilestate", MissileState)
 		A("maxdropoffheight", MaxDropOffHeight)
+		A("maxslopesteepness", MaxSlopeSteepness)
 		A("maxstepheight", MaxStepHeight)
 		A("bounceflags", BounceFlags)
 		A("bouncefactor", bouncefactor)
@@ -999,10 +1000,10 @@ bool AActor::IsInsideVisibleAngles() const
 	if (p == nullptr || p->camera == nullptr)
 		return true;
 	
-	DAngle anglestart = VisibleStartAngle;
-	DAngle angleend = VisibleEndAngle;
-	DAngle pitchstart = VisibleStartPitch;
-	DAngle pitchend = VisibleEndPitch;
+	DAngle anglestart = VisibleStartAngle.Degrees;
+	DAngle angleend = VisibleEndAngle.Degrees;
+	DAngle pitchstart = VisibleStartPitch.Degrees;
+	DAngle pitchend = VisibleEndPitch.Degrees;
 	
 	if (anglestart > angleend)
 	{
@@ -2345,7 +2346,7 @@ void P_MonsterFallingDamage (AActor *mo)
 	int damage;
 	double vel;
 
-	if (!(mo->Level->flags2 & LEVEL2_MONSTERFALLINGDAMAGE))
+	if (!(mo->Level->flags2 & LEVEL2_MONSTERFALLINGDAMAGE) && !(mo->flags8 & MF8_FALLDAMAGE))
 		return;
 	if (mo->floorsector->Flags & SECF_NOFALLINGDAMAGE)
 		return;
@@ -2359,7 +2360,7 @@ void P_MonsterFallingDamage (AActor *mo)
 	{
 		damage = int((vel - 23)*6);
 	}
-	damage = TELEFRAG_DAMAGE;	// always kill 'em
+	if (!(mo->Level->flags3 & LEVEL3_PROPERMONSTERFALLINGDAMAGE)) damage = TELEFRAG_DAMAGE;
 	P_DamageMobj (mo, NULL, NULL, damage, NAME_Falling);
 }
 
@@ -3909,18 +3910,18 @@ void AActor::Tick ()
 			// Check 3D floors as well
 			floorplane = P_FindFloorPlane(floorsector, PosAtZ(floorz));
 
-			if (floorplane.fC() < STEEPSLOPE &&
+			if (floorplane.fC() < MaxSlopeSteepness &&
 				floorplane.ZatPoint (PosRelative(floorsector)) <= floorz)
 			{
 				const msecnode_t *node;
 				bool dopush = true;
 
-				if (floorplane.fC() > STEEPSLOPE*2/3)
+				if (floorplane.fC() > MaxSlopeSteepness*2/3)
 				{
 					for (node = touching_sectorlist; node; node = node->m_tnext)
 					{
 						const sector_t *sec = node->m_sector;
-						if (sec->floorplane.fC() >= STEEPSLOPE)
+						if (sec->floorplane.fC() >= MaxSlopeSteepness)
 						{
 							if (floorplane.ZatPoint(PosRelative(node->m_sector)) >= Z() - MaxStepHeight)
 							{
@@ -6435,7 +6436,7 @@ bool P_CheckMissileSpawn (AActor* th, double maxdist)
 			}
 			else
 			{
-				P_ExplodeMissile (th, NULL, th->BlockingMobj);
+				P_ExplodeMissile (th, th->BlockingLine, th->BlockingMobj);
 			}
 			return false;
 		}

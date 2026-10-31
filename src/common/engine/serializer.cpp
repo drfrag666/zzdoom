@@ -53,6 +53,7 @@
 #include "s_soundinternal.h"
 #include "engineerrors.h"
 #include "textures.h"
+#include "base64.h"
 
 extern DObject *WP_NOCHANGE;
 bool save_full = false;	// for testing. Should be removed afterward.
@@ -674,6 +675,7 @@ void FSerializer::ReadObjects(bool hubtravel)
 			{
 				Printf(TEXTCOLOR_RED "Failed to restore all objects in savegame\n");
 				mErrors++;
+				mObjectErrors++;
 			}
 		}
 		catch(...)
@@ -769,6 +771,31 @@ error:
 	buff.mMethod = METHOD_STORED;
 	return buff;
 }
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+FSerializer &FSerializer::SerializeMemory(const char *key, void* mem, size_t length)
+{
+	if (isWriting())
+	{
+		auto array = base64_encode((const uint8_t*)mem, length);
+		AddString(key, (const char*)array.Data());
+	}
+	else
+	{
+		auto cp = GetString(key);
+		if (key)
+		{
+			base64_decode(mem, length, cp);
+		}
+	}
+	return *this;
+}
+
 
 //==========================================================================
 //

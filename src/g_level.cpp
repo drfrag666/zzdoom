@@ -91,6 +91,7 @@
 #include "i_time.h"
 #include "p_maputl.h"
 #include "s_music.h"
+#include "fragglescript/t_script.h"
 
 void STAT_StartNewGame(const char *lev);
 void STAT_ChangeLevel(const char *newl, FLevelLocals *Level);
@@ -130,7 +131,7 @@ extern FString BackupSaveName;
 bool savegamerestore;
 int finishstate = FINISH_NoHub;
 
-extern int mousex, mousey;
+extern float mousex, mousey;
 extern bool sendpause, sendsave, sendturn180, SendLand;
 
 void *statcopy;					// for statistics driver
@@ -336,6 +337,8 @@ void G_NewInit ()
 		pawn->flags |= MF_NOSECTOR | MF_NOBLOCKMAP;
 		pawn->Destroy();
 	}
+	if (primaryLevel->FraggleScriptThinker) primaryLevel->FraggleScriptThinker->Destroy();
+	primaryLevel->FraggleScriptThinker = nullptr;
 
 	G_ClearSnapshots ();
 	netgame = false;
@@ -618,7 +621,8 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 		nextlevel = levelname;
 	}
 
-	NextSkill = (unsigned)nextSkill < AllSkills.Size() ? nextSkill : -1;
+	if (nextSkill != -1)
+		NextSkill = (unsigned)nextSkill < AllSkills.Size() ? nextSkill : -1;
 
 	if (inflags & CHANGELEVEL_NOINTERMISSION)
 	{
@@ -702,6 +706,17 @@ void FLevelLocals::ChangeLevel(const char *levelname, int position, int inflags,
 	::nextlevel = nextlevel;
 }
 
+DEFINE_ACTION_FUNCTION(FLevelLocals, ChangeLevel)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_STRING(levelname);
+	PARAM_INT(position);
+	PARAM_INT(inflags);
+	PARAM_INT(nextSkill);
+	self->ChangeLevel(levelname, position, inflags, nextSkill);
+	return 0;
+}
+
 //==========================================================================
 //
 //
@@ -713,7 +728,7 @@ const char *FLevelLocals::GetSecretExitMap()
 
 	if (NextSecretMap.Len() > 0)
 	{
-		if (P_CheckMapData(NextSecretMap))
+		if (NextSecretMap.Compare("enDSeQ", 6) == 0 || P_CheckMapData(NextSecretMap))
 		{
 			nextmap = NextSecretMap;
 		}
@@ -797,13 +812,14 @@ void G_DoCompleted (void)
 	// Close the conversation menu if open.
 	P_FreeStrifeConversations ();
 
+	bool playinter = primaryLevel->DoCompleted(nextlevel, staticWmInfo);
 	S_StopAllChannels();
 	for (auto Level : AllLevels())
 	{
 		SN_StopAllSequences(Level);
 	}
 
-	if (primaryLevel->DoCompleted(nextlevel, staticWmInfo))
+	if (playinter)
 	{
 		gamestate = GS_INTERMISSION;
 		viewactive = false;
@@ -1400,7 +1416,6 @@ void FLevelLocals::StartTravel ()
 			if (Players[i]->health > 0)
 			{
 				pawn->UnlinkFromWorld (nullptr);
-				pawn->BlockingLine = nullptr;
 				int tid = pawn->tid;	// Save TID
 				pawn->SetTID(0);
 				pawn->tid = tid;		// Restore TID (but no longer linked into the hash chain)
@@ -1689,8 +1704,7 @@ FString CalcMapName (int episode, int level)
 	}
 	else
 	{
-		lumpname = "";
-		lumpname << 'E' << ('0' + episode) << 'M' << ('0' + level);
+		lumpname.Format("E%01dM%01d", episode, level);
 	}
 	return lumpname;
 }
