@@ -79,6 +79,7 @@
 #include "cmdlib.h"
 #include "v_text.h"
 #include "gi.h"
+#include "a_dynlight.h"
 #include "gameconfigfile.h"
 #include "sbar.h"
 #include "decallib.h"
