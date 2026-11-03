@@ -33,7 +33,7 @@
 **
 */
 
-#include "menu/menu.h"
+#include "menu.h"
 #include "sbar.h"
 #include "hardware.h"
 #include "vm.h"

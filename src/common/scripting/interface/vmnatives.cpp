@@ -46,6 +46,7 @@
 #include "gstrings.h"
 #include "printf.h"
 #include "s_music.h"
+#include "i_interface.h"
 
 
 //==========================================================================
@@ -643,3 +644,5 @@ DEFINE_FIELD_X(MusPlayingInfo, MusPlayingInfo, loop);
 
 DEFINE_GLOBAL_NAMED(PClass::AllClasses, AllClasses)
 DEFINE_GLOBAL(Bindings)
+DEFINE_GLOBAL(AutomapBindings)
+DEFINE_GLOBAL(generic_ui)

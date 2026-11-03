@@ -100,6 +100,8 @@ float			BackbuttonAlpha;
 static bool		MenuEnabled = true;
 DMenu			*CurrentMenu;
 int				MenuTime;
+DObject*		menuCustomizer;
+
 
 void M_InitVideoModes();
 extern PClass *DefaultListMenuClass;
@@ -189,7 +191,9 @@ void M_MarkMenus()
 		GC::Mark(pair->Value);
 	}
 	GC::Mark(CurrentMenu);
+	GC::Mark(menuCustomizer);
 }
+
 //============================================================================
 //
 // DMenu base class
@@ -851,134 +855,6 @@ void M_EnableMenu (bool on)
 //
 //=============================================================================
 
-CCMD (menu_main)
-{
-	M_StartControlPanel(true);
-	M_SetMenu(NAME_Mainmenu, -1);
-}
-
-CCMD (menu_load)
-{	// F3
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Loadgamemenu, -1);
-}
-
-CCMD (menu_save)
-{	// F2
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Savegamemenu, -1);
-}
-
-CCMD (menu_help)
-{	// F1
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Readthismenu, -1);
-}
-
-CCMD (menu_game)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Playerclassmenu, -1);	// The playerclass menu is the first in the 'start game' chain
-}
-								
-CCMD (menu_options)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Optionsmenu, -1);
-}
-
-CCMD (menu_player)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_Playermenu, -1);
-}
-
-CCMD (menu_messages)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_MessageOptions, -1);
-}
-
-CCMD (menu_automap)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_AutomapOptions, -1);
-}
-
-CCMD (menu_scoreboard)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_ScoreboardOptions, -1);
-}
-
-CCMD (menu_mapcolors)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_MapColorMenu, -1);
-}
-
-CCMD (menu_keys)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_CustomizeControls, -1);
-}
-
-CCMD (menu_gameplay)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_GameplayOptions, -1);
-}
-
-CCMD (menu_compatibility)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_CompatibilityOptions, -1);
-}
-
-CCMD (menu_mouse)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_MouseOptions, -1);
-}
-
-CCMD (menu_joystick)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_JoystickOptions, -1);
-}
-
-CCMD (menu_sound)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_SoundOptions, -1);
-}
-
-CCMD (menu_advsound)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_AdvSoundOptions, -1);
-}
-
-CCMD (menu_modreplayer)
-{
-	M_StartControlPanel(true);
-	M_SetMenu(NAME_ModReplayerOptions, -1);
-}
-
-CCMD (menu_display)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_VideoOptions, -1);
-}
-
-CCMD (menu_video)
-{
-	M_StartControlPanel (true);
-	M_SetMenu(NAME_VideoModeMenu, -1);
-}
-
-
-
 CCMD (openmenu)
 {
 	if (argv.argc() < 2)
@@ -1023,6 +899,8 @@ CCMD(undocolorpic)
 DEFINE_GLOBAL(menuactive)
 DEFINE_GLOBAL(BackbuttonTime)
 DEFINE_GLOBAL(BackbuttonAlpha)
+DEFINE_GLOBAL(GameTicRate)
+DEFINE_GLOBAL(menuCustomizer)
 
 DEFINE_FIELD(DMenu, mParentMenu)
 DEFINE_FIELD(DMenu, mMouseCapture);

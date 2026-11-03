@@ -863,15 +863,10 @@ set (PCH_SOURCES
 	maploader/polyobjects.cpp
 	maploader/compatibility.cpp
 	maploader/postprocessor.cpp
-	menu/joystickmenu.cpp
-	menu/menu.cpp
-	menu/messagebox.cpp
-	menu/optionmenu.cpp
 	menu/doommenu.cpp
 	menu/loadsavemenu.cpp
 	menu/playermenu.cpp
 	menu/videomenu.cpp
-	menu/menudef.cpp
 	gamedata/textures/animations.cpp
 	gamedata/textures/anim_switches.cpp
 	gamedata/p_xlat.cpp
@@ -1001,6 +996,7 @@ set (PCH_SOURCES
 	common/filesystem/resourcefile.cpp
 	common/engine/cycler.cpp
 	common/engine/d_event.cpp
+	common/engine/date.cpp
 	common/engine/stats.cpp
 	common/engine/sc_man.cpp
 	common/engine/stringtable.cpp
@@ -1014,6 +1010,11 @@ set (PCH_SOURCES
 	common/objects/dobject.cpp
 	common/objects/dobjgc.cpp
 	common/objects/dobjtype.cpp
+	common/menu/joystickmenu.cpp
+	common/menu/menu.cpp
+	common/menu/messagebox.cpp
+	common/menu/optionmenu.cpp
+	common/menu/menudef.cpp
 	common/rendering/v_video.cpp
 	common/rendering/r_videoscale.cpp
 	common/scripting/core/dictionary.cpp
