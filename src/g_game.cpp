@@ -2040,6 +2040,8 @@ void G_DoLoadGame ()
 
 	primaryLevel->BotInfo.RemoveAllBots(primaryLevel, true);
 
+	savegamerestore = true;		// Use the player actors in the savegame
+
 	FString cvar;
 	arc("importantcvars", cvar);
 	if (!cvar.IsEmpty())
@@ -2065,7 +2067,6 @@ void G_DoLoadGame ()
 	G_ReadVisited(arc);
 
 	// load a base level
-	savegamerestore = true;		// Use the player actors in the savegame
 	bool demoplaybacksave = demoplayback;
 	G_InitNew(map, false);
 	demoplayback = demoplaybacksave;

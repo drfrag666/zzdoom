@@ -104,6 +104,7 @@ VIDMNU_BRDLSS			= "Borderless Windowed Mode";
 VIDMNU_ENTERTEXT		= "Press ENTER to set mode";
 VIDMNU_TESTTEXT1		= "T to test mode for 5 seconds";
 VIDMNU_TESTTEXT2		= "Please wait 5 seconds...";
+OPTMNU_CHANGERENDER		= "Change Rendering Output";
 
 // Placeholder definitions for strings that are in the game content table where the labels are needed even when that file is not loaded.
 

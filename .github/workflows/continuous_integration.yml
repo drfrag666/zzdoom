@@ -41,14 +41,6 @@ jobs:
             build_type: "Debug"
           }
         - {
-            name: "Linux GCC 5",
-            os: ubuntu-latest,
-            extra_options: "-DCMAKE_C_COMPILER=/usr/bin/gcc-5 -DCMAKE_CXX_COMPILER=/usr/bin/g++-5 \
-                            -DDYN_FLUIDSYNTH=OFF -DDYN_OPENAL=OFF -DDYN_SNDFILE=OFF -DDYN_MPG123=OFF",
-            deps_cmdline: "sudo apt update && sudo apt install g++-5 libsdl2-dev libopenal-dev libfluidsynth-dev libmpg123-dev libsndfile1-dev",
-            build_type: "MinSizeRel"
-          }
-        - {
             name: "Linux GCC 7",
             os: ubuntu-latest,
             extra_options: "-DCMAKE_C_COMPILER=/usr/bin/gcc-7 -DCMAKE_CXX_COMPILER=/usr/bin/g++-7",

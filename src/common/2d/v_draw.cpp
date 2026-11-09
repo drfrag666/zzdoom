@@ -738,6 +738,7 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 	parms->rotateangle = 0;
 	parms->flipoffsets = false;
 	parms->indexed = false;
+	parms->nooffset = false;
 
 	// Parse the tag list for attributes. (For floating point attributes,
 	// consider that the C ABI dictates that all floats be promoted to
@@ -947,6 +948,10 @@ bool DCanvas::ParseDrawTextureTags(FTexture *img, double x, double y, uint32_t t
 
 		case DTA_FlipOffsets:
 			parms->flipoffsets = ListGetInt(tags);
+			break;
+
+		case DTA_NoOffset:
+			parms->nooffset = ListGetInt(tags);
 			break;
 
 		case DTA_SrcX:
@@ -1677,6 +1682,13 @@ bool DCanvas::ClipBox (int &x, int &y, int &w, int &h, const uint8_t *&src, cons
 	return false;
 }
 
+DVector2 DCanvas::SetOffset(const DVector2& vec)
+{
+	auto v = offset;
+	offset = vec;
+	return v;
+}
+
 //==========================================================================
 //
 // V_SetBorderNeedRefresh
@@ -1742,6 +1754,27 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawFrame)
 	PARAM_INT(h);
 	V_DrawFrame(x, y, w, h);
 	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, DrawLineFrame)
+{
+	PARAM_PROLOGUE;
+	PARAM_COLOR(color);
+	PARAM_INT(left);
+	PARAM_INT(top);
+	PARAM_INT(width);
+	PARAM_INT(height);
+	PARAM_INT(thickness);
+	V_DrawFrame(left, top, width, height);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION(_Screen, SetOffset)
+{
+	PARAM_PROLOGUE;
+	PARAM_FLOAT(x);
+	PARAM_FLOAT(y);
+	ACTION_RETURN_VEC2(screen->SetOffset(DVector2(x, y)));
 }
 
 //==========================================================================

@@ -443,7 +443,7 @@ class OptionMenu : Menu
 		let font = generic_ui || !mDesc.mFont ? NewSmallFont : mDesc.mFont;
 		if (font && mDesc.mTitle.Length() > 0)
 		{
-			return menuCustomizer.DrawCaption(title, font, y, drawit);
+			return menuDelegate.DrawCaption(title, font, y, drawit);
 		}
 		else
 		{
@@ -466,9 +466,8 @@ class OptionMenu : Menu
 		{
 			y = DrawCaption(mDesc.mTitle, -y, true);
 		}
-		mDesc.mDrawTop = y;
+		mDesc.mDrawTop = y / CleanYfac_1; // mouse checks are done in clean space.
 		int fontheight = OptionMenuSettings.mLinespacing * CleanYfac_1;
-		y *= CleanYfac_1;
 
 		int indent = GetIndent();
 

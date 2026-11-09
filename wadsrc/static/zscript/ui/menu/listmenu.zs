@@ -21,6 +21,7 @@ class ListMenuDescriptor : MenuDescriptor native
 	native int mFontColor;
 	native int mFontColor2;
 	native bool mCenter;
+	native bool mAnimatedTransition;
 	native int mVirtWidth, mVirtHeight;
 
 	native void Reset();
@@ -51,6 +52,7 @@ class ListMenu : Menu
 	{
 		Super.Init(parent);
 		mDesc = desc;
+		AnimatedTransition = mDesc.mAnimatedTransition;
 		if (desc.mCenter)
 		{
 			double center = 160;
@@ -172,7 +174,7 @@ class ListMenu : Menu
 		case MKEY_Enter:
 			if (mDesc.mSelectedItem >= 0 && mDesc.mItems[mDesc.mSelectedItem].Activate())
 			{
-				MenuSound("menu/choose");
+				MenuSound("menu/advance");
 			}
 			return true;
 
@@ -268,7 +270,10 @@ class ListMenu : Menu
 			if (mDesc.mItems[i].mEnabled) mDesc.mItems[i].Draw(mDesc.mSelectedItem == i, mDesc);
 		}
 		if (mDesc.mSelectedItem >= 0 && mDesc.mSelectedItem < mDesc.mItems.Size())
-			mDesc.mItems[mDesc.mSelectedItem].DrawSelector(mDesc.mSelectOfsX, mDesc.mSelectOfsY, mDesc.mSelector, mDesc);
+		{
+			if (!menuDelegate.DrawSelector(mDesc))
+				mDesc.mItems[mDesc.mSelectedItem].DrawSelector(mDesc.mSelectOfsX, mDesc.mSelectOfsY, mDesc.mSelector, mDesc);
+		}
 		Super.Drawer();
 	}
 	

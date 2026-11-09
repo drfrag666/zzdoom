@@ -233,6 +233,7 @@ enum
 	DTA_FlipOffsets,		// Flips offsets when using DTA_FlipX and DTA_FlipY, this cannot be automatic due to unexpected behavior with unoffsetted graphics.
 	DTA_Indexed,			// Use an indexed texture combined with the given translation.
 	DTA_CleanTop,			// Like DTA_Clean but aligns to the top of the screen instead of the center.
+	DTA_NoOffset,			// Ignore 2D drawer's offset.
 
 };
 
@@ -301,6 +302,7 @@ struct DrawParms
 	bool burn;
 	bool flipoffsets;
 	bool indexed;
+	bool nooffset;
 	int8_t fsscalemode;
 	double srcx, srcy;
 	double srcwidth, srcheight;
@@ -432,6 +434,7 @@ public:
 	void ClearClipRect() { clipleft = cliptop = 0; clipwidth = clipheight = -1; }
 	void SetClipRect(int x, int y, int w, int h);
 	void GetClipRect(int *x, int *y, int *w, int *h);
+	DVector2 SetOffset(const DVector2& vec);
 
 	void CalcFullscreenScale(DrawParms *parms, double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
@@ -463,6 +466,7 @@ protected:
 	int LockCount;
 	bool Bgra;
 	int clipleft = 0, cliptop = 0, clipwidth = -1, clipheight = -1;
+	DVector2 offset;
 
 	template<class T>
 	void DrawTextCommon(FFont *font, int normalcolor, double x, double y, const T *string, DrawParms &parms);

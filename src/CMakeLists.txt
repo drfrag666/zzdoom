@@ -312,7 +312,7 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		set( CMAKE_C_FLAGS "-Wno-unused-result ${CMAKE_C_FLAGS}" )
 		set( CMAKE_CXX_FLAGS "-Wno-unused-result ${CMAKE_CXX_FLAGS}" )
 	endif()
-	if( CMAKE_CXX_COMPILER_ID STREQUAL "Clang" )
+	if( CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 		if( APPLE OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "3.6" )
 			set( CMAKE_CXX_FLAGS "-Wno-inconsistent-missing-override ${CMAKE_CXX_FLAGS}" )
 		endif()
@@ -962,6 +962,8 @@ set (PCH_SOURCES
 	common/console/c_consolebuffer.cpp
 	common/console/c_cvars.cpp
 	common/console/c_dispatch.cpp
+	common/console/c_commandbuffer.cpp
+	common/console/c_tabcomplete.cpp
 	common/console/c_expr.cpp
 	common/utility/engineerrors.cpp
 	common/utility/i_module.cpp
@@ -1015,6 +1017,7 @@ set (PCH_SOURCES
 	common/menu/messagebox.cpp
 	common/menu/optionmenu.cpp
 	common/menu/menudef.cpp
+	common/menu/savegamemanager.cpp
 	common/rendering/v_video.cpp
 	common/rendering/r_videoscale.cpp
 	common/scripting/core/dictionary.cpp

@@ -2725,6 +2725,8 @@ static void GC_MarkGameRoots()
 	GC::Mark(NextToThink);
 }
 
+bool  CheckSkipGameOptionBlock(const char* str);
+
 //==========================================================================
 //
 // D_DoomMain
@@ -2763,8 +2765,9 @@ static int D_DoomMain_Internal (void)
 		System_GetPlayerName,
 		System_DispatchEvent,
 		StrTable_ValidFilter,
-		StrTable_GetGender
-
+		StrTable_GetGender,
+		nullptr,
+		CheckSkipGameOptionBlock,
 	};
 
 	

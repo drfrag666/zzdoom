@@ -152,8 +152,11 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 	int			kerning;
 	FTexture *pic;
 
+	double scalex = parms.scalex * parms.patchscalex;
+	double scaley = parms.scaley * parms.patchscaley;
+
 	if (parms.celly == 0) parms.celly = font->GetHeight() + 1;
-	parms.celly *= parms.scaley;
+	parms.celly *= scaley;
 
 	if (normalcolor >= NumTextColors)
 		normalcolor = CR_UNTRANSLATED;
@@ -221,11 +224,11 @@ void DCanvas::DrawTextCommon(FFont *font, int normalcolor, double x, double y, c
 		}
 		if (parms.monospace == EMonospacing::Mono_Off)
 		{
-			cx += (w + kerning + parms.spacing) * parms.scalex;
+			cx += (w + kerning + parms.spacing) * scalex;
 		}
 		else
 		{
-			cx += (parms.spacing) * parms.scalex;
+			cx += (parms.spacing) * scalex;
 		}
 
 	}
