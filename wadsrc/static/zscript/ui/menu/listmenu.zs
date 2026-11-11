@@ -27,12 +27,12 @@ class ListMenuDescriptor : MenuDescriptor native
 	native void Reset();
 	int DisplayWidth()
 	{
-		if (mVirtWidth == OptCleanScale) return true ? CleanScale : 320; // m_cleanscale
+		if (mVirtWidth == OptCleanScale) return m_cleanscale ? CleanScale : 320;
 		return mVirtWidth;
 	}
 	int DisplayHeight()
 	{
-		if (mVirtWidth == OptCleanScale) return true ? CleanScale : 200; // m_cleanscale
+		if (mVirtWidth == OptCleanScale) return m_cleanscale ? CleanScale : 200;
 		return mVirtHeight;
 	}
 }

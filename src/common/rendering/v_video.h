@@ -465,7 +465,7 @@ protected:
 	int Pitch;
 	int LockCount;
 	bool Bgra;
-	int clipleft = 0, cliptop = 0, clipwidth = -1, clipheight = -1;
+	int clipleft = -1, cliptop = -1, clipwidth = -1, clipheight = -1;
 	DVector2 offset;
 
 	template<class T>
