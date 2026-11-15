@@ -909,48 +909,50 @@ void D_Display ()
 				V_SetBorderNeedRefresh();
 			}
 			Renderer->DrawRemainingPlayerSprites();
-			screen->DrawBlendingRect();
-			if (automapactive)
+			if (!hud_toggled)
 			{
-				primaryLevel->automap->Drawer ((hud_althud && viewheight == SCREENHEIGHT) ? viewheight : StatusBar->GetTopOfStatusbar());
-			}
-			if (!automapactive || viewactive)
-			{
-				V_RefreshViewBorder ();
-			}
-
-			// for timing the statusbar code.
-			//cycle_t stb;
-			//stb.Reset();
-			//stb.Clock();
-			if (hud_althud && viewheight == SCREENHEIGHT && screenblocks > 10)
-			{
-				StatusBar->DrawBottomStuff (HUD_AltHud);
-				if (DrawFSHUD || automapactive) StatusBar->DrawAltHUD();
-				if (players[consoleplayer].camera && players[consoleplayer].camera->player && !automapactive)
+				screen->DrawBlendingRect();
+				if (automapactive)
 				{
-					StatusBar->DrawCrosshair();
+					primaryLevel->automap->Drawer ((hud_althud && viewheight == SCREENHEIGHT) ? viewheight : StatusBar->GetTopOfStatusbar());
 				}
-				StatusBar->CallDraw (HUD_AltHud, vp.TicFrac);
-				StatusBar->DrawTopStuff (HUD_AltHud);
+				if (!automapactive || viewactive)
+				{
+					V_RefreshViewBorder ();
+				}
+
+				// for timing the statusbar code.
+				//cycle_t stb;
+				//stb.Reset();
+				//stb.Clock();
+				if (hud_althud && viewheight == SCREENHEIGHT && screenblocks > 10)
+				{
+					StatusBar->DrawBottomStuff (HUD_AltHud);
+					if (DrawFSHUD || automapactive) StatusBar->DrawAltHUD();
+					if (players[consoleplayer].camera && players[consoleplayer].camera->player && !automapactive)
+					{
+						StatusBar->DrawCrosshair();
+					}
+					StatusBar->CallDraw (HUD_AltHud, vp.TicFrac);
+					StatusBar->DrawTopStuff (HUD_AltHud);
+				}
+				else if (viewheight == SCREENHEIGHT && viewactive && screenblocks > 10)
+				{
+					EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
+					StatusBar->DrawBottomStuff (state);
+					StatusBar->CallDraw (state, vp.TicFrac);
+					StatusBar->DrawTopStuff (state);
+				}
+				else
+				{
+					StatusBar->DrawBottomStuff (HUD_StatusBar);
+					StatusBar->CallDraw (HUD_StatusBar, vp.TicFrac);
+					StatusBar->DrawTopStuff (HUD_StatusBar);
+				}
+				//stb.Unclock();
+				//Printf("Stbar = %f\n", stb.TimeMS());
+				CT_Drawer ();
 			}
-			else 
-			if (viewheight == SCREENHEIGHT && viewactive && screenblocks > 10)
-			{
-				EHudState state = DrawFSHUD ? HUD_Fullscreen : HUD_None;
-				StatusBar->DrawBottomStuff (state);
-				StatusBar->CallDraw (state, vp.TicFrac);
-				StatusBar->DrawTopStuff (state);
-			}
-			else
-			{
-				StatusBar->DrawBottomStuff (HUD_StatusBar);
-				StatusBar->CallDraw (HUD_StatusBar, vp.TicFrac);
-				StatusBar->DrawTopStuff (HUD_StatusBar);
-			}
-			//stb.Unclock();
-			//Printf("Stbar = %f\n", stb.TimeMS());
-			CT_Drawer ();
 			break;
 
 		case GS_INTERMISSION:
@@ -978,55 +980,58 @@ void D_Display ()
 			break;
 		}
 	}
-	// draw pause pic
-	if ((paused || pauseext) && menuactive == MENU_Off)
+	if (!hud_toggled)
 	{
-		FTexture *tex;
-		int x;
-
-		tex = TexMan(gameinfo.PauseSign);
-		x = (SCREENWIDTH - tex->GetScaledWidth() * CleanXfac)/2 +
-			tex->GetScaledLeftOffset(0) * CleanXfac;
-		screen->DrawTexture (tex, x, 4, DTA_CleanNoMove, true, TAG_DONE);
-		if (paused && multiplayer)
+		// draw pause pic
+		if ((paused || pauseext) && menuactive == MENU_Off)
 		{
-			FFont *font = generic_ui? NewSmallFont : SmallFont;
-			FString pstring = GStrings("TXT_BY");
-			pstring.Substitute("%s", players[paused - 1].userinfo.GetName());
-			screen->DrawText(font, CR_RED,
-				(screen->GetWidth() - font->StringWidth(pstring)*CleanXfac) / 2,
-				(tex->GetScaledHeight() * CleanYfac) + 4, pstring, DTA_CleanNoMove, true, TAG_DONE);
+			FTexture *tex;
+			int x;
+
+			tex = TexMan(gameinfo.PauseSign);
+			x = (SCREENWIDTH - tex->GetScaledWidth() * CleanXfac)/2 +
+				tex->GetScaledLeftOffset(0) * CleanXfac;
+			screen->DrawTexture (tex, x, 4, DTA_CleanNoMove, true, TAG_DONE);
+			if (paused && multiplayer)
+			{
+				FFont *font = generic_ui? NewSmallFont : SmallFont;
+				FString pstring = GStrings("TXT_BY");
+				pstring.Substitute("%s", players[paused - 1].userinfo.GetName());
+				screen->DrawText(font, CR_RED,
+					(screen->GetWidth() - font->StringWidth(pstring)*CleanXfac) / 2,
+					(tex->GetScaledHeight() * CleanYfac) + 4, pstring, DTA_CleanNoMove, true, TAG_DONE);
+			}
+		}
+
+		// [RH] Draw icon, if any
+		if (D_DrawIcon)
+		{
+			FTextureID picnum = TexMan.CheckForTexture (D_DrawIcon, ETextureType::MiscPatch);
+
+			D_DrawIcon = NULL;
+			if (picnum.isValid())
+			{
+				FTexture *tex = TexMan[picnum];
+				screen->DrawTexture (tex, 160 - tex->GetScaledWidth()/2, 100 - tex->GetScaledHeight()/2,
+					DTA_320x200, true, TAG_DONE);
+			}
+			NoWipe = 10;
+		}
+
+		if (snd_drawoutput)
+		{
+			GSnd->DrawWaveDebug(snd_drawoutput);
 		}
 	}
-
-	// [RH] Draw icon, if any
-	if (D_DrawIcon)
-	{
-		FTextureID picnum = TexMan.CheckForTexture (D_DrawIcon, ETextureType::MiscPatch);
-
-		D_DrawIcon = NULL;
-		if (picnum.isValid())
-		{
-			FTexture *tex = TexMan[picnum];
-			screen->DrawTexture (tex, 160 - tex->GetScaledWidth()/2, 100 - tex->GetScaledHeight()/2,
-				DTA_320x200, true, TAG_DONE);
-		}
-		NoWipe = 10;
-	}
-
-	if (snd_drawoutput)
-	{
-		GSnd->DrawWaveDebug(snd_drawoutput);
-	}
-
-	if (!wipe || NoWipe < 0)
+	if (!wipe || NoWipe < 0 || hud_toggled)
 	{
 		NetUpdate ();			// send out any new accumulation
 		// normal update
 		// draw ZScript UI stuff
 		C_DrawConsole (hw2d);	// draw console
 		M_Drawer ();			// menu is drawn even on top of everything
-		FStat::PrintStat ();
+		if (!hud_toggled)
+			FStat::PrintStat ();
 		screen->Update ();		// page flip or blit buffer
 	}
 	else
