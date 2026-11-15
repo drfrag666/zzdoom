@@ -157,6 +157,7 @@ struct _ native	// These are the global variables, the struct is only here to av
 	native readonly Font NewConsoleFont;
 	native readonly Font NewSmallFont;
 	native readonly Font AlternativeSmallFont;
+	native readonly Font AlternativeBigFont;
 	native readonly Font OriginalSmallFont;
 	native readonly Font OriginalBigFont;
 	native readonly Font intermissionfont;
@@ -493,7 +494,6 @@ struct Font native
 struct Console native
 {
 	native static void HideConsole();
-	native static void MidPrint(Font fontname, string textlabel, bool bold = false);
 	native static vararg void Printf(string fmt, ...);
 }
 

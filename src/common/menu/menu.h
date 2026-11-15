@@ -94,6 +94,7 @@ public:
 	bool mAnimatedTransition;
 	int mVirtWidth;
 	int mVirtHeight;
+	bool mCustomSizeSet;
 
 	void Reset();
 };

@@ -216,7 +216,6 @@ BEGIN
     LTEXT           "Select from the list below to determine which one to use:",IDC_STATIC,5,15,200,8
 END
 
-
 IDD_CRASHDIALOG DIALOGEX 0, 0, 415, 308
 STYLE DS_SETFONT | DS_MODALFRAME | DS_SETFOREGROUND | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_CONTROLPARENT | WS_EX_APPWINDOW
@@ -345,7 +344,6 @@ BEGIN
         VALUE "Translation", 0x409, 1200
     END
 END
-
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
 

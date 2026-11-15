@@ -384,9 +384,9 @@ void DCanvas::CalcFullscreenScale(DrawParms *parms,double srcwidth, double srche
 	}
 
 	double aspect;
-	if (srcheight == 200) aspect = srcwidth / 240.;
-	else if (srcheight == 400) aspect = srcwidth / 480;
-	else aspect = srcwidth / srcheight;
+	if (srcheight == 200) srcheight = 240.;
+	else if (srcheight == 400) srcheight = 480;
+	aspect = srcwidth / srcheight;
 	rect.left = rect.top = 0;
 	auto screenratio = ActiveRatio(GetWidth(), GetHeight());
 	if (autoaspect == FSMode_ScaleToFit43 || autoaspect == FSMode_ScaleToFit43Top || autoaspect == FSMode_ScaleToFit43Bottom)
@@ -400,7 +400,7 @@ void DCanvas::CalcFullscreenScale(DrawParms *parms,double srcwidth, double srche
 			double width4_3 = srcheight * (4. / 3.);
 			rect.width = (double)GetWidth() * srcwidth / width4_3;
 			rect.height = GetHeight() * screenratio * (3. / 4.);	// use 4:3 for the image
-			rect.left = -(srcwidth - width4_3) / 2;
+			rect.left = (double)GetWidth() * (-(srcwidth - width4_3) / 2) / width4_3;
 			switch (oautoaspect)
 			{
 			default:
@@ -442,6 +442,14 @@ void DCanvas::CalcFullscreenScale(DrawParms *parms,double srcwidth, double srche
 			break;
 		}
 	}
+}
+
+void DCanvas::GetFullscreenRect(double width, double height, int fsmode, DoubleRect* rect)
+{
+	DrawParms parms;
+	parms.viewport.width = screen->GetWidth();
+	parms.viewport.height = screen->GetHeight();
+	CalcFullscreenScale(&parms, width, height, fsmode, *rect);
 }
 
 DEFINE_ACTION_FUNCTION(_Screen, GetFullscreenRect)

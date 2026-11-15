@@ -144,9 +144,6 @@ const FTexture::Span FPaletteTester::DummySpan[2] = { { 0, 16 }, { 0, 0 } };
 
 int DisplayWidth, DisplayHeight, DisplayBits;
 
-FFont *SmallFont, *SmallFont2, *BigFont, *BigUpper, *ConFont, *IntermissionFont, *NewConsoleFont, *NewSmallFont, *CurrentConsoleFont, *OriginalSmallFont, *AlternativeSmallFont, *OriginalBigFont;
-
-
 // [RH] The framebuffer is no longer a mere byte array.
 // There's also only one, not four.
 DFrameBuffer *screen;
@@ -1411,6 +1408,7 @@ DEFINE_GLOBAL(ConFont)
 DEFINE_GLOBAL(NewConsoleFont)
 DEFINE_GLOBAL(NewSmallFont)
 DEFINE_GLOBAL(AlternativeSmallFont)
+DEFINE_GLOBAL(AlternativeBigFont)
 DEFINE_GLOBAL(OriginalSmallFont)
 DEFINE_GLOBAL(OriginalBigFont)
 DEFINE_GLOBAL(IntermissionFont)

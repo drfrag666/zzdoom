@@ -239,9 +239,8 @@ class OptionMenu : Menu
 
 					if (y <= 0)
 					{
-						y = DrawCaption(mDesc.mTitle, y, false);
+						y = DrawCaption(mDesc.mTitle, -y, false);
 					}
-					y *= CleanYfac_1;
 					int	rowheight = OptionMenuSettings.mLinespacing * CleanYfac_1;
 					int maxitems = (screen.GetHeight() - rowheight - y) / rowheight + 1;
 
@@ -440,7 +439,7 @@ class OptionMenu : Menu
 
 	virtual int DrawCaption(String title, int y, bool drawit)
 	{
-		let font = generic_ui || !mDesc.mFont ? NewSmallFont : mDesc.mFont;
+		let font = menuDelegate.PickFont(mDesc.mFont);
 		if (font && mDesc.mTitle.Length() > 0)
 		{
 			return menuDelegate.DrawCaption(title, font, y, drawit);

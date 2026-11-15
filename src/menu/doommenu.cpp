@@ -72,8 +72,11 @@ EXTERN_CVAR(Bool, show_messages)
 typedef void(*hfunc)();
 DMenu* CreateMessageBoxMenu(DMenu* parent, const char* message, int messagemode, bool playsound, FName action = NAME_None, hfunc handler = nullptr);
 bool OkForLocalization(FTextureID texnum, const char* substitute);
+void D_ToggleHud();
 void I_WaitVBL(int count);
 void M_InitVideoModes();
+
+extern bool hud_toggled;
 
 
 FNewGameStartup NewGameStartupInfo;
@@ -217,6 +220,9 @@ bool M_SetSpecialMenu(FName& menu, int param)
 
 void M_StartControlPanel(bool makeSound, bool scaleoverride)
 {
+	if (hud_toggled)
+		D_ToggleHud();
+
 	// intro might call this repeatedly
 	if (CurrentMenu != nullptr)
 		return;
@@ -458,12 +464,12 @@ CCMD (togglemessages)
 {
 	if (show_messages)
 	{
-		Printf (128, "%s\n", GStrings("MSGOFF"));
+		Printf("%s\n", GStrings("MSGOFF"));
 		show_messages = false;
 	}
 	else
 	{
-		Printf (128, "%s\n", GStrings("MSGON"));
+		Printf("%s\n", GStrings("MSGON"));
 		show_messages = true;
 	}
 }
@@ -1255,6 +1261,7 @@ void SetDefaultMenuColors()
 
 CCMD (menu_main)
 {
+	if (gamestate == GS_FULLCONSOLE) gamestate = GS_MENUSCREEN;
 	M_StartControlPanel(true);
 	M_SetMenu(NAME_Mainmenu, -1);
 }

@@ -59,7 +59,6 @@ extern int ConBottom;
 void C_InitConsole (int width, int height, bool ingame);
 void C_DeinitConsole ();
 void C_InitConback();
-void C_ClearMessages();
 
 // Adjust the console for a new screen mode
 void C_NewModeAdjust (void);
@@ -77,12 +76,13 @@ void C_FullConsole (void);
 void C_HideConsole (void);
 void C_AdjustBottom (void);
 void C_FlushDisplay (void);
+class FNotifyBufferBase;
+void C_SetNotifyBuffer(FNotifyBufferBase *nbb);
 
-class FFont;
-void C_MidPrint (FFont *font, const char *message, bool bold = false);
 
 bool C_Responder (event_t *ev);
 
+extern double NotifyFontScale;
 void C_SetNotifyFontScale(double scale);
 
 #endif

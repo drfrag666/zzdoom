@@ -434,6 +434,7 @@ public:
 	void ClearClipRect() { clipleft = cliptop = 0; clipwidth = clipheight = -1; }
 	void SetClipRect(int x, int y, int w, int h);
 	void GetClipRect(int *x, int *y, int *w, int *h);
+	void GetFullscreenRect(double width, double height, int fsmode, DoubleRect* rect);
 	DVector2 SetOffset(const DVector2& vec);
 
 	void CalcFullscreenScale(DrawParms *parms, double srcwidth, double srcheight, int autoaspect, DoubleRect &rect) const;

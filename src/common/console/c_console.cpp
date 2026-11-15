@@ -35,42 +35,34 @@
 #include <string>
 
 #include "templates.h"
-#include "p_setup.h"
-#include "i_system.h"
 #include "version.h"
-#include "g_game.h"
 #include "c_bind.h"
 #include "c_console.h"
 #include "c_cvars.h"
 #include "c_dispatch.h"
-#include "hu_stuff.h"
-#include "i_system.h"
-#include "i_video.h"
-#include "g_input.h"
-#include "v_palette.h"
-#include "v_video.h"
+#include "gamestate.h"
 #include "v_text.h"
 #include "filesystem.h"
 #include "sbar.h"
-#include "s_sound.h"
-#include "doomstat.h"
 #include "d_gui.h"
 #include "cmdlib.h"
-#include "d_net.h"
 #include "d_event.h"
-#include "d_player.h"
-#include "gstrings.h"
 #include "c_consolebuffer.h"
-#include "g_levellocals.h"
-#include "vm.h"
 #include "i_time.h"
 #include "utf8.h"
-#include "s_music.h"
+#include "v_font.h"
+#include "printf.h"
 #include "i_time.h"
-
-
+#include "i_interface.h"
+#include "v_video.h"
+#include "i_system.h"
 #include "gi.h"
+#include "menu.h"
+#include "menustate.h"
+#include "c_notifybufferbase.h"
+#include "g_input.h"
 #include "c_commandbuffer.h"
+#include "vm.h"
 
 #define LEFTMARGIN 8
 #define RIGHTMARGIN 8
@@ -83,16 +75,23 @@ CUSTOM_CVAR(Int, con_buffersize, -1, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
 	if (self >= 0 && self < 128) self = 128;
 }
 
+double NotifyFontScale = 1;
+
+DEFINE_GLOBAL(NotifyFontScale)
+
+void C_SetNotifyFontScale(double scale)
+{
+	NotifyFontScale = scale;
+}
+
+
 FConsoleBuffer *conbuffer;
 
 static FTextureID conback;
 static uint32_t conshade;
 static bool conline;
 
-extern int		gametic;
-extern bool		automapactive;	// in AM_map.c
-extern bool		advancedemo;
-
+extern int chatmodeon;
 extern FBaseCVar *CVars;
 extern FConsoleCommand *Commands[FConsoleCommand::HASH_SIZE];
 
@@ -102,15 +101,6 @@ bool		cursoron = false;
 int			ConBottom, ConScroll, RowAdjust;
 uint64_t	CursorTicker;
 constate_e	ConsoleState = c_up;
-
-double NotifyFontScale = 1;
-
-DEFINE_GLOBAL(NotifyFontScale)
-
-void C_SetNotifyFontScale(double scale)
-{
-	NotifyFontScale = scale;
-}
 
 static int TopLine, InsertLine;
 
@@ -130,19 +120,9 @@ static GameAtExit *ExitCmdList;
 #define SCROLLDN 2
 #define SCROLLNO 0
 
-EXTERN_CVAR (Bool, show_messages)
-
 // Buffer for AddToConsole()
 static char *work = NULL;
 static int worklen = 0;
-
-CVAR(Float, con_notifytime, 3.f, CVAR_ARCHIVE)
-CVAR(Bool, con_centernotify, false, CVAR_ARCHIVE)
-CUSTOM_CVAR(Int, con_scaletext, 0, CVAR_ARCHIVE)		// Scale notify text at high resolutions?
-{
-	if (self < 0) self = 0;
-}
-CVAR(Bool, con_pulsetext, false, CVAR_ARCHIVE)
 
 CUSTOM_CVAR(Int, con_scale, 0, CVAR_ARCHIVE)
 {
@@ -154,6 +134,13 @@ CUSTOM_CVAR(Float, con_alpha, 0.75f, CVAR_ARCHIVE)
 	if (self < 0.f) self = 0.f;
 	if (self > 1.f) self = 1.f;
 }
+
+// Show developer messages if true.
+CUSTOM_CVAR(Int, developer, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+{
+	FScriptPosition::Developer = self;
+}
+
 
 // Command to run when Ctrl-D is pressed at start of line
 CVAR(String, con_ctrl_d, "", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
@@ -170,42 +157,16 @@ struct History
 static struct History *HistHead = NULL, *HistTail = NULL, *HistPos = NULL;
 static int HistSize;
 
-#define NUMNOTIFIES 4
-#define NOTIFYFADETIME 6
+static FNotifyBufferBase *NotifyStrings;
 
-struct FNotifyText
+void C_SetNotifyBuffer(FNotifyBufferBase* nbb)
 {
-	int TimeOut;
-	int Ticker;
-	int PrintLevel;
-	FString Text;
-};
-
-struct FNotifyBuffer
-{
-public:
-	FNotifyBuffer();
-	void AddString(int printlevel, FString source);
-	void Shift(int maxlines);
-	void Clear() { Text.Clear(); }
-	void Tick();
-	void Draw();
-
-private:
-	TArray<FNotifyText> Text;
-	int Top;
-	int TopGoal;
-	enum { NEWLINE, APPENDLINE, REPLACELINE } AddType;
-};
-static FNotifyBuffer NotifyStrings;
-
-CUSTOM_CVAR(Int, con_notifylines, NUMNOTIFIES, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
-{
-	NotifyStrings.Shift(self);
+	NotifyStrings = nbb;
 }
 
 
-int PrintColors[PRINTLEVELS+2] = { CR_RED, CR_GOLD, CR_GRAY, CR_GREEN, CR_GREEN, CR_GOLD };
+
+int PrintColors[PRINTLEVELS+2] = { CR_UNTRANSLATED, CR_GOLD, CR_GRAY, CR_GREEN, CR_GREEN, CR_UNTRANSLATED };
 
 static void setmsgcolor (int index, int color);
 
@@ -214,37 +175,37 @@ FILE *Logfile = NULL;
 
 FIntCVar msglevel ("msg", 0, CVAR_ARCHIVE);
 
-CUSTOM_CVAR (Int, msg0color, 6, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msg0color, CR_UNTRANSLATED, CVAR_ARCHIVE)
 {
 	setmsgcolor (0, self);
 }
 
-CUSTOM_CVAR (Int, msg1color, 5, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msg1color, CR_GOLD, CVAR_ARCHIVE)
 {
 	setmsgcolor (1, self);
 }
 
-CUSTOM_CVAR (Int, msg2color, 2, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msg2color, CR_GRAY, CVAR_ARCHIVE)
 {
 	setmsgcolor (2, self);
 }
 
-CUSTOM_CVAR (Int, msg3color, 3, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msg3color, CR_GREEN, CVAR_ARCHIVE)
 {
 	setmsgcolor (3, self);
 }
 
-CUSTOM_CVAR (Int, msg4color, 3, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msg4color, CR_GREEN, CVAR_ARCHIVE)
 {
 	setmsgcolor (4, self);
 }
 
-CUSTOM_CVAR (Int, msgmidcolor, 5, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msgmidcolor, CR_UNTRANSLATED, CVAR_ARCHIVE)
 {
 	setmsgcolor (PRINTLEVELS, self);
 }
 
-CUSTOM_CVAR (Int, msgmidcolor2, 4, CVAR_ARCHIVE)
+CUSTOM_CVAR (Int, msgmidcolor2, CR_BROWN, CVAR_ARCHIVE)
 {
 	setmsgcolor (PRINTLEVELS+1, self);
 }
@@ -439,101 +400,6 @@ static void setmsgcolor (int index, int color)
 	PrintColors[index] = color;
 }
 
-extern int DisplayWidth;
-
-FNotifyBuffer::FNotifyBuffer()
-{
-	Top = TopGoal = 0;
-	AddType = NEWLINE;
-}
-
-void FNotifyBuffer::Shift(int maxlines)
-{
-	if (maxlines >= 0 && Text.Size() > (unsigned)maxlines)
-	{
-		Text.Delete(0, Text.Size() - maxlines);
-	}
-}
-
-void FNotifyBuffer::AddString(int printlevel, FString source)
-{
-	TArray<FBrokenLines> lines;
-	int width;
-
-	if ((printlevel != 128 && !show_messages) ||
-		source.IsEmpty() ||
-		gamestate == GS_FULLCONSOLE ||
-		gamestate == GS_DEMOSCREEN ||
-		con_notifylines == 0)
-		return;
-
-	// [MK] allow the status bar to take over notify printing
-	if (StatusBar != nullptr)
-	{
-		IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessNotify)
-		{
-			VMValue params[] = { (DObject*)StatusBar, printlevel, &source };
-			int rv;
-			VMReturn ret(&rv);
-			VMCall(func, params, countof(params), &ret, 1);
-			if (!!rv) return;
-		}
-	}
-
-	width = DisplayWidth / active_con_scaletext(generic_ui);
-
-	FFont *font = generic_ui ? NewSmallFont : AlternativeSmallFont;
-	if (font == nullptr) return;	// Without an initialized font we cannot handle the message (this is for those which come here before the font system is ready.)
-
-	if (AddType == APPENDLINE && Text.Size() > 0 && Text[Text.Size() - 1].PrintLevel == printlevel)
-	{
-		FString str = Text[Text.Size() - 1].Text + source;
-		lines = V_BreakLines (font, width, str);
-	}
-	else
-	{
-		lines = V_BreakLines (font, width, source);
-		if (AddType == APPENDLINE)
-		{
-			AddType = NEWLINE;
-		}
-	}
-
-	if (lines.Size() == 0)
-		return;
-
-	for (auto &line : lines)
-	{
-		FNotifyText newline;
-
-		newline.Text = line.Text;
-		newline.TimeOut = int(con_notifytime * GameTicRate);
-		newline.Ticker = 0;
-		newline.PrintLevel = printlevel;
-		if (AddType == NEWLINE || Text.Size() == 0)
-		{
-			if (con_notifylines > 0)
-			{
-				Shift(con_notifylines - 1);
-			}
-			Text.Push(newline);
-		}
-		else
-		{
-			Text[Text.Size() - 1] = newline;
-		}
-		AddType = NEWLINE;
-	}
-
-	switch (source[source.Len()-1])
-	{
-	case '\r':	AddType = REPLACELINE;	break;
-	case '\n':	AddType = NEWLINE;		break;
-	default:	AddType = APPENDLINE;	break;
-	}
-
-	TopGoal = 0;
-}
 
 void AddToConsole (int printlevel, const char *text)
 {
@@ -602,9 +468,9 @@ int PrintString (int iprintlevel, const char *outline)
 			I_PrintStr(outline);
 
 			conbuffer->AddText(printlevel, outline);
-			if (vidactive && screen && !(iprintlevel & PRINT_NONOTIFY))
+			if (vidactive && screen && !(iprintlevel & PRINT_NONOTIFY) && NotifyStrings)
 			{
-				NotifyStrings.AddString(printlevel, outline);
+				NotifyStrings->AddString(iprintlevel, outline);
 			}
 			maybedrawnow (false, false);
 		}
@@ -615,11 +481,6 @@ int PrintString (int iprintlevel, const char *outline)
 		return count;
 	}
 	return 0;	// Don't waste time on calculating this if nothing at all was printed...
-}
-
-void C_ClearMessages()
-{
-	NotifyStrings.Clear();
 }
 
 int VPrintf (int printlevel, const char *format, va_list parms)
@@ -673,13 +534,7 @@ int DPrintf (int level, const char *format, ...)
 
 void C_FlushDisplay ()
 {
-	NotifyStrings.Clear();
-	if (StatusBar == nullptr) return;
-	IFVIRTUALPTR(StatusBar, DBaseStatusBar, FlushNotify)
-	{
-		VMValue params[] = { (DObject*)StatusBar };
-		VMCall(func, params, countof(params), nullptr, 1);
-	}
+	if (NotifyStrings) NotifyStrings->Clear();
 }
 
 void C_AdjustBottom ()
@@ -734,109 +589,7 @@ void C_Ticker()
 	}
 
 	lasttic = consoletic;
-	NotifyStrings.Tick();
-}
-
-void FNotifyBuffer::Tick()
-{
-	if (TopGoal > Top)
-	{
-		Top++;
-	}
-	else if (TopGoal < Top)
-	{
-		Top--;
-	}
-
-	// Remove lines from the beginning that have expired.
-	unsigned i;
-	for (i = 0; i < Text.Size(); ++i)
-	{
-		Text[i].Ticker++;
-	}
-	
-	for (i = 0; i < Text.Size(); ++i)
-	{
-		if (Text[i].TimeOut != 0 && Text[i].TimeOut > Text[i].Ticker)
-			break;
-	}
-	if (i > 0)
-	{
-		Text.Delete(0, i);
-		FFont* font = generic_ui ? NewSmallFont : AlternativeSmallFont;
-		Top += font->GetHeight();
-	}
-}
-
-void FNotifyBuffer::Draw()
-{
-	bool center = (con_centernotify != 0.f);
-	int line, lineadv, color, j;
-	bool canskip;
-	
-	if (gamestate == GS_FULLCONSOLE || gamestate == GS_DEMOSCREEN)
-		return;
-
-	FFont* font = generic_ui ? NewSmallFont : AlternativeSmallFont;
-
-	line = Top + font->GetDisplacement();
-	canskip = true;
-
-	lineadv = font->GetHeight ();
-
-	BorderTopRefresh = screen->GetPageCount ();
-
-	for (unsigned i = 0; i < Text.Size(); ++ i)
-	{
-		FNotifyText &notify = Text[i];
-
-		if (notify.TimeOut == 0)
-			continue;
-
-		j = notify.TimeOut - notify.Ticker;
-		if (j > 0)
-		{
-			if (!show_messages && notify.PrintLevel != 128)
-				continue;
-
-			double alpha = (j < NOTIFYFADETIME) ? 1. * j / NOTIFYFADETIME : 1;
-			if (con_pulsetext)
-			{
-				alpha *= 0.7 + 0.3 * sin(I_msTime() / 100.);
-			}
-
-			if (notify.PrintLevel >= PRINTLEVELS)
-				color = CR_UNTRANSLATED;
-			else
-				color = PrintColors[notify.PrintLevel];
-
-			int scale = active_con_scaletext(generic_ui);
-			if (!center)
-				screen->DrawText (font, color, 0, line, notify.Text,
-					DTA_VirtualWidth, screen->GetWidth() / scale,
-					DTA_VirtualHeight, screen->GetHeight() / scale,
-					DTA_KeepRatio, true,
-					DTA_Alpha, alpha, TAG_DONE);
-			else
-				screen->DrawText (font, color, (screen->GetWidth() -
-					font->StringWidth (notify.Text) * scale) / 2 / scale,
-					line, notify.Text,
-					DTA_VirtualWidth, screen->GetWidth() / scale,
-					DTA_VirtualHeight, screen->GetHeight() / scale,
-					DTA_KeepRatio, true,
-					DTA_Alpha, alpha, TAG_DONE);
-			line += lineadv;
-			canskip = false;
-		}
-		else
-		{
-			notify.TimeOut = 0;
-		}
-	}
-	if (canskip)
-	{
-		Top = TopGoal;
-	}
+	if (NotifyStrings) NotifyStrings->Tick();
 }
 
 void C_DrawConsole (bool hw2d)
@@ -868,9 +621,10 @@ void C_DrawConsole (bool hw2d)
 
 	oldbottom = ConBottom;
 
-	if (ConsoleState == c_up)
+	if (ConsoleState == c_up && gamestate != GS_INTRO && gamestate != GS_INTERMISSION && 
+		gamestate != GS_FULLCONSOLE && gamestate != GS_MENUSCREEN)
 	{
-		NotifyStrings.Draw();
+		if (NotifyStrings) NotifyStrings->Draw();
 		return;
 	}
 	else if (ConBottom)
@@ -887,6 +641,7 @@ void C_DrawConsole (bool hw2d)
 			DTA_Alpha, (hw2d && gamestate != GS_FULLCONSOLE) ? (double)con_alpha : 1.,
 			DTA_Masked, false,
 			TAG_DONE);
+
 		if (conline && visheight < screen->GetHeight())
 		{
 			screen->Clear (0, visheight, screen->GetWidth(), visheight+1, 0, 0);
@@ -987,34 +742,25 @@ void C_DrawConsole (bool hw2d)
 
 void C_FullConsole ()
 {
-	if (demoplayback)
-		G_CheckDemoStatus ();
-	D_QuitNetGame ();
-	advancedemo = false;
 	ConsoleState = c_down;
 	HistPos = NULL;
 	TabbedLast = false;
 	TabbedList = false;
-	if (gamestate != GS_STARTUP)
-	{
-		gamestate = GS_FULLCONSOLE;
-		primaryLevel->Music = "";
-		S_Start ();
-		S_StopMusic(true);
-		P_FreeLevelData ();
-		V_SetBlend (0,0,0,0);
-	}
-	else
-	{
-		C_AdjustBottom ();
-	}
+	gamestate = GS_FULLCONSOLE;
+	C_AdjustBottom ();
 }
 
 void C_ToggleConsole ()
 {
-	if (gamestate == GS_DEMOSCREEN || demoplayback)
+	int togglestate;
+	if (gamestate == GS_INTRO) // blocked
+	{
+		return;
+	}
+	if (gamestate == GS_MENUSCREEN)
 	{
 		gameaction = ga_fullconsole;
+		togglestate = c_down;
 	}
 	else if (!chatmodeon && (ConsoleState == c_up || ConsoleState == c_rising) && menuactive == MENU_Off)
 	{
@@ -1022,12 +768,17 @@ void C_ToggleConsole ()
 		HistPos = NULL;
 		TabbedLast = false;
 		TabbedList = false;
+		togglestate = c_falling;
 	}
 	else if (gamestate != GS_FULLCONSOLE && gamestate != GS_STARTUP)
 	{
 		ConsoleState = c_rising;
-		C_FlushDisplay ();
+		C_FlushDisplay();
+		togglestate = c_rising;
 	}
+	else return;
+	// This must be done as an event callback because the client code does not control the console toggling.
+	if (sysCallbacks.ConsoleToggled) sysCallbacks.ConsoleToggled(togglestate);
 }
 
 void C_HideConsole ()
@@ -1469,47 +1220,5 @@ CCMD (echo)
 CCMD(toggleconsole)
 {
 	C_ToggleConsole();
-}
-
-/* Printing in the middle of the screen */
-
-CVAR(Float, con_midtime, 3.f, CVAR_ARCHIVE)
-
-static const char bar1[] = TEXTCOLOR_RED "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
-						  "\36\36\36\36\36\36\36\36\36\36\36\36\37" TEXTCOLOR_TAN "\n";
-static const char bar2[] = TEXTCOLOR_RED "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
-						  "\36\36\36\36\36\36\36\36\36\36\36\36\37" TEXTCOLOR_GREEN "\n";
-static const char bar3[] = TEXTCOLOR_RED "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36"
-						  "\36\36\36\36\36\36\36\36\36\36\36\36\37" TEXTCOLOR_NORMAL "\n";
-
-void C_MidPrint (FFont *font, const char *msg, bool bold)
-{
-	if (StatusBar == nullptr || screen == nullptr)
-		return;
-
-	// [MK] allow the status bar to take over MidPrint
-	IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessMidPrint)
-	{
-		FString msgstr = msg;
-		VMValue params[] = { (DObject*)StatusBar, font, &msgstr, bold };
-		int rv;
-		VMReturn ret(&rv);
-		VMCall(func, params, countof(params), &ret, 1);
-		if (!!rv) return;
-	}
-
-	if (msg != nullptr)
-	{
-		auto color = (EColorRange)PrintColors[bold? PRINTLEVELS+1 : PRINTLEVELS];
-		AddToConsole (-1, bar1);
-		AddToConsole (-1, msg);
-		AddToConsole (-1, bar3);
-
-		StatusBar->AttachMessage (Create<DHUDMessage>(font, msg, 1.5f, 0.375f, 0, 0, color, con_midtime), MAKE_ID('C','N','T','R'));
-	}
-	else
-	{
-		StatusBar->DetachMessage (MAKE_ID('C','N','T','R'));
-	}
 }
 

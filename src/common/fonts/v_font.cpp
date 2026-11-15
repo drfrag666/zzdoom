@@ -76,6 +76,8 @@ static int TranslationMapCompare (const void *a, const void *b);
 extern int PrintColors[];
 
 // PUBLIC DATA DEFINITIONS -------------------------------------------------
+FFont* SmallFont, * SmallFont2, * BigFont, * BigUpper, * ConFont, * IntermissionFont, * NewConsoleFont, * NewSmallFont, 
+	* CurrentConsoleFont, * OriginalSmallFont, * AlternativeSmallFont, * OriginalBigFont, *AlternativeBigFont;
 
 FFont *FFont::FirstFont = nullptr;
 int NumTextColors;
@@ -869,6 +871,7 @@ void V_InitFonts()
 		BigFont = OriginalBigFont;
 	}
 	AlternativeSmallFont = OriginalSmallFont;
+	AlternativeBigFont = OriginalBigFont;
 }
 
 void V_LoadTranslations()

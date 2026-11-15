@@ -382,8 +382,10 @@ OptionMenu "OptionsMenu" protected
 	StaticText " "
 	Submenu "$OS_TITLE", "os_Menu"
 	StaticText " "
-	SafeCommand "$OPTMNU_DEFAULTS",	"reset2defaults"
+	SafeCommand	"$OPTMNU_DEFAULTS",		"reset2defaults"
 	SafeCommand	"$OPTMNU_RESETTOSAVED",	"reset2saved"
+	SafeCommand	"$OPTMNU_WRITEINI",		"writeini"
+	
 	Command "$OPTMNU_CONSOLE",			"menuconsole"
 	StaticText " "
 }
@@ -1205,6 +1207,10 @@ OptionMenu "MiscOptions" protected
 		StaticText " "
 		Option	"$DSPLYMNU_SHOWENDOOM",			"showendoom", "Endoom"
 	}
+	StaticText " "
+	Option "$MISCMNU_CLEANMENU",				"m_cleanscale", "OnOff"
+	Option "$MISCMNU_CLEANSTAT",				"wi_cleantextscale", "OnOff"
+	Option "$MISCMNU_WIPERCENT",				"wi_percents", "OnOff"
 
 	StaticText " "
 	Option "$MISCMNU_ALWAYSTALLY",				"sv_alwaystally", "AlwaysTally"
@@ -1352,7 +1358,7 @@ OptionMenu MapControlsMenu protected
 	StaticText ""
 	MapControl "$MAPCNTRLMNU_TOGGLEZOOM",		"am_gobig"
 	MapControl "$MAPCNTRLMNU_TOGGLEFOLLOW",		"am_togglefollow"
-	MapControl "$MAPCNTRLMNU_TOGGLEROTATE",		"toggle am_rotate"
+	MapControl "$MAPCNTRLMNU_ROTATE",			"toggle am_rotate"
 	MapControl "$MAPCNTRLMNU_TOGGLEGRID",		"am_togglegrid"
 	MapControl "$MAPCNTRLMNU_TOGGLETEXTURE",	"am_toggletexture"
 
@@ -1567,7 +1573,7 @@ OptionMenu GameplayOptions protected
 	Submenu "$GMPLYMNU_COOPERATIVE",			"CoopOptions"
 	StaticText " "
 	Option "$GMPLYMNU_TEAMPLAY",				"teamplay",	"OnOff"
-	Slider	"$GMPLYMNU_TEAMDAMAGE",	"teamdamage", 0, 1, 0.05,2
+	Slider	"$GMPLYMNU_TEAMDAMAGE",				"teamdamage", 0, 1, 0.05,2
 	StaticText " "
 	Option "$GMPLYMNU_SMARTAUTOAIM",			"sv_smartaim", "SmartAim"
 	StaticText " "
@@ -1598,6 +1604,7 @@ OptionMenu GameplayOptions protected
 	Option "$GMPLYMNU_DONTCHECKAMMO",			"sv_dontcheckammo", "NoYes"
 	Option "$GMPLYMNU_KILLBOSSSPAWNS",			"sv_killbossmonst", "YesNo"
 	Option "$GMPLYMNU_NOCOUNTENDMONSTER",		"sv_nocountendmonst", "NoYes"
+	Option "$GMPLYMNU_ALWAYSSPAWNMULTI",		"sv_alwaysspawnmulti", "YesNo"
 	Class "GameplayMenu"
 }
 

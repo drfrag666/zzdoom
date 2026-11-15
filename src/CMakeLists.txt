@@ -335,30 +335,6 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 		set( CMAKE_CXX_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
 	endif()
 
-	# Use the highest C++ standard available since VS2015 compiles with C++14
-	# but we only require C++11.  The recommended way to do this in CMake is to
-	# probably to use target_compile_features, but I don't feel like maintaining
-	# a list of features we use.
-	CHECK_CXX_COMPILER_FLAG( "-std=gnu++14" CAN_DO_CPP14 )
-	if ( CAN_DO_CPP14 )
-		set ( CMAKE_CXX_FLAGS "-std=gnu++14 ${CMAKE_CXX_FLAGS}" )
-	else ()
-		CHECK_CXX_COMPILER_FLAG( "-std=gnu++1y" CAN_DO_CPP1Y )
-		if ( CAN_DO_CPP1Y )
-			set ( CMAKE_CXX_FLAGS "-std=gnu++1y ${CMAKE_CXX_FLAGS}" )
-		else ()
-			CHECK_CXX_COMPILER_FLAG( "-std=gnu++11" CAN_DO_CPP11 )
-			if ( CAN_DO_CPP11 )
-				set ( CMAKE_CXX_FLAGS "-std=gnu++11 ${CMAKE_CXX_FLAGS}" )
-			else ()
-				CHECK_CXX_COMPILER_FLAG( "-std=gnu++0x" CAN_DO_CPP0X )
-				if ( CAN_DO_CPP0X )
-					set ( CMAKE_CXX_FLAGS "-std=gnu++0x ${CMAKE_CXX_FLAGS}" )
-				endif ()
-			endif ()
-		endif ()
-	endif ()
-
 	# Remove extra warnings when using the official DirectX headers.
 	# Also, TDM-GCC 4.4.0 no longer accepts glibc-style printf formats as valid,
 	# which is a royal pain. The previous version I had been using was fine with them.
@@ -747,7 +723,7 @@ set (PCH_SOURCES
 	playsim/bots/b_think.cpp
 	bbannouncer.cpp
 	console/c_cmds.cpp
-	console/c_console.cpp
+	console/c_notifybuffer.cpp
 	console/c_functions.cpp
 	ct_chat.cpp
 	d_iwad.cpp
@@ -963,6 +939,8 @@ set (PCH_SOURCES
 	common/console/c_cvars.cpp
 	common/console/c_dispatch.cpp
 	common/console/c_commandbuffer.cpp
+	common/console/c_console.cpp
+	common/console/c_notifybufferbase.cpp
 	common/console/c_tabcomplete.cpp
 	common/console/c_expr.cpp
 	common/utility/engineerrors.cpp

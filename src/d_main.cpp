@@ -145,6 +145,7 @@ void I_ShutdownInput();
 void StopFPSLimit();
 #endif
 void I_DeleteRenderer();
+void SetConsoleNotifyBuffer();
 
 const FIWADInfo *D_FindIWAD(TArray<FString> &wadfiles, const char *iwad, const char *basewad);
 
@@ -178,6 +179,8 @@ EXTERN_CVAR (Bool, lookstrafe)
 EXTERN_CVAR (Int, screenblocks)
 EXTERN_CVAR (Bool, sv_cheats)
 EXTERN_CVAR (Bool, sv_unlimited_pickup)
+EXTERN_CVAR (Bool, r_drawplayersprites)
+EXTERN_CVAR (Bool, show_messages)
 
 extern bool setmodeneeded;
 extern int NewWidth, NewHeight, NewBits, DisplayBits;
@@ -254,8 +257,10 @@ CUSTOM_CVAR (String, vid_cursor, "None", CVAR_ARCHIVE | CVAR_NOINITCALL)
 
 CVAR (Bool, disableautoload, false, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, autoloadlights, true, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
+CVAR (Bool, autoloadwidescreen, true, CVAR_ARCHIVE | CVAR_NOINITCALL | CVAR_GLOBALCONFIG)
 CVAR (Bool, r_debug_disable_vis_filter, false, 0)
 
+bool hud_toggled = false;
 bool wantToRestart;
 bool DrawFSHUD;				// [RH] Draw fullscreen HUD?
 TArray<FString> allwads;
@@ -385,6 +390,41 @@ void D_GrabCVarDefaults()
 	}
 }
 
+//==========================================================================
+//
+// D_ToggleHud
+//
+// Turns off 2D drawing temporarily.
+//
+//==========================================================================
+
+void D_ToggleHud()
+{
+	static int saved_screenblocks;
+	static bool saved_drawplayersprite, saved_showmessages;
+
+	if ((hud_toggled = !hud_toggled))
+	{
+		saved_screenblocks = screenblocks;
+		saved_drawplayersprite = r_drawplayersprites;
+		saved_showmessages = show_messages;
+		screenblocks = 12;
+		r_drawplayersprites = false;
+		show_messages = false;
+		C_HideConsole();
+		M_ClearMenus();
+	}
+	else
+	{
+		screenblocks = saved_screenblocks;
+		r_drawplayersprites = saved_drawplayersprite;
+		show_messages = saved_showmessages;
+	}
+}
+CCMD(togglehud)
+{
+	D_ToggleHud();
+}
 
 CVAR(Float, m_pitch, 1.f, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)		// Mouse speeds
 CVAR(Float, m_yaw, 1.f, CVAR_GLOBALCONFIG | CVAR_ARCHIVE)
@@ -556,6 +596,7 @@ CVAR (Flag, sv_killbossmonst,		dmflags2, DF2_KILLBOSSMONST);
 CVAR (Flag, sv_nocountendmonst,		dmflags2, DF2_NOCOUNTENDMONST);
 CVAR (Flag, sv_respawnsuper,		dmflags2, DF2_RESPAWN_SUPER);
 CVAR (Flag, sv_nothingspawn,		dmflags2, DF2_NO_COOP_THING_SPAWN);
+CVAR (Flag, sv_alwaysspawnmulti,	dmflags2, DF2_ALWAYS_SPAWN_MULTI);
 
 //==========================================================================
 //
@@ -829,6 +870,7 @@ void D_Display ()
 		case GS_FULLCONSOLE:
 			screen->SetBlendingRect(0,0,0,0);
 			hw2d = screen->Begin2D(false);
+			D_PageDrawer();
 			C_DrawConsole (false);
 			M_Drawer ();
 			screen->Update ();
@@ -1763,6 +1805,11 @@ static FString ParseGameInfo(TArray<FString> &pwads, const char *fn, const char 
 			sc.MustGetNumber();
 			GameStartupInfo.LoadBrightmaps = !!sc.Number;
 		}
+		else if (!nextKey.CompareNoCase("LOADWIDESCREEN"))
+		{
+			sc.MustGetNumber();
+			GameStartupInfo.LoadWidescreen = !!sc.Number;
+		}
 		else
 		{
 			// Silently ignore unknown properties
@@ -1889,6 +1936,12 @@ static void AddAutoloadFiles(const char *autoname)
 			const char *lightswad = BaseFileSearch ("lights.pk3", NULL, false, GameConfig);
 			if (lightswad)
 				D_AddFile (allwads, lightswad, true, -1, GameConfig);
+		}
+		if (GameStartupInfo.LoadWidescreen == 1 || (GameStartupInfo.LoadWidescreen != 0 && autoloadwidescreen))
+		{
+			const char *wswad = BaseFileSearch ("game_widescreen_gfx.pk3", NULL, false, GameConfig);
+			if (wswad)
+				D_AddFile (allwads, wswad, true, -1, GameConfig);
 		}
 	}
 
@@ -2609,6 +2662,12 @@ FString System_GetPlayerName(int node)
 	return players[node].userinfo.GetName();
 }
 
+void System_ConsoleToggled(int state)
+{
+	if (state == c_falling && hud_toggled)
+		D_ToggleHud();
+}
+
 //==========================================================================
 //
 // DoomSpecificInfo
@@ -2663,32 +2722,16 @@ void System_CrashInfo(char* buffer, size_t bufflen, const char *lfstr)
 
 void System_M_Dim();
 
-static void FixUnityStatusBar()
+static void FixWideStatusBar()
 {
-	if (gameinfo.flags & GI_FIXUNITYSBAR)
+	FTexture* sbartex = TexMan.FindTexture("stbar", ETextureType::MiscPatch);
+
+	// only adjust offsets if none already exist
+	if (sbartex && sbartex->GetWidth() > 320 &&
+		!sbartex->GetLeftOffset(0) && !sbartex->GetTopOffset(0))
 	{
-		FTexture* sbartex = TexMan.FindTexture("stbar", ETextureType::MiscPatch);
-
-		// texture not found, we're not here to operate on a non-existent texture so just exit
-		if (!sbartex)
-			return;
-
-		// where is this texture located? if it's not in an iwad, then exit
-		int lumpnum = sbartex->GetSourceLump();
-		if (lumpnum >= 0 && lumpnum < fileSystem.GetNumEntries())
-		{
-			int wadno = fileSystem.GetFileContainer(lumpnum);
-			if (!(wadno >= fileSystem.GetIwadNum() && wadno <= fileSystem.GetMaxIwadNum()))
-				return;
-		}
-
-		// only adjust offsets if none already exist
-		if (sbartex->GetWidth() > 320 &&
-			!sbartex->GetLeftOffset(0) && !sbartex->GetTopOffset(0))
-		{
-			sbartex->SetOffsets(0, (sbartex->GetWidth() - 320) / 2, 0);
-			sbartex->SetOffsets(1, (sbartex->GetWidth() - 320) / 2, 0);
-		}
+		sbartex->SetOffsets(0, (sbartex->GetWidth() - 320) / 2, 0);
+		sbartex->SetOffsets(1, (sbartex->GetWidth() - 320) / 2, 0);
 	}
 }
 
@@ -2768,6 +2811,7 @@ static int D_DoomMain_Internal (void)
 		StrTable_GetGender,
 		nullptr,
 		CheckSkipGameOptionBlock,
+		System_ConsoleToggled,
 	};
 
 	
@@ -3066,7 +3110,7 @@ static int D_DoomMain_Internal (void)
 		TexMan.Init();
 		C_InitConback();
 
-		FixUnityStatusBar();
+		FixWideStatusBar();
 
 		StartScreen->Progress();
 		V_InitFonts();
@@ -3334,6 +3378,7 @@ int GameMain()
 	};
 
 	C_InstallHandlers(&cb);
+	SetConsoleNotifyBuffer();
 
 	try
 	{
@@ -3420,7 +3465,7 @@ void D_Cleanup()
 	// delete GameStartupInfo data
 	GameStartupInfo.Name = "";
 	GameStartupInfo.BkColor = GameStartupInfo.FgColor = GameStartupInfo.Type = 0;
-	GameStartupInfo.LoadLights = GameStartupInfo.LoadBrightmaps = -1;
+	GameStartupInfo.LoadWidescreen = GameStartupInfo.LoadLights = GameStartupInfo.LoadBrightmaps = -1;
 	
 	GC::FullGC();					// clean up before taking down the object list.
 	
