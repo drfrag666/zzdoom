@@ -2172,6 +2172,7 @@ void MapLoader::ProcessSideTextures(bool checktranmap, side_t *sd, sector_t *sec
 			break;
 		}
 		// Fallthrough for Hexen maps is intentional
+		[[fallthrough]];
 
 	default:			// normal cases
 

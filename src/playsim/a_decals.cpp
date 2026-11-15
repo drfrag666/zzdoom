@@ -754,6 +754,7 @@ DImpactDecal *DImpactDecal::StaticCreate (FLevelLocals *Level, const FDecalTempl
 
 		if (!decal->StickToWall (wall, pos.X, pos.Y, ffloor).isValid())
 		{
+			decal->Destroy();
 			return NULL;
 		}
 		decal->CheckMax();

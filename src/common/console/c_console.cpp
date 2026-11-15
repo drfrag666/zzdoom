@@ -998,6 +998,7 @@ static bool C_HandleKey (event_t *ev, FCommandBuffer &buffer)
 				break;
 			}
 			// Intentional fall-through for command(s) added with Ctrl-D
+			[[fallthrough]];
 
 		case '\r':
 		{
@@ -1063,6 +1064,7 @@ static bool C_HandleKey (event_t *ev, FCommandBuffer &buffer)
 			{
 				break;
 			}
+			[[fallthrough]];
 		case GK_ESCAPE:
 			// Close console and clear command line. But if we're in the
 			// fullscreen console mode, there's nothing to fall back on

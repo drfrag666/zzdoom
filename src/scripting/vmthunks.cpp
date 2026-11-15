@@ -1890,66 +1890,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DSpotState, GetRandomSpot, GetRandomSpot)
 //
 //=====================================================================================
 
-static void SBar_SetSize(DBaseStatusBar *self, int rt, int vw, int vh, int hvw, int hvh)
-{
-	self->SetSize(rt, vw, vh, hvw, hvh);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, SetSize, SBar_SetSize)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_INT(rt);
-	PARAM_INT(vw);
-	PARAM_INT(vh);
-	PARAM_INT(hvw);
-	PARAM_INT(hvh);
-	self->SetSize(rt, vw, vh, hvw, hvh);
-	return 0;
-}
-
-static void SBar_GetHUDScale(DBaseStatusBar *self, DVector2 *result)
-{
-	*result = self->GetHUDScale();
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetHUDScale, SBar_GetHUDScale)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	ACTION_RETURN_VEC2(self->GetHUDScale());
-}
-
-static void BeginStatusBar(DBaseStatusBar *self, bool fs, int w, int h, int r)
-{
-	self->BeginStatusBar(w, h, r, fs);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, BeginStatusBar, BeginStatusBar)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_BOOL(fs);
-	PARAM_INT(w);
-	PARAM_INT(h);
-	PARAM_INT(r);
-	self->BeginStatusBar(w, h, r, fs);
-	return 0;
-}
-
-static void BeginHUD(DBaseStatusBar *self, double a, bool fs, int w, int h)
-{
-	self->BeginHUD(w, h, a, fs);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, BeginHUD, BeginHUD)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_FLOAT(a);
-	PARAM_BOOL(fs);
-	PARAM_INT(w);
-	PARAM_INT(h);
-	self->BeginHUD(w, h, a, fs);
-	return 0;
-}
-
 static void UpdateScreenGeometry(DBaseStatusBar *)
 {
 	setsizeneeded = true;
@@ -2067,30 +2007,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, ScreenSizeChanged, SBar_ScreenSize
 	return 0;
 }
 
-static double StatusbarToRealCoords(DBaseStatusBar *self, double x, double y, double w, double h, double *py, double *pw, double *ph)
-{
-	self->StatusbarToRealCoords(x, y, w, h);
-	*py = y;
-	*pw = w;
-	*ph = h;
-	return x;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, StatusbarToRealCoords, StatusbarToRealCoords)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	self->StatusbarToRealCoords(x, y, w, h);
-	if (numret > 0) ret[0].SetFloat(x);
-	if (numret > 1) ret[1].SetFloat(y);
-	if (numret > 2) ret[2].SetFloat(w);
-	if (numret > 3) ret[3].SetFloat(h);
-	return MIN(4, numret);
-}
-
 static int GetTopOfStatusbar(DBaseStatusBar *self)
 {
 	return self->GetTopOfStatusbar();
@@ -2100,131 +2016,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetTopOfStatusbar, GetTopOfStatusb
 {
 	PARAM_SELF_PROLOGUE(DBaseStatusBar);
 	ACTION_RETURN_INT(self->GetTopOfStatusbar());
-}
-
-void SBar_DrawTexture(DBaseStatusBar *self, int texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY)
-{
-	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	self->DrawGraphic(FSetTextureID(texid), x, y, flags, alpha, w, h, scaleX, scaleY);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawTexture, SBar_DrawTexture)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_INT(texid);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_INT(flags);
-	PARAM_FLOAT(alpha);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	PARAM_FLOAT(scaleX);
-	PARAM_FLOAT(scaleY);
-	SBar_DrawTexture(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY);
-	return 0;
-}
-
-void SBar_DrawImage(DBaseStatusBar *self, const FString &texid, double x, double y, int flags, double alpha, double w, double h, double scaleX, double scaleY)
-{
-	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	self->DrawGraphic(TexMan.CheckForTexture(texid, ETextureType::Any), x, y, flags, alpha, w, h, scaleX, scaleY);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawImage, SBar_DrawImage)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_STRING(texid);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_INT(flags);
-	PARAM_FLOAT(alpha);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	PARAM_FLOAT(scaleX);
-	PARAM_FLOAT(scaleY);
-	SBar_DrawImage(self, texid, x, y, flags, alpha, w, h, scaleX, scaleY);
-	return 0;
-}
-
-void SBar_DrawString(DBaseStatusBar *self, DHUDFont *font, const FString &string, double x, double y, int flags, int trans, double alpha, int wrapwidth, int linespacing, double scaleX, double scaleY);
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawString, SBar_DrawString)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_POINTER_NOT_NULL(font, DHUDFont);
-	PARAM_STRING(string);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_INT(flags);
-	PARAM_INT(trans);
-	PARAM_FLOAT(alpha);
-	PARAM_INT(wrapwidth);
-	PARAM_INT(linespacing);
-	PARAM_FLOAT(scaleX);
-	PARAM_FLOAT(scaleY);
-	SBar_DrawString(self, font, string, x, y, flags, trans, alpha, wrapwidth, linespacing, scaleX, scaleY);
-	return 0;
-}
-
-static double SBar_TransformRect(DBaseStatusBar *self, double x, double y, double w, double h, int flags, double *py, double *pw, double *ph)
-{
-	self->TransformRect(x, y, w, h, flags);
-	*py = y;
-	*pw = w;
-	*ph = h;
-	return x;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, TransformRect, SBar_TransformRect)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	PARAM_INT(flags);
-	self->TransformRect(x, y, w, h, flags);
-	if (numret > 0) ret[0].SetFloat(x);
-	if (numret > 1) ret[1].SetFloat(y);
-	if (numret > 2) ret[2].SetFloat(w);
-	if (numret > 3) ret[3].SetFloat(h);
-	return MIN(4, numret);
-}
-
-static void SBar_Fill(DBaseStatusBar *self, int color, double x, double y, double w, double h, int flags)
-{
-	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
-	self->Fill(color, x, y, w, h, flags);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, Fill, SBar_Fill)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_COLOR(color);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	PARAM_INT(flags);
-	SBar_Fill(self, color, x, y, w, h, flags);
-	return 0;
-}
-
-static void SBar_SetClipRect(DBaseStatusBar *self, double x, double y, double w, double h, int flags)
-{
-	self->SetClipRect(x, y, w, h, flags);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, SetClipRect, SBar_SetClipRect)
-{
-	PARAM_SELF_PROLOGUE(DBaseStatusBar);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	PARAM_FLOAT(w);
-	PARAM_FLOAT(h);
-	PARAM_INT(flags);
-	self->SetClipRect(x, y, w, h, flags);
-	return 0;
 }
 
 static void GetGlobalACSString(int index, FString *result)
@@ -2281,21 +2072,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetGlobalACSArrayValue, GetGlobalA
 	ACTION_RETURN_INT(ACS_GlobalArrays[arrayno][index]);
 }
 
-void FormatNumber(int number, int minsize, int maxsize, int flags, const FString &prefix, FString *result);
-
-DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, FormatNumber, FormatNumber)
-{
-	PARAM_PROLOGUE;
-	PARAM_INT(number);
-	PARAM_INT(minsize);
-	PARAM_INT(maxsize);
-	PARAM_INT(flags);
-	PARAM_STRING(prefix);
-	FString fmt;
-	FormatNumber(number, minsize, maxsize, flags, prefix, &fmt);
-	ACTION_RETURN_STRING(fmt);
-}
-
 static void ReceivedWeapon(DBaseStatusBar *self)
 {
 	self->mugshot.Grin();
@@ -2334,29 +2110,6 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, GetInventoryIcon, GetInventoryIcon
 	if (numret >= 2) ret[1].SetInt(applyscale);
 	return MIN(numret, 2);
 }
-
-//=====================================================================================
-//
-// 
-//
-//=====================================================================================
-
-DHUDFont *CreateHudFont(FFont *fnt, int spac, int mono, int sx, int sy)
-{
-	return (Create<DHUDFont>(fnt, spac, EMonospacing(mono), sy, sy));
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DHUDFont, Create, CreateHudFont)
-{
-	PARAM_PROLOGUE;
-	PARAM_POINTER(fnt, FFont);
-	PARAM_INT(spac);
-	PARAM_INT(mono);
-	PARAM_INT(sx);
-	PARAM_INT(sy);
-	ACTION_RETURN_POINTER(Create<DHUDFont>(fnt, spac, EMonospacing(mono), sy, sy));
-}
-
 
 //=====================================================================================
 //
@@ -2895,24 +2648,14 @@ DEFINE_FIELD_X(F3DFloor, F3DFloor, alpha);
 
 DEFINE_FIELD_X(Vertex, vertex_t, p)
 
-DEFINE_FIELD(DBaseStatusBar, RelTop);
-DEFINE_FIELD(DBaseStatusBar, HorizontalResolution);
-DEFINE_FIELD(DBaseStatusBar, VerticalResolution);
 DEFINE_FIELD(DBaseStatusBar, Centering);
 DEFINE_FIELD(DBaseStatusBar, FixedOrigin);
-DEFINE_FIELD(DBaseStatusBar, CompleteBorder);
 DEFINE_FIELD(DBaseStatusBar, CrosshairSize);
 DEFINE_FIELD(DBaseStatusBar, Displacement);
 DEFINE_FIELD(DBaseStatusBar, CPlayer);
 DEFINE_FIELD(DBaseStatusBar, ShowLog);
-DEFINE_FIELD(DBaseStatusBar, Alpha);
-DEFINE_FIELD(DBaseStatusBar, drawOffset);
-DEFINE_FIELD(DBaseStatusBar, drawClip);
-DEFINE_FIELD(DBaseStatusBar, fullscreenOffsets);
-DEFINE_FIELD(DBaseStatusBar, defaultScale);
 DEFINE_FIELD(DBaseStatusBar, artiflashTick);
 DEFINE_FIELD(DBaseStatusBar, itemflashFade);
 
-DEFINE_FIELD(DHUDFont, mFont);
 
 DEFINE_GLOBAL(StatusBar);

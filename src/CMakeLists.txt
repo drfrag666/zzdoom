@@ -561,6 +561,7 @@ file( GLOB HEADER_FILES
 	common/utility/*.h
 	common/engine/*.h
 	common/menu/*.h
+	common/statusbar/*.h
 	common/fonts/*.h
 	common/objects/*.h
 	common/filesystem/*.h
@@ -987,6 +988,7 @@ set (PCH_SOURCES
 	common/engine/serializer.cpp
 	common/engine/m_joy.cpp
 	common/engine/m_random.cpp
+	common/objects/autosegs.cpp
 	common/objects/dobject.cpp
 	common/objects/dobjgc.cpp
 	common/objects/dobjtype.cpp
@@ -996,6 +998,7 @@ set (PCH_SOURCES
 	common/menu/optionmenu.cpp
 	common/menu/menudef.cpp
 	common/menu/savegamemanager.cpp
+	common/statusbar/base_sbar.cpp
 	common/rendering/v_video.cpp
 	common/rendering/r_videoscale.cpp
 	common/scripting/core/dictionary.cpp
@@ -1041,7 +1044,6 @@ endif()
 add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${HEADER_FILES}
 	${NOT_COMPILED_SOURCE_FILES}
-	__autostart.cpp
 	${SYSTEM_SOURCES}
 	${FASTMATH_SOURCES}
 	${PCH_SOURCES}
@@ -1067,7 +1069,6 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	common/thirdparty/math/tan.c
 	common/thirdparty/math/tanh.c
 	common/thirdparty/math/fastsin.cpp
-	zzautozend.cpp
 )
 
 set_source_files_properties( ${FASTMATH_SOURCES} PROPERTIES COMPILE_FLAGS ${ZD_FASTMATH_FLAG} )
@@ -1106,6 +1107,7 @@ include_directories( .
 	common/console
 	common/engine
 	common/menu
+	common/statusbar
 	common/fonts
 	common/objects
 	common/rendering

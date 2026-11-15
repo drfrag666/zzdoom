@@ -48,6 +48,7 @@
 #include "vm.h"
 #include "serializer.h"
 
+
 int ListGetInt(VMVa_List &tags);
 
 //==========================================================================

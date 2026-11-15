@@ -49,7 +49,7 @@ class PlayerPawn : Actor
 	double		ViewBob;				// [SP] ViewBob Multiplier
 	double		FullHeight;
 	double		curBob;
-	float		prevBob;
+	double		prevBob;
 
 	meta Name HealingRadiusType;
 	meta Name InvulMode;
@@ -1573,7 +1573,6 @@ class PlayerPawn : Actor
 	virtual void PlayerThink()
 	{
 		let player = self.player;
-		prevBob = player.bob;
 		UserCmd cmd = player.cmd;
 		
 		CheckFOV();
