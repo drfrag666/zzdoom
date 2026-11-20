@@ -326,9 +326,12 @@ struct VMVa_List
 
 class DShape2DTransform : public DObject
 {
-
-	DECLARE_CLASS(DShape2DTransform, DObject)
+DECLARE_CLASS(DShape2DTransform, DObject)
 public:
+	DShape2DTransform()
+	{
+		transform.Identity();
+	}
 	DMatrix3x3 transform;
 };
 
@@ -346,6 +349,11 @@ class DShape2D : public DObject
 
 	DECLARE_CLASS(DShape2D,DObject)
 public:
+	DShape2D()
+	{
+		transform.Identity();
+	}
+
 	TArray<int> mIndices;
 	TArray<DVector2> mVertices;
 	TArray<DVector2> mCoords;
@@ -441,6 +449,7 @@ public:
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);
+	void AddShape(FTexture *img, DShape2D *shape, DrawParms &parms);
 	void DrawShape(FTexture *img, DShape2D *shape, int tags, ...);
 	void DrawShape(FTexture *img, DShape2D *shape, VMVa_List &);
 	void FillBorder (FTexture *img);	// Fills the border around a 4:3 part of the screen on non-4:3 displays
