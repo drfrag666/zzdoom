@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#include "v_2ddrawer.h"
 #include "doomtype.h"
 #include "v_video.h"
 #include "m_swap.h"
@@ -47,7 +48,6 @@
 #endif
 #include "r_data/r_translate.h"
 #include "doomstat.h"
-#include "v_palette.h"
 #include "gi.h"
 #include "g_level.h"
 #include "st_stuff.h"
@@ -58,9 +58,7 @@
 #include "templates.h"
 #include "d_net.h"
 #include "colormatcher.h"
-#include "r_data/colormaps.h"
 #include "g_levellocals.h"
-#include "textures.h"
 #include "vm.h"
 
 CUSTOM_CVAR(Int, uiscale, 0, CVAR_ARCHIVE | CVAR_NOINITCALL)
@@ -151,143 +149,6 @@ DEFINE_ACTION_FUNCTION(_Screen, PaletteColor)
 	ACTION_RETURN_INT(index);
 }
 
-// Dummy ZScript arbitrary textured shape drawing
-IMPLEMENT_CLASS(DShape2DTransform, false, false)
-
-static void Shape2DTransform_Clear(DShape2DTransform* self)
-{
-	self->transform.Identity();
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2DTransform, Clear, Shape2DTransform_Clear)
-{
-	PARAM_SELF_PROLOGUE(DShape2DTransform);
-	Shape2DTransform_Clear(self);
-	return 0;
-}
-
-static void Shape2DTransform_Rotate(DShape2DTransform* self, double angle)
-{
-	self->transform = DMatrix3x3::Rotate2D(DEG2RAD(angle)) * self->transform;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2DTransform, Rotate, Shape2DTransform_Rotate)
-{
-	PARAM_SELF_PROLOGUE(DShape2DTransform);
-	PARAM_FLOAT(angle);
-	Shape2DTransform_Rotate(self, angle);
-	return 0;
-}
-
-static void Shape2DTransform_Scale(DShape2DTransform* self, double x, double y)
-{
-	self->transform = DMatrix3x3::Scale2D(DVector2(x, y)) * self->transform;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2DTransform, Scale, Shape2DTransform_Scale)
-{
-	PARAM_SELF_PROLOGUE(DShape2DTransform);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	Shape2DTransform_Scale(self, x, y);
-	return 0;
-}
-
-static void Shape2DTransform_Translate(DShape2DTransform* self, double x, double y)
-{
-	self->transform = DMatrix3x3::Translate2D(DVector2(x, y)) * self->transform;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2DTransform, Translate, Shape2DTransform_Translate)
-{
-	PARAM_SELF_PROLOGUE(DShape2DTransform);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	Shape2DTransform_Translate(self, x, y);
-	return 0;
-}
-
-IMPLEMENT_CLASS(DShape2D, false, false)
-
-static void Shape2D_SetTransform(DShape2D* self, DShape2DTransform *transform)
-{
-	self->transform = transform->transform;
-	self->dirty = true;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, SetTransform, Shape2D_SetTransform)
-{
-	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_OBJECT(transform, DShape2DTransform);
-	Shape2D_SetTransform(self, transform);
-	return 0;
-}
-
-static void Shape2D_Clear(DShape2D* self, int which)
-{
-	if (which & C_Verts)
-	{
-		self->mVertices.Clear();
-		self->dirty = true;
-	}
-	if (which & C_Coords) self->mCoords.Clear();
-	if (which & C_Indices) self->mIndices.Clear();
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, Clear, Shape2D_Clear)
-{
-	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_INT(which);
-	Shape2D_Clear(self, which);
-	return 0;
-}
-
-static void Shape2D_PushVertex(DShape2D* self, double x, double y)
-{
-	self->mVertices.Push(DVector2(x, y));
-	self->dirty = true;
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, PushVertex, Shape2D_PushVertex)
-{
-	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_FLOAT(x);
-	PARAM_FLOAT(y);
-	Shape2D_PushVertex(self, x, y);
-	return 0;
-}
-
-static void Shape2D_PushCoord(DShape2D* self, double u, double v)
-{
-	self->mCoords.Push(DVector2(u, v));
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, PushCoord, Shape2D_PushCoord)
-{
-	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_FLOAT(u);
-	PARAM_FLOAT(v);
-	Shape2D_PushCoord(self, u, v);
-	return 0;
-}
-
-static void Shape2D_PushTriangle(DShape2D* self, int a, int b, int c)
-{
-	self->mIndices.Push(a);
-	self->mIndices.Push(b);
-	self->mIndices.Push(c);
-}
-
-DEFINE_ACTION_FUNCTION_NATIVE(DShape2D, PushTriangle, Shape2D_PushTriangle)
-{
-	PARAM_SELF_PROLOGUE(DShape2D);
-	PARAM_INT(a);
-	PARAM_INT(b);
-	PARAM_INT(c);
-	Shape2D_PushTriangle(self, a, b, c);
-	return 0;
-}
-
 void DCanvas::DrawTexture (FTexture *img, double x, double y, int tags_first, ...)
 {
 	Va_List tags;
@@ -348,15 +209,11 @@ void DCanvas::DrawTextureParms(FTexture *img, DrawParms &parms)
 
 //==========================================================================
 //
-// Dummy ZScript arbitrary textured shape drawing functions
+// ZScript arbitrary textured shape drawing functions
 //
 //==========================================================================
 
-void DCanvas::AddShape(FTexture *img, DShape2D *shape, DrawParms &parms)
-{
-}
-
-void DCanvas::DrawShape(FTexture *img, DShape2D *shape, int tags_first, ...)
+void DCanvas::DrawShape(F2DDrawer *drawer, FTexture *img, DShape2D *shape, int tags_first, ...)
 {
 	Va_List tags;
 	va_start(tags.list, tags_first);
@@ -365,17 +222,17 @@ void DCanvas::DrawShape(FTexture *img, DShape2D *shape, int tags_first, ...)
 	bool res = ParseDrawTextureTags(img, 0, 0, tags_first, tags, &parms, false);
 	va_end(tags.list);
 	if (!res) return;
-	screen->AddShape(img, shape, parms);
+	drawer->AddShape(img, shape, parms);
 }
 
-void DCanvas::DrawShape(FTexture *img, DShape2D *shape, VMVa_List &args)
+void DCanvas::DrawShape(F2DDrawer *drawer, FTexture *img, DShape2D *shape, VMVa_List &args)
 {
 	DrawParms parms;
 	uint32_t tag = ListGetInt(args);
 
 	bool res = ParseDrawTextureTags(img, 0, 0, tag, args, &parms, false);
 	if (!res) return;
-	screen->AddShape(img, shape, parms);
+	drawer->AddShape(img, shape, parms);
 }
 
 DEFINE_ACTION_FUNCTION(_Screen, DrawShape)
@@ -390,9 +247,9 @@ DEFINE_ACTION_FUNCTION(_Screen, DrawShape)
 	if (!screen->HasBegun2D()) ThrowAbortException(X_OTHER, "Attempt to draw to screen outside a draw function");
 
 	FTexture *tex = animate ? TexMan(FSetTextureID(texid)) : TexMan[FSetTextureID(texid)];
-	VMVa_List args = { param + 3, 0, numparam - 4, va_reginfo };
+	VMVa_List args = { param + 3, 0, numparam - 4, va_reginfo + 3 };
 
-	screen->DrawShape(tex, shape, args);
+	screen->DrawShape(twod, tex, shape, args);
 	return 0;
 }
 

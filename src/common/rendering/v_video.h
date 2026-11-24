@@ -92,6 +92,11 @@ struct IntRect
 
 };
 
+class F2DDrawer;
+class DShape2D;
+extern F2DDrawer drawer;
+extern F2DDrawer* twod;
+
 extern int CleanWidth, CleanHeight, CleanXfac, CleanYfac;
 extern int CleanWidth_1, CleanHeight_1, CleanXfac_1, CleanYfac_1;
 extern int DisplayWidth, DisplayHeight, DisplayBits;
@@ -276,9 +281,9 @@ struct DrawParms
 	double top;
 	double left;
 	float Alpha;
-	uint32_t fillcolor;
+	PalEntry fillcolor;
 	FRemapTable *remap;
-	uint32_t colorOverlay;
+	PalEntry colorOverlay;
 	PalEntry color;
 	INTBOOL alphaChannel;
 	INTBOOL flipX;
@@ -322,46 +327,6 @@ struct VMVa_List
 	int curindex;
 	int numargs;
 	const uint8_t *reginfo;
-};
-
-class DShape2DTransform : public DObject
-{
-DECLARE_CLASS(DShape2DTransform, DObject)
-public:
-	DShape2DTransform()
-	{
-		transform.Identity();
-	}
-	DMatrix3x3 transform;
-};
-
-// intermediate struct for fake shape drawing
-
-enum EClearWhich
-{
-	C_Verts = 1,
-	C_Coords = 2,
-	C_Indices = 4,
-};
-
-class DShape2D : public DObject
-{
-
-	DECLARE_CLASS(DShape2D,DObject)
-public:
-	DShape2D()
-	{
-		transform.Identity();
-	}
-
-	TArray<int> mIndices;
-	TArray<DVector2> mVertices;
-	TArray<DVector2> mCoords;
-
-	DMatrix3x3 transform;
-
-	bool dirty = true;
-	TArray<DVector2> mTransformedVertices;
 };
 
 //
@@ -449,9 +414,8 @@ public:
 	bool SetTextureParms(DrawParms *parms, FTexture *img, double x, double y) const;
 	void DrawTexture (FTexture *img, double x, double y, int tags, ...);
 	void DrawTexture(FTexture *img, double x, double y, VMVa_List &);
-	void AddShape(FTexture *img, DShape2D *shape, DrawParms &parms);
-	void DrawShape(FTexture *img, DShape2D *shape, int tags, ...);
-	void DrawShape(FTexture *img, DShape2D *shape, VMVa_List &);
+	void DrawShape(F2DDrawer *drawer, FTexture *img, DShape2D *shape, int tags, ...);
+	void DrawShape(F2DDrawer *drawer, FTexture *img, DShape2D *shape, VMVa_List &);
 	void FillBorder (FTexture *img);	// Fills the border around a 4:3 part of the screen on non-4:3 displays
 	void VirtualToRealCoords(double &x, double &y, double &w, double &h, double vwidth, double vheight, bool vbottom=false, bool handleaspect=true) const;
 
