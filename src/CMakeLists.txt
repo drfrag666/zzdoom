@@ -1018,7 +1018,7 @@ set (PCH_SOURCES
 	common/scripting/frontend/zcc_parser.cpp
 	common/scripting/backend/vmbuilder.cpp
 	common/scripting/backend/codegen.cpp
-	
+	rendering/postprocessshader.cpp
 	utility/GuillotineBinPack.cpp
 	utility/SkylineBinPack.cpp
 	utility/nodebuilder/nodebuild.cpp

@@ -53,6 +53,7 @@
 #include "a_dynlight.h"
 #include "serializer.h"
 #include "skyboxtexture.h"
+#include "postprocessshader.h"
 
 int ScriptDepth;
 
@@ -985,6 +986,7 @@ enum
 // There is no functionality for this stuff!
 //
 //==========================================================================
+
 bool ParseShader(FScanner &sc)
 {
 	int  ShaderDepth = 0;
@@ -1012,6 +1014,100 @@ bool ParseShader(FScanner &sc)
 		if (ShaderDepth == 0) return true;
 	}
 	return false;
+}
+
+
+//==========================================================================
+//
+// Parses a shader definition
+// This is only for GZDoom compatibility
+//
+//==========================================================================
+
+void ParseHardwareShader(FScanner &sc)
+{
+	sc.MustGetString();
+	if (sc.Compare("postprocess"))
+	{
+		sc.MustGetString();
+
+		PostProcessShader shaderdesc;
+		shaderdesc.Target = sc.String;
+		shaderdesc.Target.ToLower();
+
+		bool validTarget = false;
+		if (sc.Compare("beforebloom")) validTarget = true;
+		if (sc.Compare("scene")) validTarget = true;
+		if (sc.Compare("screen")) validTarget = true;		
+		if (!validTarget)
+			sc.ScriptError("Invalid target '%s' for postprocess shader",sc.String);
+
+		sc.MustGetToken('{');
+		while (!sc.CheckToken('}'))
+		{
+			sc.MustGetString();
+			if (sc.Compare("shader"))
+			{
+				sc.MustGetString();
+				shaderdesc.ShaderLumpName = sc.String;
+
+				sc.MustGetNumber();
+				shaderdesc.ShaderVersion = sc.Number;
+				if (sc.Number > 450 || sc.Number < 330)
+					sc.ScriptError("Shader version must be in range 330 to 450!");
+			}
+			else if (sc.Compare("name"))
+			{
+				sc.MustGetString();
+				shaderdesc.Name = sc.String;
+			}
+			else if (sc.Compare("uniform"))
+			{
+				sc.MustGetString();
+				FString uniformType = sc.String;
+				uniformType.ToLower();
+
+				sc.MustGetString();
+				FString uniformName = sc.String;
+
+				PostProcessUniformType parsedType = PostProcessUniformType::Undefined;
+
+				if (uniformType.Compare("int") == 0)
+					parsedType = PostProcessUniformType::Int;
+				else if (uniformType.Compare("float") == 0)
+					parsedType = PostProcessUniformType::Float;
+				else if (uniformType.Compare("vec2") == 0)
+					parsedType = PostProcessUniformType::Vec2;
+				else if (uniformType.Compare("vec3") == 0)
+					parsedType = PostProcessUniformType::Vec3;
+				else
+					sc.ScriptError("Unrecognized uniform type '%s'", sc.String);
+
+				if (parsedType != PostProcessUniformType::Undefined)
+					shaderdesc.Uniforms[uniformName].Type = parsedType;
+			}
+			else if (sc.Compare("texture"))
+			{
+				sc.MustGetString();
+				FString textureName = sc.String;
+
+				sc.MustGetString();
+				FString textureSource = sc.String;
+
+				shaderdesc.Textures[textureName] = textureSource;
+			}
+			else if (sc.Compare("enabled"))
+			{
+				shaderdesc.Enabled = true;
+			}
+			else
+			{
+				sc.ScriptError("Unknown keyword '%s'", sc.String);
+			}
+		}
+
+		PostProcessShaders.Push(shaderdesc);
+	}
 }
 
 
@@ -1184,7 +1280,7 @@ static void DoParseDefs(FScanner &sc, int workingLump)
 			// gl_ParseMaterial(sc, workingLump);
 			break;
 		case TAG_HARDWARESHADER:
-			// gl_ParseHardwareShader(sc, workingLump);
+			ParseHardwareShader(sc);
 			break;
 		case TAG_DETAIL:
 			// gl_ParseDetailTexture(sc);
